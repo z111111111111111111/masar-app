@@ -5,8 +5,8 @@ import { MasarMark } from './OnboardingScreen';
 import { MailIcon, LockIcon, EyeIcon, EyeOffIcon } from './icons';
 import { signIn, signUp } from '@/lib/auth-client';
 
-export function AuthScreen() {
-  const [isLogin, setIsLogin] = useState(true);
+export function AuthScreen({ defaultTab = 'login' }: { defaultTab?: 'login' | 'signup' }) {
+  const [isLogin, setIsLogin] = useState(defaultTab === 'login');
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

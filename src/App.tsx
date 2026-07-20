@@ -45,6 +45,7 @@ function App() {
 
   const [tab, setTab] = useState<TabId>('home');
   const [page, setPage] = useState<'landing' | 'auth'>('landing');
+  const [authTab, setAuthTab] = useState<'login' | 'signup'>('signup');
 
   const queriesLoading = profile === undefined || rawRecords === undefined;
   const authLoading = authUser === undefined;
@@ -77,12 +78,12 @@ function App() {
     if (page === 'landing') {
       return (
         <Landing
-          onGetStarted={() => setPage('auth')}
-          onLogin={() => setPage('auth')}
+          onGetStarted={() => { setAuthTab('signup'); setPage('auth'); }}
+          onLogin={() => { setAuthTab('login'); setPage('auth'); }}
         />
       );
     }
-    return <AuthScreen />;
+    return <AuthScreen defaultTab={authTab} />;
   }
 
   if (!isPaid) {
