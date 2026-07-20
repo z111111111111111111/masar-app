@@ -5,7 +5,7 @@ import { MasarMark } from './OnboardingScreen';
 import { MailIcon, LockIcon, EyeIcon, EyeOffIcon } from './icons';
 import { signIn, signUp } from '@/lib/auth-client';
 
-export function AuthScreen({ defaultTab = 'login' }: { defaultTab?: 'login' | 'signup' }) {
+export function AuthScreen({ defaultTab = 'login', onAuthSuccess }: { defaultTab?: 'login' | 'signup'; onAuthSuccess?: () => void }) {
   const [isLogin, setIsLogin] = useState(defaultTab === 'login');
 
   const [email, setEmail] = useState('');
@@ -71,6 +71,7 @@ export function AuthScreen({ defaultTab = 'login' }: { defaultTab?: 'login' | 's
           return;
         }
         console.log('[Auth] sign-in success:', result.data);
+        onAuthSuccess?.();
       } else {
         const result = await signUp.email({ email, password, name });
         if (result.error) {
@@ -80,6 +81,7 @@ export function AuthScreen({ defaultTab = 'login' }: { defaultTab?: 'login' | 's
           return;
         }
         console.log('[Auth] sign-up success:', result.data);
+        onAuthSuccess?.();
       }
     } catch (err: any) {
       console.error('[Auth] unexpected error:', err);

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from 'convex/_generated/api';
 import type { SubjectId } from '@/lib/subjects';
@@ -20,6 +20,7 @@ import { PathTab } from '@/components/PathTab';
 import { RoadmapTab } from '@/components/RoadmapTab';
 import { LeaderboardTab } from '@/components/LeaderboardTab';
 import { ProfileTab } from '@/components/ProfileTab';
+import { BackButton } from '@/components/BackButton';
 
 function flatToRecordsMap(rows: any[]): RecordsMap {
   const map: RecordsMap = {};
@@ -46,6 +47,27 @@ function App() {
   const [tab, setTab] = useState<TabId>('home');
   const [page, setPage] = useState<'landing' | 'auth'>('landing');
   const [authTab, setAuthTab] = useState<'login' | 'signup'>('signup');
+  const navHistory = useRef<string[]>([]);
+  const [canGoBack, setCanGoBack] = useState(false);
+
+  const navigate = (to: 'landing' | 'auth', authT?: 'login' | 'signup') => {
+    navHistory.current.push(page);
+    setCanGoBack(true);
+    if (authT) setAuthTab(authT);
+    setPage(to);
+  };
+
+  const goBack = () => {
+    if (navHistory.current.length === 0) return;
+    const prev = navHistory.current.pop() as 'landing' | 'auth';
+    setCanGoBack(navHistory.current.length > 0);
+    setPage(prev);
+  };
+
+  const blockBack = () => {
+    navHistory.current = [];
+    setCanGoBack(false);
+  };
 
   const queriesLoading = profile === undefined || rawRecords === undefined;
   const authLoading = authUser === undefined;
@@ -62,6 +84,8 @@ function App() {
 
   useEffect(() => {
     if (!isAuthed && authUser !== undefined) {
+      navHistory.current = [];
+      setCanGoBack(false);
       setPage('landing');
     }
   }, [isAuthed, authUser]);
@@ -78,12 +102,17 @@ function App() {
     if (page === 'landing') {
       return (
         <Landing
-          onGetStarted={() => { setAuthTab('signup'); setPage('auth'); }}
-          onLogin={() => { setAuthTab('login'); setPage('auth'); }}
+          onGetStarted={() => navigate('auth', 'signup')}
+          onLogin={() => navigate('auth', 'login')}
         />
       );
     }
-    return <AuthScreen defaultTab={authTab} />;
+    return (
+      <>
+        {canGoBack && <BackButton onClick={goBack} />}
+        <AuthScreen defaultTab={authTab} onAuthSuccess={blockBack} />
+      </>
+    );
   }
 
   if (!isPaid) {
