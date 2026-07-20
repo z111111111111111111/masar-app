@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MasarMark } from './OnboardingScreen';
@@ -14,6 +14,21 @@ export function AuthScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const formRef = useRef<HTMLFormElement>(null);
+
+  useEffect(() => {
+    const onResize = () => {
+      if (formRef.current && window.visualViewport) {
+        const gap = window.innerHeight - window.visualViewport.height;
+        if (gap > 100) {
+          formRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }
+    };
+    window.visualViewport?.addEventListener('resize', onResize);
+    return () => window.visualViewport?.removeEventListener('resize', onResize);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,28 +65,35 @@ export function AuthScreen() {
       if (isLogin) {
         const result = await signIn.email({ email, password });
         if (result.error) {
+          console.error('[Auth] sign-in error:', result.error);
           setError(result.error.message || 'البريد الإلكتروني أو كلمة المرور غير صحيحة');
           setLoading(false);
           return;
         }
+        console.log('[Auth] sign-in success:', result.data);
       } else {
         const result = await signUp.email({ email, password, name });
         if (result.error) {
+          console.error('[Auth] sign-up error:', result.error);
           setError(result.error.message || 'حدث خطأ أثناء إنشاء الحساب');
           setLoading(false);
           return;
         }
+        console.log('[Auth] sign-up success:', result.data);
       }
     } catch (err: any) {
-      setError(err.message || 'حدث خطأ غير متوقع');
+      console.error('[Auth] unexpected error:', err);
+      setError(err?.message?.includes('fetch')
+        ? 'تعذّر الاتصال بالخادم. تحقق من اتصالك بالإنترنت'
+        : (err.message || 'حدث خطأ غير متوقع'));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-6 bg-[radial-gradient(circle_at_30%_20%,hsl(var(--sprout-soft)),transparent_45%),radial-gradient(circle_at_80%_75%,hsl(var(--ember-soft)),transparent_40%)]">
-      <div className="w-full max-w-sm">
+    <div className="min-h-dvh flex flex-col justify-center px-6 py-12 bg-[radial-gradient(circle_at_30%_20%,hsl(var(--sprout-soft)),transparent_45%),radial-gradient(circle_at_80%_75%,hsl(var(--ember-soft)),transparent_40%)]">
+      <div className="w-full max-w-sm mx-auto">
         {/* Brand */}
         <div className="flex flex-col items-center gap-2 mb-8 justify-center">
           <MasarMark size={48} />
@@ -107,7 +129,7 @@ export function AuthScreen() {
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col gap-4">
             {/* Name (signup only) */}
             {!isLogin && (
               <div className="animate-[pop-in_0.2s_ease-out]">
@@ -140,6 +162,7 @@ export function AuthScreen() {
                   placeholder="email@example.com"
                   className="h-11 text-right pr-10"
                   dir="ltr"
+                  autoComplete="email"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
                   <MailIcon size={16} />
@@ -158,6 +181,7 @@ export function AuthScreen() {
                   placeholder="••••••••"
                   className="h-11 text-right pr-10 pl-10"
                   dir="ltr"
+                  autoComplete={isLogin ? 'current-password' : 'new-password'}
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
                   <LockIcon size={16} />
