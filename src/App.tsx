@@ -1,0 +1,139 @@
+import { useEffect, useMemo, useState } from 'react';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from 'convex/_generated/api';
+import type { SubjectId } from '@/lib/subjects';
+import {
+  computeStreak,
+  toISODate,
+  type RecordsMap,
+  type DayRecord,
+  type SubjectDayRecord,
+  type TimerStatus,
+} from '@/lib/dates';
+import { Toaster } from '@/components/ui/toaster';
+import { AuthScreen } from '@/components/AuthScreen';
+import { PaymentScreen } from '@/components/PaymentScreen';
+import { Landing } from '@/components/landing/Landing';
+import { AppShell, type TabId } from '@/components/AppShell';
+import { DashboardTab } from '@/components/DashboardTab';
+import { PathTab } from '@/components/PathTab';
+import { RoadmapTab } from '@/components/RoadmapTab';
+import { LeaderboardTab } from '@/components/LeaderboardTab';
+import { ProfileTab } from '@/components/ProfileTab';
+
+function flatToRecordsMap(rows: any[]): RecordsMap {
+  const map: RecordsMap = {};
+  for (const row of rows) {
+    if (!map[row.dateISO]) map[row.dateISO] = {};
+    map[row.dateISO][row.subject as SubjectId] = {
+      score: row.score,
+      timeSeconds: row.timeSeconds,
+      timerStatus: row.timerStatus as TimerStatus | undefined,
+      runningSince: row.runningSince,
+      viaRandom: row.viaRandom,
+    } satisfies SubjectDayRecord;
+  }
+  return map;
+}
+
+function App() {
+  const authUser = useQuery(api.progress.getAuth);
+  const profile = useQuery(api.progress.get);
+  const subscription = useQuery(api.subscription.get);
+  const rawRecords = useQuery(api.progress.getRecords);
+  const createProfile = useMutation(api.progress.create);
+
+  const [tab, setTab] = useState<TabId>('home');
+  const [page, setPage] = useState<'landing' | 'auth'>('landing');
+
+  const queriesLoading = profile === undefined || rawRecords === undefined;
+  const authLoading = authUser === undefined;
+  const isLoading = queriesLoading || authLoading;
+
+  const isAuthed = authUser !== null && authUser !== undefined;
+  const isPaid = !!subscription && subscription.status === 'active';
+  const hasProfile = !!profile;
+
+  const records = useMemo(
+    () => (rawRecords ? flatToRecordsMap(rawRecords) : ({} as RecordsMap)),
+    [rawRecords]
+  );
+
+  useEffect(() => {
+    if (!isAuthed && authUser !== undefined) {
+      setPage('landing');
+    }
+  }, [isAuthed, authUser]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">
+        جارٍ التحميل...
+      </div>
+    );
+  }
+
+  if (!isAuthed) {
+    if (page === 'landing') {
+      return (
+        <Landing
+          onGetStarted={() => setPage('auth')}
+          onLogin={() => setPage('auth')}
+        />
+      );
+    }
+    return <AuthScreen />;
+  }
+
+  if (!isPaid) {
+    return <PaymentScreen />;
+  }
+
+  if (!hasProfile) {
+    if (authUser) createProfile({ name: authUser.name ?? 'طالب', email: authUser.email ?? '' });
+    return (
+      <div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">
+        جارٍ إعداد حسابك...
+      </div>
+    );
+  }
+
+  const todayISO = toISODate(new Date());
+  const streak = computeStreak(records, todayISO);
+  const bestStreak = Math.max(profile.bestStreak, streak);
+  const xp = profile.totalXP;
+
+  return (
+    <>
+    <AppShell active={tab} onChange={setTab} streak={streak} xp={xp}>
+      {tab === 'home' && (
+        <DashboardTab
+          name={profile.name}
+          startDate={profile.startDate}
+          streak={streak}
+          xp={xp}
+          records={records}
+        />
+      )}
+      {tab === 'tracking' && (
+        <PathTab startDate={profile.startDate} records={records} />
+      )}
+      {tab === 'roadmap' && <RoadmapTab />}
+      {tab === 'board' && <LeaderboardTab userId={profile.userId} name={profile.name} xp={xp} />}
+      {tab === 'profile' && (
+        <ProfileTab
+          name={profile.name}
+          startDate={profile.startDate}
+          xp={xp}
+          streak={streak}
+          bestStreak={bestStreak}
+          records={records}
+        />
+      )}
+    </AppShell>
+    <Toaster />
+    </>
+  );
+}
+
+export default App;

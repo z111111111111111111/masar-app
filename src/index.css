@@ -1,0 +1,139 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Modern Minimalist base — charcoal / slate / fog / white */
+    --ink: 204 20% 26%;        /* #36454f charcoal — flips light in dark mode (text) */
+    --ink-solid: 204 20% 26%;  /* constant brand charcoal for solid fills (buttons, avatars) — same in both themes */
+    --slate: 210 13% 50%;      /* #708090 slate gray */
+    --fog: 0 0% 83%;           /* #d3d3d3 light gray */
+    --paper: 0 0% 100%;        /* white */
+    --paper-warm: 40 20% 98%;  /* barely-there warm off-white for page bg */
+
+    /* Restrained accent pair for the gamified layer */
+    --sprout: 152 34% 34%;     /* deep sage green — progress / success */
+    --sprout-soft: 152 30% 92%;
+    --ember: 32 68% 54%;       /* warm amber — streak flame */
+    --ember-soft: 32 70% 94%;
+    --coral: 6 63% 58%;        /* muted terracotta — missed/attention, used sparingly */
+
+    /* Dedicated 5-color qualitative palette for multi-subject charts — chosen to
+       read as one coordinated family (even hue spacing, matched saturation/lightness)
+       rather than repurposed UI-status colors. */
+    --chart-1: 225 30% 50%;  /* dusty indigo */
+    --chart-2: 178 38% 34%;  /* deep teal */
+    --chart-3: 148 32% 40%;  /* muted sage */
+    --chart-4: 38 48% 46%;   /* warm gold */
+    --chart-5: 12 42% 54%;   /* soft terracotta */
+
+    --background: var(--paper-warm);
+    --foreground: var(--ink);
+    --card: var(--paper);
+    --card-foreground: var(--ink);
+    --popover: var(--paper);
+    --popover-foreground: var(--ink);
+    --primary: var(--ink);
+    --primary-foreground: var(--paper);
+    --secondary: 210 20% 96%;
+    --secondary-foreground: var(--ink);
+    --muted: 210 20% 95%;
+    --muted-foreground: var(--slate);
+    --accent: var(--sprout-soft);
+    --accent-foreground: var(--sprout);
+    --destructive: var(--coral);
+    --destructive-foreground: 0 0% 100%;
+    --border: 210 16% 88%;
+    --input: 210 16% 88%;
+    --ring: var(--sprout);
+    --radius: 0.9rem;
+  }
+
+  /* Dark mode — same hues and the same relative harmony as light mode, just
+     remapped for a dark canvas (lightness inverted/boosted where needed for
+     contrast; hue and saturation kept close to their light-mode counterparts). */
+  .dark {
+    --ink: 210 25% 92%;        /* light neutral — body text on dark backgrounds */
+    --slate: 210 15% 68%;
+    --fog: 210 15% 26%;
+    --paper: 210 16% 14%;      /* card surface */
+    --paper-warm: 210 20% 8%;  /* page background */
+
+    --sprout: 152 38% 52%;
+    --sprout-soft: 152 30% 18%;
+    --ember: 32 70% 62%;
+    --ember-soft: 32 55% 18%;
+    --coral: 6 60% 64%;
+
+    --chart-1: 225 42% 68%;
+    --chart-2: 178 42% 54%;
+    --chart-3: 148 38% 56%;
+    --chart-4: 38 55% 62%;
+    --chart-5: 12 52% 66%;
+
+    --secondary: 210 15% 20%;
+    --muted: 210 15% 18%;
+    --border: 210 15% 22%;
+    --input: 210 15% 22%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html, body {
+    height: 100%;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Tajawal', sans-serif;
+    font-feature-settings: 'ss01' on;
+  }
+}
+
+/* thin scrollbar for the path/track view */
+.masar-scroll::-webkit-scrollbar { height: 6px; width: 6px; }
+.masar-scroll::-webkit-scrollbar-thumb { background: hsl(var(--fog)); border-radius: 999px; }
+.masar-scroll::-webkit-scrollbar-track { background: transparent; }
+
+@keyframes pop-in {
+  0% { transform: scale(0.6); opacity: 0; }
+  70% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); }
+}
+.animate-pop { animation: pop-in 0.35s cubic-bezier(.34,1.56,.64,1); }
+
+@keyframes flame-flicker {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  50% { transform: scale(1.06) rotate(-2deg); }
+}
+.animate-flame { animation: flame-flicker 1.8s ease-in-out infinite; }
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.animate-fade-in { animation: fade-in 1s ease-out; }
+
+@keyframes progress-fill {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+.animate-progress { animation: progress-fill 8s linear; }
+
+/* KaTeX overrides for dark mode */
+.dark .katex { color: hsl(var(--ink)); }
+.dark .katex .mord,
+.dark .katex .mbin,
+.dark .katex .mrel,
+.dark .katex .mopen,
+.dark .katex .mclose,
+.dark .katex .mop,
+.dark .katex .mpunct,
+.dark .katex .minner { color: hsl(var(--ink)); }
+
+/* KaTeX math rendering comfort */
+.katex { font-size: 1em !important; }
+.katex-display { margin: 0.4em 0 !important; }
