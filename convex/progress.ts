@@ -29,17 +29,37 @@ export const getAuth = query({
 export const getPublicProfile = query({
   args: { userId: v.string() },
   handler: async (ctx, args) => {
+    const caller = await ctx.auth.getUserIdentity();
+
     const progress = await ctx.db
       .query("userProgress")
       .withIndex("by_userId", (q) => q.eq("userId", args.userId))
       .unique();
     if (!progress) return null;
-    if (progress.allowSharing !== true) return { private: true as const, name: progress.name, xp: progress.totalXP };
+
+    if (progress.allowSharing !== true) {
+      return { private: true as const, name: progress.name, xp: progress.totalXP };
+    }
+
     const records = await ctx.db
       .query("dailyRecords")
       .withIndex("by_user_date", (q) => q.eq("userId", args.userId))
-      .collect();
-    return { progress, records, private: false as const };
+      .take(365);
+
+    return {
+      progress: {
+        name: progress.name,
+        startDate: progress.startDate,
+        currentWeek: progress.currentWeek,
+        totalScore: progress.totalScore,
+        totalXP: progress.totalXP,
+        streak: progress.streak,
+        bestStreak: progress.bestStreak,
+        totalTimeSeconds: progress.totalTimeSeconds,
+      },
+      records,
+      private: false as const,
+    };
   },
 });
 
@@ -66,6 +86,14 @@ export const create = mutation({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
+    const trimmedName = args.name.trim();
+    if (trimmedName.length === 0 || trimmedName.length > 100) {
+      throw new Error("Invalid name");
+    }
+    if (args.email.length > 254 || !args.email.includes("@")) {
+      throw new Error("Invalid email");
+    }
+
     const existing = await ctx.db
       .query("userProgress")
       .withIndex("by_userId", (q) => q.eq("userId", identity.subject))
@@ -77,7 +105,7 @@ export const create = mutation({
 
     return await ctx.db.insert("userProgress", {
       userId: identity.subject,
-      name: args.name,
+      name: trimmedName,
       email: args.email,
       startDate: dateStr,
       currentWeek: 1,
@@ -101,6 +129,10 @@ export const recordFinish = mutation({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
+
+    if (args.score < 0 || args.score > 100) throw new Error("Invalid score");
+    if (args.timeSeconds < 0 || args.timeSeconds > 86400) throw new Error("Invalid time");
+    if (args.dateISO.length !== 10) throw new Error("Invalid date");
 
     const userId = identity.subject;
 
@@ -144,7 +176,7 @@ export const recordFinish = mutation({
       const allRecords = await ctx.db
         .query("dailyRecords")
         .withIndex("by_user_date", (q) => q.eq("userId", userId))
-        .collect();
+        .take(365);
 
       const uniqueDays = new Set(allRecords.map((r) => r.dateISO));
       const streak = computeStreak(uniqueDays);
@@ -255,7 +287,7 @@ export const getRecords = query({
     return await ctx.db
       .query("dailyRecords")
       .withIndex("by_user_date", (q) => q.eq("userId", identity.subject))
-      .collect();
+      .take(365);
   },
 });
 

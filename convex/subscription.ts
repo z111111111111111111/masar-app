@@ -20,6 +20,10 @@ export const activate = mutation({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
+    if (args.amount <= 0 || args.amount > 100000 || !Number.isFinite(args.amount)) {
+      throw new Error("Invalid amount");
+    }
+
     const now = new Date();
     const expires = new Date();
     expires.setMonth(now.getMonth() + 9);
