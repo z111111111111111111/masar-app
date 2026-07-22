@@ -204,20 +204,21 @@ export const recordFinish = mutation({
     let totalScore = 0;
     let totalXP = 0;
     let totalTimeSeconds = 0;
-    const uniqueDays = new Set<string>();
+    const streakDays = new Set<string>();
 
     for (const rec of allRecords) {
       if (typeof rec.score === "number") {
         totalScore += rec.score;
         totalXP += rec.score * 10;
+        // Only count days with ACTUAL completed scores for streak
+        streakDays.add(rec.dateISO);
       }
       if (typeof rec.timeSeconds === "number") {
         totalTimeSeconds += rec.timeSeconds;
       }
-      uniqueDays.add(rec.dateISO);
     }
 
-    const streak = computeStreak(uniqueDays);
+    const streak = computeStreak(streakDays);
     const bestStreak = Math.max(progress.bestStreak, streak);
 
     await ctx.db.patch(progress._id, {
