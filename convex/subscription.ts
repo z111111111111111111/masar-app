@@ -1,5 +1,4 @@
 import { query, mutation } from "./_generated/server";
-import { v } from "convex/values";
 
 export const get = query({
   args: {},
@@ -15,14 +14,12 @@ export const get = query({
 });
 
 export const activate = mutation({
-  args: { amount: v.number() },
-  handler: async (ctx, args) => {
+  args: {},
+  handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
-    if (args.amount <= 0 || args.amount > 100000 || !Number.isFinite(args.amount)) {
-      throw new Error("Invalid amount");
-    }
+    const FIXED_AMOUNT = 15;
 
     const now = new Date();
     const expires = new Date();
@@ -36,7 +33,7 @@ export const activate = mutation({
     if (existing) {
       await ctx.db.patch(existing._id, {
         status: "active",
-        amount: args.amount,
+        amount: FIXED_AMOUNT,
         paidAt: now.toISOString(),
         expiresAt: expires.toISOString(),
       });
@@ -45,7 +42,7 @@ export const activate = mutation({
         userId: identity.subject,
         plan: "full_year",
         status: "active",
-        amount: args.amount,
+        amount: FIXED_AMOUNT,
         paidAt: now.toISOString(),
         expiresAt: expires.toISOString(),
       });

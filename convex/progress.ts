@@ -118,7 +118,13 @@ export const create = mutation({
   },
 });
 
-// --- Update progress after finishing a subject ---
+// --- Valid subjects list (server-side allowlist) ---
+const VALID_SUBJECTS = new Set([
+  "arabic","english","french","math","physics","chemistry",
+  "biology","history","geography","civics","philosophy","it",
+]);
+
+// --- Update progress after finishing a subject (IMMUTABLE) ---
 export const recordFinish = mutation({
   args: {
     dateISO: v.string(),
@@ -130,13 +136,22 @@ export const recordFinish = mutation({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
+    // --- Input validation ---
     if (args.score < 0 || args.score > 100) throw new Error("Invalid score");
     if (args.timeSeconds < 0 || args.timeSeconds > 86400) throw new Error("Invalid time");
     if (args.dateISO.length !== 10) throw new Error("Invalid date");
+    if (!VALID_SUBJECTS.has(args.subject)) throw new Error("Invalid subject");
+
+    // --- Date bounds: only today or yesterday allowed ---
+    const today = new Date().toISOString().slice(0, 10);
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    if (args.dateISO !== today && args.dateISO !== yesterday) {
+      throw new Error("Date must be today or yesterday");
+    }
 
     const userId = identity.subject;
 
-    // Upsert daily record
+    // --- Check if record already exists and is FINISHED (immutable) ---
     const existing = await ctx.db
       .query("dailyRecords")
       .withIndex("by_user_date_subject", (q) =>
@@ -144,7 +159,16 @@ export const recordFinish = mutation({
       )
       .unique();
 
+    // If record exists and already has a score → IMMUTABLE, reject
+    if (existing && typeof existing.score === "number") {
+      throw new Error("Score already recorded for this subject on this date");
+    }
+
+    // XP per record
+    const xp = args.score * 10;
+
     if (existing) {
+      // Record exists but no score yet (timer was running) → finalize it
       await ctx.db.patch(existing._id, {
         score: args.score,
         timeSeconds: args.timeSeconds,
@@ -152,6 +176,7 @@ export const recordFinish = mutation({
         runningSince: undefined,
       });
     } else {
+      // New record
       await ctx.db.insert("dailyRecords", {
         userId,
         dateISO: args.dateISO,
@@ -162,34 +187,46 @@ export const recordFinish = mutation({
       });
     }
 
-    // Recalculate XP
-    const xp = args.score * 10;
-
-    // Update user progress
+    // --- Recalculate user totals from scratch (immune to manipulation) ---
     const progress = await ctx.db
       .query("userProgress")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .unique();
 
-    if (progress) {
-      // Recalculate streak from all records
-      const allRecords = await ctx.db
-        .query("dailyRecords")
-        .withIndex("by_user_date", (q) => q.eq("userId", userId))
-        .take(365);
+    if (!progress) return;
 
-      const uniqueDays = new Set(allRecords.map((r) => r.dateISO));
-      const streak = computeStreak(uniqueDays);
-      const bestStreak = Math.max(progress.bestStreak, streak);
+    const allRecords = await ctx.db
+      .query("dailyRecords")
+      .withIndex("by_user_date", (q) => q.eq("userId", userId))
+      .take(365);
 
-      await ctx.db.patch(progress._id, {
-        totalScore: progress.totalScore + args.score,
-        totalXP: progress.totalXP + xp,
-        streak,
-        bestStreak,
-        totalTimeSeconds: progress.totalTimeSeconds + args.timeSeconds,
-      });
+    // Sum all scores and XP from actual records (not additive)
+    let totalScore = 0;
+    let totalXP = 0;
+    let totalTimeSeconds = 0;
+    const uniqueDays = new Set<string>();
+
+    for (const rec of allRecords) {
+      if (typeof rec.score === "number") {
+        totalScore += rec.score;
+        totalXP += rec.score * 10;
+      }
+      if (typeof rec.timeSeconds === "number") {
+        totalTimeSeconds += rec.timeSeconds;
+      }
+      uniqueDays.add(rec.dateISO);
     }
+
+    const streak = computeStreak(uniqueDays);
+    const bestStreak = Math.max(progress.bestStreak, streak);
+
+    await ctx.db.patch(progress._id, {
+      totalScore,
+      totalXP,
+      streak,
+      bestStreak,
+      totalTimeSeconds,
+    });
   },
 });
 
@@ -199,6 +236,14 @@ export const startTimer = mutation({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
+
+    if (!VALID_SUBJECTS.has(args.subject)) throw new Error("Invalid subject");
+
+    const today = new Date().toISOString().slice(0, 10);
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    if (args.dateISO !== today && args.dateISO !== yesterday) {
+      throw new Error("Date must be today or yesterday");
+    }
 
     const userId = identity.subject;
 

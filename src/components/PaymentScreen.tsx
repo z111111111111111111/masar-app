@@ -115,7 +115,7 @@ export function PaymentScreen({ onCancel }: PaymentScreenProps) {
 
       if (result.success) {
         setTransactionId(result.transactionId || '');
-        await activateSubscription({ amount: 15 });
+        await activateSubscription();
         setSuccess(true);
         setTimeout(() => {
           window.location.reload();
