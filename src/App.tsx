@@ -22,6 +22,7 @@ import { LeaderboardTab } from '@/components/LeaderboardTab';
 import { ProfileTab } from '@/components/ProfileTab';
 import { BackButton } from '@/components/BackButton';
 import { signOut } from '@/lib/auth-client';
+import { useTheme } from '@/lib/useTheme';
 
 function flatToRecordsMap(rows: any[]): RecordsMap {
   const map: RecordsMap = {};
@@ -44,6 +45,7 @@ function App() {
   const subscription = useQuery(api.subscription.get);
   const rawRecords = useQuery(api.progress.getRecords);
   const createProfile = useMutation(api.progress.create);
+  const { theme, dark, themes, setTheme, toggleDark } = useTheme();
 
   const [tab, setTab] = useState<TabId>('home');
   const [page, setPage] = useState<'landing' | 'auth'>('landing');
@@ -166,6 +168,11 @@ function App() {
           streak={streak}
           bestStreak={bestStreak}
           records={records}
+          themes={themes}
+          currentTheme={theme}
+          dark={dark}
+          onSelectTheme={setTheme}
+          onToggleDark={toggleDark}
         />
       )}
     </AppShell>

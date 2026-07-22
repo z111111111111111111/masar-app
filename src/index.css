@@ -77,6 +77,120 @@
     --border: 210 15% 22%;
     --input: 210 15% 22%;
   }
+
+  /* ── Rose (وردي) theme ─────────────────────────────────────────────── */
+  [data-theme="rose"] {
+    --ink: 340 28% 28%;
+    --ink-solid: 340 32% 34%;
+    --slate: 340 14% 52%;
+    --fog: 340 10% 84%;
+    --paper: 0 0% 100%;
+    --paper-warm: 340 20% 97%;
+
+    --sprout: 340 48% 52%;
+    --sprout-soft: 340 40% 93%;
+    --ember: 345 56% 62%;
+    --ember-soft: 345 50% 94%;
+    --coral: 350 52% 56%;
+
+    --chart-1: 330 45% 55%;
+    --chart-2: 350 40% 58%;
+    --chart-3: 10 38% 52%;
+    --chart-4: 280 35% 54%;
+    --chart-5: 210 30% 50%;
+
+    --secondary: 340 18% 95%;
+    --muted: 340 16% 94%;
+    --accent: var(--sprout-soft);
+    --accent-foreground: var(--sprout);
+    --destructive: var(--coral);
+    --destructive-foreground: 0 0% 100%;
+    --border: 340 14% 88%;
+    --input: 340 14% 88%;
+    --ring: var(--sprout);
+  }
+
+  [data-theme="rose"].dark {
+    --ink: 340 20% 91%;
+    --slate: 340 14% 68%;
+    --fog: 340 14% 26%;
+    --paper: 340 16% 13%;
+    --paper-warm: 340 20% 8%;
+
+    --sprout: 340 52% 62%;
+    --sprout-soft: 340 35% 18%;
+    --ember: 345 58% 68%;
+    --ember-soft: 345 40% 18%;
+    --coral: 350 55% 64%;
+
+    --chart-1: 330 50% 65%;
+    --chart-2: 350 45% 66%;
+    --chart-3: 10 42% 60%;
+    --chart-4: 280 40% 64%;
+    --chart-5: 210 35% 60%;
+
+    --secondary: 340 14% 20%;
+    --muted: 340 14% 17%;
+    --border: 340 12% 22%;
+    --input: 340 12% 22%;
+  }
+
+  /* ── Goth (غوث) theme ──────────────────────────────────────────────── */
+  [data-theme="goth"] {
+    --ink: 260 20% 28%;
+    --ink-solid: 260 24% 34%;
+    --slate: 255 12% 52%;
+    --fog: 255 10% 84%;
+    --paper: 0 0% 100%;
+    --paper-warm: 255 18% 97%;
+
+    --sprout: 260 42% 50%;
+    --sprout-soft: 260 35% 93%;
+    --ember: 270 48% 58%;
+    --ember-soft: 270 40% 94%;
+    --coral: 280 44% 54%;
+
+    --chart-1: 255 42% 55%;
+    --chart-2: 270 38% 52%;
+    --chart-3: 220 35% 48%;
+    --chart-4: 290 32% 50%;
+    --chart-5: 310 30% 52%;
+
+    --secondary: 255 16% 95%;
+    --muted: 255 14% 94%;
+    --accent: var(--sprout-soft);
+    --accent-foreground: var(--sprout);
+    --destructive: var(--coral);
+    --destructive-foreground: 0 0% 100%;
+    --border: 255 12% 88%;
+    --input: 255 12% 88%;
+    --ring: var(--sprout);
+  }
+
+  [data-theme="goth"].dark {
+    --ink: 260 18% 91%;
+    --slate: 255 14% 68%;
+    --fog: 255 14% 26%;
+    --paper: 255 16% 13%;
+    --paper-warm: 255 20% 8%;
+
+    --sprout: 260 48% 62%;
+    --sprout-soft: 260 30% 18%;
+    --ember: 270 50% 66%;
+    --ember-soft: 270 35% 18%;
+    --coral: 280 48% 62%;
+
+    --chart-1: 255 48% 65%;
+    --chart-2: 270 44% 62%;
+    --chart-3: 220 40% 58%;
+    --chart-4: 290 38% 60%;
+    --chart-5: 310 35% 60%;
+
+    --secondary: 255 14% 20%;
+    --muted: 255 14% 17%;
+    --border: 255 12% 22%;
+    --input: 255 12% 22%;
+  }
 }
 
 @layer base {
@@ -133,6 +247,12 @@
 .dark .katex .mop,
 .dark .katex .mpunct,
 .dark .katex .minner { color: hsl(var(--ink)); }
+
+/* Theme-specific scrollbar colors */
+[data-theme="rose"] .masar-scroll::-webkit-scrollbar-thumb { background: hsl(340 20% 78%); }
+[data-theme="goth"] .masar-scroll::-webkit-scrollbar-thumb { background: hsl(255 18% 78%); }
+[data-theme="rose"].dark .masar-scroll::-webkit-scrollbar-thumb { background: hsl(340 20% 30%); }
+[data-theme="goth"].dark .masar-scroll::-webkit-scrollbar-thumb { background: hsl(255 18% 30%); }
 
 /* KaTeX math rendering comfort */
 .katex { font-size: 1em !important; }

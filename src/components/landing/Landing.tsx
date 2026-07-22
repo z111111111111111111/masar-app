@@ -1,4 +1,4 @@
-import { useDarkMode } from '@/lib/useDarkMode';
+import { useTheme } from '@/lib/useTheme';
 import { SunIcon, MoonIcon } from '@/components/icons';
 import { Hero } from './Hero';
 import { About } from './About';
@@ -12,7 +12,7 @@ export interface LandingProps {
 }
 
 export function Landing({ onGetStarted, onLogin }: LandingProps) {
-  const { dark, toggle } = useDarkMode();
+  const { dark, toggleDark } = useTheme();
 
   return (
     <div
@@ -63,7 +63,7 @@ export function Landing({ onGetStarted, onLogin }: LandingProps) {
 
       {/* Dark mode toggle */}
       <button
-        onClick={toggle}
+        onClick={toggleDark}
         className="fixed top-5 left-5 z-50 w-10 h-10 rounded-full bg-card/80 backdrop-blur-sm border border-border shadow-sm flex items-center justify-center text-muted-foreground hover:text-[hsl(var(--ink))] hover:bg-muted/60 transition-colors"
         aria-label="تبديل الوضع الليلي"
       >

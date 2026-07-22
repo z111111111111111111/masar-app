@@ -18,6 +18,8 @@ import { SubjectLineChart, SubjectPercentBarChart } from './SubjectPerformanceCh
 import { ShareProfileSheet } from './ShareProfileSheet';
 import { signOut } from '@/lib/auth-client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { ThemeSwitcher } from './ThemeSwitcher';
+import type { ThemeId, ThemeInfo } from '@/lib/useTheme';
 
 export function ProfileTab({
   name,
@@ -26,6 +28,11 @@ export function ProfileTab({
   streak,
   bestStreak,
   records,
+  themes,
+  currentTheme,
+  dark,
+  onSelectTheme,
+  onToggleDark,
 }: {
   name: string;
   startDate: string;
@@ -33,6 +40,11 @@ export function ProfileTab({
   streak: number;
   bestStreak: number;
   records: RecordsMap;
+  themes: ThemeInfo[];
+  currentTheme: ThemeId;
+  dark: boolean;
+  onSelectTheme: (id: ThemeId) => void;
+  onToggleDark: () => void;
 }) {
   const setAllowSharing = useMutation(api.progress.setAllowSharing);
   const [shareOpen, setShareOpen] = useState(false);
@@ -175,6 +187,15 @@ export function ProfileTab({
         streak={streak}
         bestStreak={bestStreak}
         records={records}
+      />
+
+      {/* Theme switcher */}
+      <ThemeSwitcher
+        themes={themes}
+        currentTheme={currentTheme}
+        dark={dark}
+        onSelectTheme={onSelectTheme}
+        onToggleDark={onToggleDark}
       />
 
       {/* Sign out */}
