@@ -32,7 +32,6 @@ export function ProfileTab({
   currentTheme,
   dark,
   onSelectTheme,
-  onToggleDark,
 }: {
   name: string;
   startDate: string;
@@ -44,7 +43,6 @@ export function ProfileTab({
   currentTheme: ThemeId;
   dark: boolean;
   onSelectTheme: (id: ThemeId) => void;
-  onToggleDark: () => void;
 }) {
   const setAllowSharing = useMutation(api.progress.setAllowSharing);
   const [shareOpen, setShareOpen] = useState(false);
@@ -102,7 +100,6 @@ export function ProfileTab({
           currentTheme={currentTheme}
           dark={dark}
           onSelectTheme={onSelectTheme}
-          onToggleDark={onToggleDark}
         />
         <button
           onClick={() => setConfirmOpen(true)}

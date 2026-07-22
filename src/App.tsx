@@ -172,7 +172,6 @@ function App() {
           currentTheme={theme}
           dark={dark}
           onSelectTheme={setTheme}
-          onToggleDark={toggleDark}
         />
       )}
     </AppShell>

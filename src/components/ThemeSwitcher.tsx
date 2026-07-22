@@ -1,14 +1,12 @@
 import { useState } from 'react';
 import type { ThemeId, ThemeInfo } from '@/lib/useTheme';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { SunIcon, MoonIcon } from './icons';
 
 interface ThemeSwitcherProps {
   themes: ThemeInfo[];
   currentTheme: ThemeId;
   dark: boolean;
   onSelectTheme: (id: ThemeId) => void;
-  onToggleDark: () => void;
 }
 
 export function ThemeSwitcher({
@@ -16,7 +14,6 @@ export function ThemeSwitcher({
   currentTheme,
   dark,
   onSelectTheme,
-  onToggleDark,
 }: ThemeSwitcherProps) {
   const [open, setOpen] = useState(false);
 
@@ -62,7 +59,6 @@ export function ThemeSwitcher({
                       </div>
                     )}
                   </div>
-                  {/* Colored text preview */}
                   <div className="mt-2.5 flex items-center gap-2 text-[11px] font-semibold" dir="ltr">
                     <span style={{ color: dark ? t.colors.dark : t.colors.light, textShadow: `0 0 8px ${t.colors.accent}40` }}>Aa</span>
                     <span style={{ color: t.colors.accent }}>●</span>
@@ -71,17 +67,6 @@ export function ThemeSwitcher({
                 </button>
               );
             })}
-          </div>
-
-          {/* Dark/Light toggle */}
-          <div className="px-4 pb-4">
-            <button
-              onClick={onToggleDark}
-              className="w-full h-11 rounded-xl border border-border bg-background flex items-center justify-center gap-2.5 text-sm font-semibold text-[hsl(var(--ink))] hover:bg-muted/40 transition-colors"
-            >
-              {dark ? <SunIcon size={16} /> : <MoonIcon size={16} />}
-              {dark ? 'الوضع النهاري' : 'الوضع الليلي'}
-            </button>
           </div>
         </DialogContent>
       </Dialog>
