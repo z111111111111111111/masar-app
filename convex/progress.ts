@@ -114,6 +114,7 @@ export const create = mutation({
       streak: 0,
       bestStreak: 0,
       totalTimeSeconds: 0,
+      lastMutationAt: Date.now(),
     });
   },
 });
@@ -150,6 +151,19 @@ export const recordFinish = mutation({
     }
 
     const userId = identity.subject;
+
+    // --- Rate limit: 3 seconds cooldown between submissions ---
+    const progress = await ctx.db
+      .query("userProgress")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .unique();
+
+    if (progress && progress.lastMutationAt) {
+      const elapsed = Date.now() - progress.lastMutationAt;
+      if (elapsed < 3000) {
+        throw new Error("Too fast, please wait before submitting again");
+      }
+    }
 
     // --- Check if record already exists and is FINISHED (immutable) ---
     const existing = await ctx.db
@@ -227,6 +241,7 @@ export const recordFinish = mutation({
       streak,
       bestStreak,
       totalTimeSeconds,
+      lastMutationAt: Date.now(),
     });
   },
 });

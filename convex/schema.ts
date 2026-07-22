@@ -27,6 +27,7 @@ export default defineSchema({
     bestStreak: v.number(),
     totalTimeSeconds: v.number(),
     allowSharing: v.optional(v.boolean()),
+    lastMutationAt: v.optional(v.number()),
   }).index("by_userId", ["userId"])
     .index("by_xp", ["totalXP"]),
 

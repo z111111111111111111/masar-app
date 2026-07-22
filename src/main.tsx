@@ -11,9 +11,7 @@ fontLink.rel = 'stylesheet'
 fontLink.href = 'https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap'
 document.head.appendChild(fontLink)
 
-const convex = new ConvexReactClient(
-  import.meta.env.VITE_CONVEX_URL || "https://adamant-panda-562.eu-west-1.convex.cloud"
-);
+const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL);
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
