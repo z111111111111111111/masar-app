@@ -21,6 +21,7 @@ import { RoadmapTab } from '@/components/RoadmapTab';
 import { LeaderboardTab } from '@/components/LeaderboardTab';
 import { ProfileTab } from '@/components/ProfileTab';
 import { BackButton } from '@/components/BackButton';
+import { signOut } from '@/lib/auth-client';
 
 function flatToRecordsMap(rows: any[]): RecordsMap {
   const map: RecordsMap = {};
@@ -67,6 +68,13 @@ function App() {
   const blockBack = () => {
     navHistory.current = [];
     setCanGoBack(false);
+  };
+
+  const handlePaymentCancel = async () => {
+    await signOut();
+    navHistory.current = [];
+    setCanGoBack(false);
+    setPage('landing');
   };
 
   const queriesLoading = profile === undefined || rawRecords === undefined;
@@ -116,7 +124,7 @@ function App() {
   }
 
   if (!isPaid) {
-    return <PaymentScreen />;
+    return <PaymentScreen onCancel={handlePaymentCancel} />;
   }
 
   if (!hasProfile) {

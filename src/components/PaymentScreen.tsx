@@ -4,8 +4,12 @@ import { Input } from '@/components/ui/input';
 import { processPayment, validateExpiry, validateCardNumber } from '@/lib/mockPayment';
 import { useMutation } from 'convex/react';
 import { api } from 'convex/_generated/api';
-import { CreditCardIcon, ShieldIcon } from './icons';
+import { CreditCardIcon, ShieldIcon, ChevronIcon } from './icons';
 import { useSession } from '@/lib/auth-client';
+
+interface PaymentScreenProps {
+  onCancel?: () => void;
+}
 
 function detectCardBrand(digits: string): string {
   if (digits.startsWith('4')) return 'Visa';
@@ -30,7 +34,7 @@ function CardBrandIcon({ brand }: { brand: string }) {
   return <CreditCardIcon size={18} className="text-muted-foreground" />;
 }
 
-export function PaymentScreen() {
+export function PaymentScreen({ onCancel }: PaymentScreenProps) {
   const { data: session } = useSession();
   const user = session?.user;
   const activateSubscription = useMutation(api.subscription.activate);
@@ -146,6 +150,16 @@ export function PaymentScreen() {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-6 bg-background">
+      {onCancel && (
+        <button
+          onClick={onCancel}
+          className="fixed top-5 right-5 z-50 w-10 h-10 rounded-full bg-card/80 backdrop-blur-sm border border-border shadow-sm flex items-center justify-center text-muted-foreground hover:text-[hsl(var(--ink))] hover:bg-muted/60 transition-all active:scale-95 animate-[fade-in_0.2s_ease-out]"
+          aria-label="الرجوع"
+        >
+          <ChevronIcon size={17} className="rotate-180" />
+        </button>
+      )}
+
       <div className="w-full max-w-md">
 
         <div className="bg-card border border-border rounded-2xl p-6 shadow-sm mb-6 relative overflow-hidden">
