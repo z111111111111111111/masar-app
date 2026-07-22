@@ -145,7 +145,7 @@ function App() {
 
   return (
     <>
-    <AppShell active={tab} onChange={setTab} streak={streak} xp={xp}>
+    <AppShell active={tab} onChange={setTab} streak={streak} xp={xp} dark={dark} onToggleDark={toggleDark}>
       {tab === 'home' && (
         <DashboardTab
           name={profile.name}

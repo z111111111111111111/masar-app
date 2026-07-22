@@ -1,6 +1,5 @@
 import { MasarMark } from './OnboardingScreen';
 import { currentLeague } from '@/lib/dates';
-import { useTheme } from '@/lib/useTheme';
 import { HomeIcon, CalendarIcon, PathIcon, TrophyIcon, UserIcon, FlameIcon, GemIcon, SunIcon, MoonIcon } from './icons';
 
 export type TabId = 'home' | 'tracking' | 'roadmap' | 'board' | 'profile';
@@ -18,16 +17,19 @@ export function AppShell({
   onChange,
   streak,
   xp,
+  dark,
+  onToggleDark,
   children,
 }: {
   active: TabId;
   onChange: (t: TabId) => void;
   streak: number;
   xp: number;
+  dark: boolean;
+  onToggleDark: () => void;
   children: React.ReactNode;
 }) {
   const { league } = currentLeague(xp);
-  const { dark, toggleDark } = useTheme();
 
   return (
     <div className="min-h-screen bg-background md:flex">
@@ -63,7 +65,7 @@ export function AppShell({
           <SidebarStat icon={<FlameIcon className="text-[hsl(var(--ember))]" />} label="السلسلة" value={String(streak)} />
           <SidebarStat icon={<GemIcon className="text-[hsl(var(--sprout))]" />} label={`${xp} XP · ${league.name}`} value="" />
           <button
-            onClick={toggleDark}
+            onClick={onToggleDark}
             className="w-full flex items-center gap-2.5 rounded-xl border border-border px-3 py-2.5 text-sm font-semibold text-muted-foreground hover:text-[hsl(var(--ink))] hover:bg-muted/50 transition-colors"
           >
             {dark ? <SunIcon size={16} /> : <MoonIcon size={16} />}
@@ -82,7 +84,7 @@ export function AppShell({
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={toggleDark}
+                onClick={onToggleDark}
                 className="w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted/60 transition-colors"
                 aria-label="تبديل الوضع الليلي"
               >
@@ -97,7 +99,7 @@ export function AppShell({
         {/* Desktop top bar */}
         <header className="hidden md:flex items-center justify-end gap-3 px-10 h-16 border-b border-border sticky top-0 z-10 bg-background/90 backdrop-blur">
           <button
-            onClick={toggleDark}
+            onClick={onToggleDark}
             className="w-9 h-9 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted/60 hover:text-[hsl(var(--ink))] transition-colors"
             aria-label="تبديل الوضع الليلي"
           >
