@@ -24,8 +24,8 @@ export const THEMES: ThemeInfo[] = [
   },
   {
     id: 'goth',
-    name: 'غوث',
-    description: 'بنفسجي ورمادي',
+    name: 'بنفسجي',
+    description: 'أرجواني أنيق',
     colors: { light: '#f4f2f7', dark: '#17131f', accent: '#7c5cbf' },
   },
 ];

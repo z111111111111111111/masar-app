@@ -97,6 +97,13 @@ export function ProfileTab({
             منذ {new Date(startDate).toLocaleDateString('ar-DZ')} · دوري {league.name}
           </p>
         </div>
+        <ThemeSwitcher
+          themes={themes}
+          currentTheme={currentTheme}
+          dark={dark}
+          onSelectTheme={onSelectTheme}
+          onToggleDark={onToggleDark}
+        />
         <button
           onClick={() => setConfirmOpen(true)}
           className="h-10 px-4 rounded-full border border-border bg-card text-sm font-semibold text-[hsl(var(--ink))] hover:border-[hsl(var(--sprout))] hover:bg-[hsl(var(--sprout-soft))] transition-colors flex items-center gap-2 shrink-0"
@@ -187,15 +194,6 @@ export function ProfileTab({
         streak={streak}
         bestStreak={bestStreak}
         records={records}
-      />
-
-      {/* Theme switcher */}
-      <ThemeSwitcher
-        themes={themes}
-        currentTheme={currentTheme}
-        dark={dark}
-        onSelectTheme={onSelectTheme}
-        onToggleDark={onToggleDark}
       />
 
       {/* Sign out */}
