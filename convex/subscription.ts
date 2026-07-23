@@ -14,7 +14,6 @@ export const get = query({
 
     // Auto-expire if past expiresAt
     if (sub.status === "active" && new Date(sub.expiresAt) <= new Date()) {
-      await ctx.db.patch(sub._id, { status: "inactive" });
       return { ...sub, status: "inactive" as const };
     }
 
@@ -56,6 +55,23 @@ export const initiatePayment = mutation({
         paidAt: now,
         expiresAt: expires.toISOString(),
       });
+    }
+  },
+});
+
+export const enforceExpiry = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const sub = await ctx.db
+      .query("subscriptions")
+      .withIndex("by_userId", (q) => q.eq("userId", identity.subject))
+      .unique();
+
+    if (sub && sub.status === "active" && new Date(sub.expiresAt) <= new Date()) {
+      await ctx.db.patch(sub._id, { status: "inactive" });
     }
   },
 });
