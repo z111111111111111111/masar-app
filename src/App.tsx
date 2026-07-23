@@ -43,8 +43,10 @@ function App() {
   const authUser = useQuery(api.progress.getAuth);
   const profile = useQuery(api.progress.get);
   const subscription = useQuery(api.subscription.get);
+  const verifySub = useQuery(api.subscription.verifySubscription);
   const rawRecords = useQuery(api.progress.getRecords);
   const createProfile = useMutation(api.progress.create);
+  const enforceExpiry = useMutation(api.subscription.enforceExpiry);
   const { theme, dark, themes, setTheme, toggleDark } = useTheme();
 
   const [tab, setTab] = useState<TabId>('home');
@@ -52,6 +54,7 @@ function App() {
   const [authTab, setAuthTab] = useState<'login' | 'signup'>('signup');
   const navHistory = useRef<string[]>([]);
   const [canGoBack, setCanGoBack] = useState(false);
+  const expiryEnforced = useRef(false);
 
   const navigate = (to: 'landing' | 'auth', authT?: 'login' | 'signup') => {
     navHistory.current.push(page);
@@ -79,13 +82,16 @@ function App() {
     setPage('landing');
   };
 
-  const queriesLoading = profile === undefined || rawRecords === undefined;
+  const queriesLoading = profile === undefined || rawRecords === undefined || verifySub === undefined;
   const authLoading = authUser === undefined;
   const isLoading = queriesLoading || authLoading;
 
   const isAuthed = authUser !== null && authUser !== undefined;
   const isPaid = !!subscription && subscription.status === 'active';
   const hasProfile = !!profile;
+
+  // Determine if this is a renewal (was paid before, now expired) vs first time
+  const isExpiredRenewal = verifySub?.status === 'expired' && verifySub?.wasActive === true;
 
   const records = useMemo(
     () => (rawRecords ? flatToRecordsMap(rawRecords) : ({} as RecordsMap)),
@@ -97,8 +103,17 @@ function App() {
       navHistory.current = [];
       setCanGoBack(false);
       setPage('landing');
+      expiryEnforced.current = false;
     }
   }, [isAuthed, authUser]);
+
+  // When user is logged in but subscription is inactive, persist the expiry on server
+  useEffect(() => {
+    if (isAuthed && !isPaid && !expiryEnforced.current) {
+      expiryEnforced.current = true;
+      enforceExpiry().catch(() => {});
+    }
+  }, [isAuthed, isPaid, enforceExpiry]);
 
   if (isLoading) {
     return (
@@ -126,7 +141,13 @@ function App() {
   }
 
   if (!isPaid) {
-    return <PaymentScreen onCancel={handlePaymentCancel} />;
+    return (
+      <PaymentScreen
+        onCancel={handlePaymentCancel}
+        reason={isExpiredRenewal ? 'expired' : 'first_time'}
+        expiresAt={verifySub?.status === 'expired' ? verifySub.expiresAt : undefined}
+      />
+    );
   }
 
   if (!hasProfile) {

@@ -9,6 +9,8 @@ import { useSession } from '@/lib/auth-client';
 
 interface PaymentScreenProps {
   onCancel?: () => void;
+  reason?: 'first_time' | 'expired';
+  expiresAt?: string;
 }
 
 function detectCardBrand(digits: string): string {
@@ -34,7 +36,7 @@ function CardBrandIcon({ brand }: { brand: string }) {
   return <CreditCardIcon size={18} className="text-muted-foreground" />;
 }
 
-export function PaymentScreen({ onCancel }: PaymentScreenProps) {
+export function PaymentScreen({ onCancel, reason = 'first_time', expiresAt }: PaymentScreenProps) {
   const { data: session } = useSession();
   const user = session?.user;
   const initiatePayment = useMutation(api.subscription.initiatePayment);
@@ -173,8 +175,14 @@ export function PaymentScreen({ onCancel }: PaymentScreenProps) {
           {/* Header */}
           <div className="flex justify-between items-start mb-8 mt-2">
             <div>
-              <h1 className="text-xl font-bold text-[hsl(var(--ink))]">تفعيل الحساب</h1>
-              <p className="text-xs text-muted-foreground mt-1">الاشتراك للفصل الدراسي (9 أشهر)</p>
+              <h1 className="text-xl font-bold text-[hsl(var(--ink))]">
+                {reason === 'expired' ? 'تجديد الاشتراك' : 'تفعيل الحساب'}
+              </h1>
+              <p className="text-xs text-muted-foreground mt-1">
+                {reason === 'expired'
+                  ? 'انتهت صلاحية اشتراكك. يرجى التجديد للمتابعة.'
+                  : 'الاشتراك للفصل الدراسي (9 أشهر)'}
+              </p>
             </div>
             <div className="text-2xl font-black text-[hsl(var(--ink))]">
               $15<span className="text-sm text-muted-foreground font-medium">.00</span>

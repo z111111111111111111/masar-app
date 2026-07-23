@@ -1,6 +1,49 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 
+// --- Strong subscription verification ---
+export const verifySubscription = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return { status: "unauthenticated" as const };
+
+    const sub = await ctx.db
+      .query("subscriptions")
+      .withIndex("by_userId", (q) => q.eq("userId", identity.subject))
+      .unique();
+
+    if (!sub) {
+      return { status: "never_paid" as const, userId: identity.subject };
+    }
+
+    const now = new Date();
+    const expiresAt = new Date(sub.expiresAt);
+    const isExpired = expiresAt <= now;
+    const daysRemaining = Math.ceil((expiresAt.getTime() - now.getTime()) / 86400000);
+
+    if (sub.status === "active" && !isExpired) {
+      return {
+        status: "active" as const,
+        expiresAt: sub.expiresAt,
+        daysRemaining,
+        plan: sub.plan,
+        userId: identity.subject,
+      };
+    }
+
+    // Active but expired in DB, or inactive
+    return {
+      status: "expired" as const,
+      expiresAt: sub.expiresAt,
+      daysRemaining: 0,
+      wasActive: sub.status === "active",
+      userId: identity.subject,
+    };
+  },
+});
+
+// --- Get subscription (read-only, auto-expire check) ---
 export const get = query({
   args: {},
   handler: async (ctx) => {
