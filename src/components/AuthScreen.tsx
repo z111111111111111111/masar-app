@@ -99,26 +99,21 @@ export function AuthScreen({ defaultTab = 'login', onAuthSuccess }: { defaultTab
       if (isLogin) {
         const result = await signIn.email({ email, password });
         if (result.error) {
-          console.error('[Auth] sign-in error:', result.error);
           setError(result.error.message || 'البريد الإلكتروني أو كلمة المرور غير صحيحة');
           setLoading(false);
           return;
         }
-        console.log('[Auth] sign-in success:', result.data);
         onAuthSuccess?.();
       } else {
         const result = await signUp.email({ email, password, name });
         if (result.error) {
-          console.error('[Auth] sign-up error:', result.error);
           setError(result.error.message || 'حدث خطأ أثناء إنشاء الحساب');
           setLoading(false);
           return;
         }
-        console.log('[Auth] sign-up success:', result.data);
         onAuthSuccess?.();
       }
     } catch (err: any) {
-      console.error('[Auth] unexpected error:', err);
       setError(err?.message?.includes('fetch')
         ? 'تعذّر الاتصال بالخادم. تحقق من اتصالك بالإنترنت'
         : (err.message || 'حدث خطأ غير متوقع'));

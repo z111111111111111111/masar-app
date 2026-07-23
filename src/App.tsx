@@ -130,7 +130,7 @@ function App() {
   }
 
   if (!hasProfile) {
-    if (authUser) createProfile({ name: authUser.name ?? 'طالب', email: authUser.email ?? '' });
+    if (authUser) createProfile({ name: authUser.name ?? 'طالب' });
     return (
       <div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">
         جارٍ إعداد حسابك...

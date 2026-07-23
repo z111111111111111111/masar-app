@@ -50,12 +50,10 @@ export const getPublicProfile = query({
       progress: {
         name: progress.name,
         startDate: progress.startDate,
-        currentWeek: progress.currentWeek,
         totalScore: progress.totalScore,
         totalXP: progress.totalXP,
         streak: progress.streak,
         bestStreak: progress.bestStreak,
-        totalTimeSeconds: progress.totalTimeSeconds,
       },
       records,
       private: false as const,
@@ -81,7 +79,7 @@ export const setAllowSharing = mutation({
 
 // --- Create profile (first login after payment) ---
 export const create = mutation({
-  args: { name: v.string(), email: v.string() },
+  args: { name: v.string() },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
@@ -90,7 +88,9 @@ export const create = mutation({
     if (trimmedName.length === 0 || trimmedName.length > 100) {
       throw new Error("Invalid name");
     }
-    if (args.email.length > 254 || !args.email.includes("@")) {
+
+    const email = identity.email ?? "";
+    if (email.length > 254 || !email.includes("@")) {
       throw new Error("Invalid email");
     }
 
@@ -106,7 +106,7 @@ export const create = mutation({
     return await ctx.db.insert("userProgress", {
       userId: identity.subject,
       name: trimmedName,
-      email: args.email,
+      email: email,
       startDate: dateStr,
       currentWeek: 1,
       totalScore: 0,
@@ -139,7 +139,7 @@ export const recordFinish = mutation({
 
     // --- Input validation ---
     if (args.score < 0 || args.score > 100) throw new Error("Invalid score");
-    if (args.timeSeconds < 0 || args.timeSeconds > 86400) throw new Error("Invalid time");
+    if (args.timeSeconds < 0 || args.timeSeconds > 3600) throw new Error("Invalid time");
     if (args.dateISO.length !== 10) throw new Error("Invalid date");
     if (!VALID_SUBJECTS.has(args.subject)) throw new Error("Invalid subject");
 
@@ -270,7 +270,26 @@ export const startTimer = mutation({
       )
       .unique();
 
+    // --- Race condition fix: pause any other running timer first ---
     if (existing && existing.timerStatus && existing.timerStatus !== "idle") return;
+
+    const runningTimers = await ctx.db
+      .query("dailyRecords")
+      .withIndex("by_user_date", (q) => q.eq("userId", userId))
+      .collect();
+
+    for (const rec of runningTimers) {
+      if (rec.timerStatus === "running" && rec._id !== existing?._id) {
+        const elapsed = rec.runningSince
+          ? (rec.timeSeconds ?? 0) + Math.floor((Date.now() - rec.runningSince) / 1000)
+          : rec.timeSeconds ?? 0;
+        await ctx.db.patch(rec._id, {
+          timerStatus: "paused",
+          timeSeconds: elapsed,
+          runningSince: undefined,
+        });
+      }
+    }
 
     if (existing) {
       await ctx.db.patch(existing._id, {

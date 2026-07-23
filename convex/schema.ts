@@ -12,7 +12,9 @@ export default defineSchema({
     amount: v.number(),
     paidAt: v.string(),
     expiresAt: v.string(),
-  }).index("by_userId", ["userId"]),
+    paymentId: v.optional(v.string()),
+  }).index("by_userId", ["userId"])
+    .index("by_paymentId", ["paymentId"]),
 
   // --- User Progress ---
   userProgress: defineTable({

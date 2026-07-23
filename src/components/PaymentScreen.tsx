@@ -37,6 +37,7 @@ function CardBrandIcon({ brand }: { brand: string }) {
 export function PaymentScreen({ onCancel }: PaymentScreenProps) {
   const { data: session } = useSession();
   const user = session?.user;
+  const initiatePayment = useMutation(api.subscription.initiatePayment);
   const activateSubscription = useMutation(api.subscription.activate);
 
   const [cardNumber, setCardNumber] = useState('');
@@ -115,7 +116,8 @@ export function PaymentScreen({ onCancel }: PaymentScreenProps) {
 
       if (result.success) {
         setTransactionId(result.transactionId || '');
-        await activateSubscription();
+        await initiatePayment();
+        await activateSubscription({ paymentId: result.transactionId || '' });
         setSuccess(true);
         setTimeout(() => {
           window.location.reload();
