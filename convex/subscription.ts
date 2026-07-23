@@ -81,7 +81,7 @@ export const initiatePayment = mutation({
 
     const now = new Date().toISOString();
     const expires = new Date();
-    expires.setMonth(expires.getMonth() + 9);
+    expires.setMonth(expires.getMonth() + 3);
 
     if (existing) {
       await ctx.db.patch(existing._id, {
@@ -92,7 +92,7 @@ export const initiatePayment = mutation({
     } else {
       await ctx.db.insert("subscriptions", {
         userId: identity.subject,
-        plan: "full_year",
+        plan: "quarterly",
         status: "inactive",
         amount: 15,
         paidAt: now,
@@ -148,7 +148,7 @@ export const activate = mutation({
 
     const now = new Date();
     const expires = new Date();
-    expires.setMonth(now.getMonth() + 9);
+    expires.setMonth(now.getMonth() + 3);
 
     await ctx.db.patch(existing._id, {
       status: "active",

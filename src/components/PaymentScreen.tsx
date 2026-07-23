@@ -181,7 +181,7 @@ export function PaymentScreen({ onCancel, reason = 'first_time', expiresAt }: Pa
               <p className="text-xs text-muted-foreground mt-1">
                 {reason === 'expired'
                   ? 'انتهت صلاحية اشتراكك. يرجى التجديد للمتابعة.'
-                  : 'الاشتراك للفصل الدراسي (9 أشهر)'}
+                  : 'الاشتراك للشهر (3 أشهر)'}
               </p>
             </div>
             <div className="text-2xl font-black text-[hsl(var(--ink))]">
