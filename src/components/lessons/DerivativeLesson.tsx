@@ -59,7 +59,6 @@ export function DerivativeLesson({ onBack }: { onBack: () => void }) {
   const total = EXERCISES.length;
   const pct = Math.round((correctCount + wrongCount) / total * 100);
 
-  // Timer
   const startTimer = useCallback(() => {
     if (timerRef.current) return;
     timerRef.current = setInterval(() => setElapsed((e) => e + 1), 1000);
@@ -71,7 +70,6 @@ export function DerivativeLesson({ onBack }: { onBack: () => void }) {
 
   useEffect(() => () => stopTimer(), [stopTimer]);
 
-  // Graph animation
   useEffect(() => {
     if (showGraph) {
       const t = setTimeout(() => setGraphReady(true), 100);
@@ -89,11 +87,8 @@ export function DerivativeLesson({ onBack }: { onBack: () => void }) {
     if (answered) return;
     setSelected(idx);
     setAnswered(true);
-    if (idx === EXERCISES[currentQ].correct) {
-      setCorrectCount((c) => c + 1);
-    } else {
-      setWrongCount((w) => w + 1);
-    }
+    if (idx === EXERCISES[currentQ].correct) setCorrectCount((c) => c + 1);
+    else setWrongCount((w) => w + 1);
   };
 
   const handleNext = () => {
@@ -149,23 +144,21 @@ export function DerivativeLesson({ onBack }: { onBack: () => void }) {
               <h2 className="text-base font-bold text-[hsl(var(--ink))]">التعريف الأساسي</h2>
               <p className="text-sm leading-relaxed text-[hsl(var(--ink))]">
                 <span
-                  className="font-bold cursor-pointer border-b-2 border-dashed border-[hsl(var(--chart-1))]/50 hover:border-[hsl(var(--chart-1))] transition-colors relative group"
+                  className="font-bold border-b-2 border-dashed border-[hsl(var(--chart-1))]/60 cursor-pointer"
                   onClick={() => setShowGraph(!showGraph)}
                 >
                   المشتقة
-                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[hsl(var(--chart-1))] group-hover:w-full transition-all duration-300" />
                 </span>
                 {' '}هي أداة رياضية تخبرنا بمقدار سرعة تغير الدالة عند نقطة معينة، أو بعبارة أخرى{' '}
                 <span className="font-semibold">ميل المماس للمنحنى</span>{' '}
                 عند تلك النقطة.
               </p>
 
-              {/* Animated Graph */}
               {showGraph && (
                 <div className="rounded-xl border border-[hsl(var(--chart-1))]/20 bg-[hsl(var(--chart-1))]/5 p-4 animate-[pop-in_0.3s_ease-out]">
                   <DerivativeGraph ready={graphReady} />
                   <p className="text-[11px] text-muted-foreground text-center mt-3">
-                    الدالة <span className="font-mono font-bold text-[hsl(var(--chart-1))]">f(x) = x³</span> والمماس عند النقطة (1, 1)
+                    الدالة <span className="font-mono font-bold text-[hsl(var(--chart-1))]">f(x) = x²</span> مع خط المماس
                   </p>
                 </div>
               )}
@@ -173,11 +166,40 @@ export function DerivativeLesson({ onBack }: { onBack: () => void }) {
               <div className="rounded-xl bg-muted/50 p-4">
                 <p className="text-xs text-muted-foreground mb-2 font-medium">القاعدة الأساسية</p>
                 <div className="flex items-center gap-2 text-base font-bold text-[hsl(var(--ink))] font-mono" dir="ltr">
-                  <span>f(x) = xⁿ</span>
+                  <span>f'(x) = n · xⁿ⁻¹</span>
                   <span className="text-muted-foreground text-sm">←</span>
-                  <span className="text-[hsl(var(--sprout))]">f'(x) = n · xⁿ⁻¹</span>
+                  <span>f(x) = xⁿ</span>
                 </div>
               </div>
+            </div>
+
+            {/* YouTube Video */}
+            <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
+              <p className="text-sm font-semibold text-[hsl(var(--ink))]">
+                في حال لم تفهم، نقترح عليك هذا الشرح:
+              </p>
+              <a
+                href="https://www.youtube.com/watch?v=UbfKHmI4WUQ"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block group"
+              >
+                <div className="relative rounded-xl overflow-hidden border border-border bg-muted aspect-video">
+                  <img
+                    src="https://img.youtube.com/vi/UbfKHmI4WUQ/maxresdefault.jpg"
+                    alt="شرح الاشتقاقية"
+                    className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
+                    loading="lazy"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-14 h-14 rounded-full bg-[hsl(var(--coral))] text-white flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                        <polygon points="5 3 19 12 5 21 5 3" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              </a>
             </div>
 
             <button
@@ -282,7 +304,7 @@ export function DerivativeLesson({ onBack }: { onBack: () => void }) {
   );
 }
 
-/* ─── Canvas graph: x³ + tangent at (1,1) ─── */
+/* ─── Canvas graph: x² + tangent ─── */
 function DerivativeGraph({ ready }: { ready: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animRef = useRef(0);
@@ -294,17 +316,17 @@ function DerivativeGraph({ ready }: { ready: boolean }) {
     if (!ctx) return;
 
     const W = 320;
-    const H = 200;
+    const H = 180;
     canvas.width = W * 2;
     canvas.height = H * 2;
     ctx.scale(2, 2);
 
-    const cx = W / 2;
-    const cy = H / 2 + 10;
-    const scale = 28;
+    const cx = W * 0.4;
+    const cy = H * 0.75;
+    const scale = 22;
 
     let progress = 0;
-    const duration = 800;
+    const duration = 900;
     let start: number | null = null;
 
     const draw = (ts: number) => {
@@ -316,68 +338,54 @@ function DerivativeGraph({ ready }: { ready: boolean }) {
 
       // Axes
       ctx.strokeStyle = 'hsl(var(--border))';
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 0.8;
       ctx.beginPath();
-      ctx.moveTo(20, cy);
+      ctx.moveTo(15, cy);
       ctx.lineTo(W - 10, cy);
       ctx.moveTo(cx, H - 10);
       ctx.lineTo(cx, 10);
       ctx.stroke();
 
-      // Axis labels
-      ctx.fillStyle = 'hsl(var(--muted-foreground))';
-      ctx.font = '10px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('x', W - 15, cy - 8);
-      ctx.fillText('y', cx + 10, 18);
-
-      // x³ curve
-      const drawLen = ease;
+      // x² curve
       ctx.strokeStyle = 'hsl(var(--chart-1))';
-      ctx.lineWidth = 2.5;
+      ctx.lineWidth = 1.8;
       ctx.beginPath();
       let first = true;
-      for (let px = 0; px <= (W - 30) * drawLen; px++) {
+      const curveEnd = (W - 25) * ease;
+      for (let px = 0; px <= curveEnd; px++) {
         const x = (px - (cx - 20)) / scale;
-        const y = x * x * x;
+        const y = x * x;
         const sy = cy - y * scale;
-        if (sy < -20 || sy > H + 20) { first = true; continue; }
+        if (sy < -10 || sy > H + 10) { first = true; continue; }
         const dx = px + 20;
         if (first) { ctx.moveTo(dx, sy); first = false; }
         else ctx.lineTo(dx, sy);
       }
       ctx.stroke();
 
-      // Tangent line at x=1 (slope = 3)
-      if (ease > 0.4) {
-        const tangentEase = Math.min((ease - 0.4) / 0.6, 1);
-        const tx = cx + scale; // x=1
-        const ty = cy - scale; // y=1
+      // Tangent at x=1.5 (slope = 3)
+      if (ease > 0.5) {
+        const tEase = Math.min((ease - 0.5) / 0.5, 1);
+        const tx = cx + 1.5 * scale;
+        const ty = cy - 2.25 * scale;
         const slope = 3;
 
         ctx.strokeStyle = 'hsl(var(--sprout))';
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([4, 4]);
+        ctx.lineWidth = 1.2;
+        ctx.setLineDash([3, 3]);
         ctx.beginPath();
-        const len = 60 * tangentEase;
+        const len = 45 * tEase;
         ctx.moveTo(tx - len, ty + slope * len);
-        ctx.lineTo(tx + len / 2, ty - slope * len / 2);
+        ctx.lineTo(tx + len * 0.4, ty - slope * len * 0.4);
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // Point (1,1)
-        if (tangentEase > 0.5) {
+        // Point
+        if (tEase > 0.4) {
           ctx.fillStyle = 'hsl(var(--sprout))';
           ctx.beginPath();
-          ctx.arc(tx, ty, 4, 0, Math.PI * 2);
+          ctx.arc(tx, ty, 3, 0, Math.PI * 2);
           ctx.fill();
-
-          ctx.fillStyle = 'hsl(var(--ink))';
-          ctx.font = 'bold 10px sans-serif';
-          ctx.textAlign = 'left';
-          ctx.fillText('(1, 1)', tx + 8, ty - 6);
-          ctx.fillStyle = 'hsl(var(--sprout))';
-          ctx.fillText("m = 3", tx + 8, ty + 10);
         }
       }
 
@@ -392,7 +400,7 @@ function DerivativeGraph({ ready }: { ready: boolean }) {
     <canvas
       ref={canvasRef}
       className="w-full rounded-lg"
-      style={{ height: 200 }}
+      style={{ height: 180 }}
     />
   );
 }
