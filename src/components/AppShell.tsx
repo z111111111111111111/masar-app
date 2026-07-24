@@ -32,7 +32,7 @@ export function AppShell({
   const { league } = currentLeague(xp);
 
   return (
-    <div className="min-h-screen bg-background md:flex">
+    <div className="h-screen md:h-auto overflow-hidden md:overflow-visible bg-background md:flex">
       {/* Desktop sidebar */}
       <aside className="hidden md:flex md:flex-col md:w-64 md:shrink-0 border-l border-border bg-card md:sticky md:top-0 md:h-screen px-5 py-6">
         <div className="flex items-center gap-2 px-1 mb-8">
@@ -74,9 +74,9 @@ export function AppShell({
         </div>
       </aside>
 
-      <div className="flex-1 min-w-0 flex flex-col">
+      <div className="flex-1 min-w-0 flex flex-col h-full md:h-auto overflow-hidden md:overflow-visible">
         {/* Mobile header */}
-        <header className="md:hidden sticky top-0 z-20 bg-background/95 backdrop-blur border-b border-border">
+        <header className="md:hidden shrink-0 bg-background/95 backdrop-blur border-b border-border">
           <div className="px-4 h-16 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <MasarMark size={28} />
@@ -109,7 +109,7 @@ export function AppShell({
           <StatPill icon={<GemIcon className="text-[hsl(var(--sprout))]" />} value={`${xp} XP`} tone="sprout" />
         </header>
 
-        <main className="flex-1 w-full max-w-2xl mx-auto px-4 md:px-8 py-6 md:py-10 pb-24 md:pb-10">{children}</main>
+        <main className="flex-1 w-full max-w-2xl mx-auto px-4 md:px-8 py-6 md:py-10 pb-24 md:pb-10 overflow-y-auto md:overflow-y-visible">{children}</main>
 
         {/* Mobile bottom nav */}
         <nav className="md:hidden fixed bottom-0 inset-x-0 z-20 bg-card border-t border-border">

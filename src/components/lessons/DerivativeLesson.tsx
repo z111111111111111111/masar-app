@@ -158,14 +158,14 @@ export function DerivativeLesson({ onBack }: { onBack: () => void }) {
                 <div className="rounded-xl border border-[hsl(var(--chart-1))]/20 bg-[hsl(var(--chart-1))]/5 p-4 animate-[pop-in_0.3s_ease-out]">
                   <DerivativeGraph ready={graphReady} />
                   <p className="text-[11px] text-muted-foreground text-center mt-3">
-                     الدالة <span className="font-mono font-bold text-[hsl(var(--chart-1))]">f(x) = x³</span> مع خط المماس
+                     الدالة <span className="font-mono font-bold text-[hsl(var(--sprout))]">f(x) = x³</span> مع خط المماس
                   </p>
                 </div>
               )}
 
               <div className="rounded-xl bg-muted/50 p-4">
                 <p className="text-xs text-muted-foreground mb-2 font-medium">القاعدة الأساسية</p>
-                <div className="flex items-center gap-2 text-base font-bold text-[hsl(var(--ink))] font-mono" dir="ltr">
+                <div className="flex items-center gap-2 text-base font-bold text-[hsl(var(--sprout))] font-mono" dir="ltr">
                   <span>f(x) = xⁿ</span>
                   <span className="text-muted-foreground text-sm">→</span>
                   <span>f'(x) = n · xⁿ⁻¹</span>
@@ -347,7 +347,7 @@ function DerivativeGraph({ ready }: { ready: boolean }) {
       ctx.stroke();
 
       // x³ curve
-      ctx.strokeStyle = 'hsl(var(--chart-1))';
+      ctx.strokeStyle = 'hsl(var(--sprout))';
       ctx.lineWidth = 1.8;
       ctx.beginPath();
       let first = true;
