@@ -6,16 +6,15 @@ interface RoadmapSubject {
   name: string;
   icon: (p: { className?: string; size?: number }) => JSX.Element;
   color: string;
-  description: string;
 }
 
 const SUBJECTS: RoadmapSubject[] = [
-  { id: 'math', name: 'الرياضيات', icon: MathIcon, color: 'hsl(var(--chart-1))', description: 'الجبر، الهندسة، التفاضل والتكامل' },
-  { id: 'physics', name: 'الفيزياء', icon: AtomIcon, color: 'hsl(var(--chart-2))', description: 'الميكانيكا، الكهرباء، البصريات' },
-  { id: 'nature', name: 'العلوم الطبيعية', icon: LeafIcon, color: 'hsl(var(--chart-3))', description: 'الأحياء، الكيمياء، البيئة' },
-  { id: 'philo', name: 'الفلسفة', icon: BrainIcon, color: 'hsl(var(--chart-4))', description: 'المقالة، النص الفلسفي، المفاهيم' },
-  { id: 'social', name: 'الاجتماعيات', icon: GlobeIcon, color: 'hsl(var(--chart-5))', description: 'التاريخ، الجغرافيا، التربية المدنية' },
-  { id: 'random', name: 'تدريب عشوائي', icon: ShuffleIcon, color: 'hsl(var(--sprout))', description: 'أسئلة متنوعة من جميع المواد' },
+  { id: 'math', name: 'الرياضيات', icon: MathIcon, color: 'hsl(var(--chart-1))' },
+  { id: 'physics', name: 'الفيزياء', icon: AtomIcon, color: 'hsl(var(--chart-2))' },
+  { id: 'nature', name: 'العلوم الطبيعية', icon: LeafIcon, color: 'hsl(var(--chart-3))' },
+  { id: 'philo', name: 'الفلسفة', icon: BrainIcon, color: 'hsl(var(--chart-4))' },
+  { id: 'social', name: 'الاجتماعيات', icon: GlobeIcon, color: 'hsl(var(--chart-5))' },
+  { id: 'random', name: 'تدريب عشوائي', icon: ShuffleIcon, color: 'hsl(var(--sprout))' },
 ];
 
 export function RoadmapTab() {
@@ -83,13 +82,8 @@ function SubjectBranch({
               >
                 <Icon size={20} />
               </span>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-bold text-[hsl(var(--ink))]">{subject.name}</h3>
-                  <ChevronIcon size={14} className="rotate-180 text-muted-foreground group-hover:text-[hsl(var(--sprout))] transition-colors" />
-                </div>
-                <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">{subject.description}</p>
-              </div>
+              <h3 className="text-sm font-bold text-[hsl(var(--ink))] flex-1">{subject.name}</h3>
+              <ChevronIcon size={14} className="rotate-180 text-muted-foreground group-hover:text-[hsl(var(--sprout))] transition-colors" />
             </div>
           </div>
         </button>
@@ -123,10 +117,7 @@ function SubjectPage({
           >
             <Icon size={20} />
           </span>
-          <div>
-            <h1 className="text-xl font-bold text-[hsl(var(--ink))]">{subject.name}</h1>
-            <p className="text-xs text-muted-foreground">{subject.description}</p>
-          </div>
+          <h1 className="text-xl font-bold text-[hsl(var(--ink))]">{subject.name}</h1>
         </div>
       </div>
 
@@ -139,24 +130,8 @@ function SubjectPage({
         </span>
         <p className="text-sm font-semibold text-[hsl(var(--ink))]">قريباً إن شاء الله</p>
         <p className="text-xs text-muted-foreground max-w-xs leading-relaxed">
-          جارٍ 작업 على محتوى المادة. ستجد هنا الدروس والتمارين قريباً.
+          جارٍ العمل على المحتوى.
         </p>
-      </div>
-
-      <div className="space-y-3">
-        {['الأسبوع 1', 'الأسبوع 2', 'الأسبوع 3'].map((week, i) => (
-          <div key={i} className="rounded-xl border border-border bg-card p-4 opacity-50">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground text-xs font-bold">
-                {i + 1}
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-[hsl(var(--ink))]">{week}</p>
-                <p className="text-[11px] text-muted-foreground">قريباً...</p>
-              </div>
-            </div>
-          </div>
-        ))}
       </div>
     </div>
   );
