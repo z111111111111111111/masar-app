@@ -75,6 +75,7 @@ export function DerivativeLesson({ onBack }: { onBack: () => void }) {
   const [answered, setAnswered] = useState(false);
 
   const [elapsed, setElapsed] = useState(0);
+  const [completedSubjects, setCompletedSubjects] = useState<string[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const total = EXERCISES.length;
@@ -90,6 +91,12 @@ export function DerivativeLesson({ onBack }: { onBack: () => void }) {
   }, []);
 
   useEffect(() => () => stopTimer(), [stopTimer]);
+
+  useEffect(() => {
+    if (phase === 'done') {
+      setCompletedSubjects(markSubjectComplete('math'));
+    }
+  }, [phase]);
 
   useEffect(() => {
     if (showGraph) {
@@ -295,8 +302,7 @@ export function DerivativeLesson({ onBack }: { onBack: () => void }) {
         )}
 
         {phase === 'done' && (() => {
-          const completed = markSubjectComplete('math');
-          const streakCount = completed.length;
+          const streakCount = completedSubjects.length;
           const ratio = correctCount / total;
           const isExcellent = ratio >= 1;
           const isGood = ratio >= 0.6 && ratio < 1;
@@ -350,7 +356,7 @@ export function DerivativeLesson({ onBack }: { onBack: () => void }) {
                 <div className="flex items-center gap-1.5 mb-3">
                   {ALL_SUBJECTS.map((sid) => (
                     <div key={sid} className="flex-1 h-2 rounded-full transition-all" style={{
-                      background: completed.includes(sid)
+                      background: completedSubjects.includes(sid)
                         ? `hsl(var(--${SUBJECT_COLORS[sid]}))`
                         : 'hsl(var(--muted))',
                     }} />
@@ -363,7 +369,7 @@ export function DerivativeLesson({ onBack }: { onBack: () => void }) {
                 </p>
                 <div className="flex flex-wrap gap-1.5 mt-2">
                   {ALL_SUBJECTS.map((sid) => {
-                    const done = completed.includes(sid);
+                    const done = completedSubjects.includes(sid);
                     return (
                       <span key={sid} className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${done ? 'bg-[hsl(var(--sprout-soft))] text-[hsl(var(--sprout))]' : 'bg-muted text-muted-foreground'}`}>
                         {done ? '✓ ' : ''}{SUBJECT_LABELS[sid]}
