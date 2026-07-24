@@ -98,6 +98,21 @@ export function DerivativeLesson({ onBack }: { onBack: () => void }) {
     }
   }, [phase]);
 
+  const shuffledExercises = useRef(
+    EXERCISES.map((ex) => {
+      const pairs = ex.options.map((o, i) => ({ o, isCorrect: i === ex.correct }));
+      for (let i = pairs.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pairs[i], pairs[j]] = [pairs[j], pairs[i]];
+      }
+      return {
+        question: ex.question,
+        options: pairs.map((p) => p.o),
+        correct: pairs.findIndex((p) => p.isCorrect),
+      };
+    })
+  ).current;
+
   useEffect(() => {
     if (showGraph) {
       const t = setTimeout(() => setGraphReady(true), 100);
@@ -142,7 +157,7 @@ export function DerivativeLesson({ onBack }: { onBack: () => void }) {
             العودة
           </button>
           <div className="flex items-center gap-3 text-[11px] text-muted-foreground font-medium">
-            {phase === 'exercises' || phase === 'done' ? (
+            {phase === 'done' ? (
               <>
                 <span className="text-[hsl(var(--sprout))]">✓ {correctCount}</span>
                 <span className="text-[hsl(var(--coral))]">✗ {wrongCount}</span>
@@ -241,14 +256,15 @@ export function DerivativeLesson({ onBack }: { onBack: () => void }) {
 
         {phase === 'exercises' && (
           <div key={currentQ} className="space-y-5 animate-[pop-in_0.3s_ease-out]">
-            <div className="rounded-2xl border border-border bg-card p-5">
-              <p className="text-base font-bold text-[hsl(var(--ink))] leading-relaxed mb-5">
-                {EXERCISES[currentQ].question}
+            <p className="text-sm font-bold text-muted-foreground text-right">اختر الاجابة الصحيحة</p>
+            <div className="rounded-2xl border border-border bg-card p-6">
+              <p className="text-lg font-bold text-[hsl(var(--ink))] leading-relaxed mb-6 text-center">
+                {shuffledExercises[currentQ].question}
               </p>
 
-              <div className="space-y-2.5">
-                {EXERCISES[currentQ].options.map((opt, i) => {
-                  const isCorrect = i === EXERCISES[currentQ].correct;
+              <div className="space-y-3">
+                {shuffledExercises[currentQ].options.map((opt, i) => {
+                  const isCorrect = i === shuffledExercises[currentQ].correct;
                   const isSelected = i === selected;
                   let ring = 'border-border hover:border-[hsl(var(--sprout))]/50';
                   let bg = 'bg-card';
@@ -262,10 +278,10 @@ export function DerivativeLesson({ onBack }: { onBack: () => void }) {
                       key={i}
                       onClick={() => handleAnswer(i)}
                       disabled={answered}
-                      className={`w-full text-right p-3.5 rounded-xl border ${ring} ${bg} transition-all text-sm font-medium text-[hsl(var(--ink))] disabled:cursor-default`}
+                      className={`w-full p-4 rounded-xl border ${ring} ${bg} transition-all text-base font-bold text-[hsl(var(--ink))] disabled:cursor-default text-center`}
                     >
                       <span className="inline-flex items-center gap-2.5">
-                        <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 ${
+                        <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
                           answered && isCorrect ? 'bg-[hsl(var(--sprout))] text-white' :
                           answered && isSelected && !isCorrect ? 'bg-[hsl(var(--coral))] text-white' :
                           'bg-muted text-muted-foreground'
@@ -282,19 +298,19 @@ export function DerivativeLesson({ onBack }: { onBack: () => void }) {
 
             {answered && (
               <div className="space-y-3 animate-[pop-in_0.2s_ease-out]">
-                {selected === EXERCISES[currentQ].correct ? (
+                {selected === shuffledExercises[currentQ].correct ? (
                   <p className="text-sm font-bold text-[hsl(var(--sprout))] text-center">إجابة صحيحة</p>
                 ) : (
                   <p className="text-sm text-muted-foreground text-center">
                     الإجابة الصحيحة هي{' '}
-                    <span className="font-bold text-[hsl(var(--sprout))]">{EXERCISES[currentQ].options[EXERCISES[currentQ].correct]}</span>
+                    <span className="font-bold text-[hsl(var(--sprout))]">{shuffledExercises[currentQ].options[shuffledExercises[currentQ].correct]}</span>
                   </p>
                 )}
                 <button
                   onClick={handleNext}
                   className="w-full h-11 rounded-xl bg-[hsl(var(--ink-solid))] hover:bg-[hsl(var(--ink-solid))]/90 text-white font-bold text-sm transition-all active:scale-[0.98]"
                 >
-                  {selected === EXERCISES[currentQ].correct ? 'التالي' : 'فهمت'}
+                  {selected === shuffledExercises[currentQ].correct ? 'التالي' : 'فهمت'}
                 </button>
               </div>
             )}
