@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ChevronIcon, MathIcon, AtomIcon, LeafIcon, BrainIcon, GlobeIcon, ShuffleIcon, BookIcon } from './icons';
+import { DerivativeLesson } from './lessons/DerivativeLesson';
 
 interface RoadmapSubject {
   id: string;
@@ -19,9 +20,20 @@ const SUBJECTS: RoadmapSubject[] = [
 
 export function RoadmapTab() {
   const [selectedSubject, setSelectedSubject] = useState<RoadmapSubject | null>(null);
+  const [openLesson, setOpenLesson] = useState<string | null>(null);
+
+  if (openLesson === 'derivative') {
+    return <DerivativeLesson onBack={() => setOpenLesson(null)} />;
+  }
 
   if (selectedSubject) {
-    return <SubjectPage subject={selectedSubject} onBack={() => setSelectedSubject(null)} />;
+    return (
+      <SubjectPage
+        subject={selectedSubject}
+        onBack={() => setSelectedSubject(null)}
+        onStartLesson={(id) => setOpenLesson(id)}
+      />
+    );
   }
 
   return (
@@ -90,11 +102,17 @@ function SubjectBranch({
 function SubjectPage({
   subject,
   onBack,
+  onStartLesson,
 }: {
   subject: RoadmapSubject;
   onBack: () => void;
+  onStartLesson: (id: string) => void;
 }) {
   const Icon = subject.icon;
+
+  const lessons = subject.id === 'math'
+    ? [{ id: 'derivative', name: 'الاشتقاقية', done: false }]
+    : [];
 
   return (
     <div className="space-y-6">
@@ -116,18 +134,43 @@ function SubjectPage({
         </div>
       </div>
 
-      <div className="rounded-2xl border border-dashed border-border bg-card p-10 flex flex-col items-center text-center gap-3">
-        <span
-          className="w-14 h-14 rounded-full flex items-center justify-center"
-          style={{ background: `${subject.color}15`, color: subject.color }}
-        >
-          <BookIcon size={24} />
-        </span>
-        <p className="text-sm font-semibold text-[hsl(var(--ink))]">قريباً إن شاء الله</p>
-        <p className="text-xs text-muted-foreground max-w-xs leading-relaxed">
-          جارٍ العمل على المحتوى.
-        </p>
-      </div>
+      {lessons.length > 0 ? (
+        <div className="space-y-3">
+          {lessons.map((lesson, i) => (
+            <button
+              key={lesson.id}
+              onClick={() => onStartLesson(lesson.id)}
+              className="w-full text-right"
+            >
+              <div className="rounded-xl border border-border bg-card p-4 hover:shadow-md hover:border-[hsl(var(--sprout))]/30 transition-all active:scale-[0.98]">
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                    style={{ background: `${subject.color}15`, color: subject.color }}
+                  >
+                    {i + 1}
+                  </div>
+                  <h3 className="text-sm font-bold text-[hsl(var(--ink))] flex-1">{lesson.name}</h3>
+                  <ChevronIcon size={14} className="rotate-180 text-muted-foreground" />
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-dashed border-border bg-card p-10 flex flex-col items-center text-center gap-3">
+          <span
+            className="w-14 h-14 rounded-full flex items-center justify-center"
+            style={{ background: `${subject.color}15`, color: subject.color }}
+          >
+            <BookIcon size={24} />
+          </span>
+          <p className="text-sm font-semibold text-[hsl(var(--ink))]">قريباً إن شاء الله</p>
+          <p className="text-xs text-muted-foreground max-w-xs leading-relaxed">
+            جارٍ العمل على المحتوى.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
