@@ -106,7 +106,7 @@ export function DerivativeLesson({ onBack }: { onBack: () => void }) {
   }, [showGraph]);
 
   const handleStart = () => {
-    setPhase('lesson');
+    setPhase('exercises');
     setProgress(30);
     startTimer();
   };
