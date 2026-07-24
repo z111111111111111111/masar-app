@@ -318,3 +318,12 @@ export function ContinuityIcon({ className, size = 18 }: IconProps) {
     </svg>
   );
 }
+
+export function BrainIcon({ className, size = 18 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className} {...base}>
+      <path d="M12 2a5 5 0 0 0-4.5 2.8A4 4 0 0 0 4 9a4.5 4.5 0 0 0 1 8.5h2a3 3 0 0 0 3-3v-1a2 2 0 0 1 4 0v1a3 3 0 0 0 3 3h2a4.5 4.5 0 0 0 1-8.5 4 4 0 0 0-3.5-4.2A5 5 0 0 0 12 2Z" />
+      <path d="M12 2v20" />
+    </svg>
+  );
+}
