@@ -64,11 +64,6 @@ function SubjectBranch({
   return (
     <div className="relative flex items-center">
       <div
-        className="absolute right-[14px] md:right-1/2 md:-translate-x-1/2 z-10 w-[18px] h-[18px] rounded-full border-[3px] border-background transition-transform hover:scale-110"
-        style={{ background: subject.color }}
-      />
-
-      <div
         className={`mr-[52px] md:mr-0 md:w-[calc(50%-40px)] ${
           isEven ? 'md:mr-auto md:pr-0' : 'md:ml-auto md:pl-0'
         }`}
