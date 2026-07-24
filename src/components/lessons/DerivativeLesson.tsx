@@ -9,31 +9,52 @@ interface Exercise {
 
 const EXERCISES: Exercise[] = [
   {
-    question: 'ما مشتقة الدالة f(x) = x⁴ ؟',
-    options: ['4x³', '4x⁴', '3x⁴', 'x³'],
+    question: 'ما هي مشتقة الدالة f(x) = x⁷؟',
+    options: ['7x⁶', 'x⁶', '7x⁷', '6x⁶'],
     correct: 0,
   },
   {
-    question: 'ما مشتقة الدالة f(x) = x⁵ ؟',
-    options: ['5x⁴', '4x⁵', '5x⁵', 'x⁴'],
+    question: 'ما هي مشتقة الدالة f(x) = x³؟',
+    options: ['3x²', 'x²', '3x³', '2x²'],
     correct: 0,
   },
   {
-    question: 'إذا كانت f(x) = x³ فإن f\'(x) تساوي:',
-    options: ['2x²', '3x²', '3x³', 'x²'],
+    question: 'ما هي مشتقة الدالة f(x) = x؟ (تذكر أن x = x¹)',
+    options: ['0', '1', 'x', 'x²'],
     correct: 1,
   },
   {
-    question: 'ما مشتقة الدالة f(x) = x² ؟',
-    options: ['x', '2x', '2x²', 'x²'],
+    question: 'ما هي مشتقة الدالة الثابتة f(x) = 7؟ (تذكر أن 7 = 7·x⁰)',
+    options: ['7', '0', '7x', '1'],
     correct: 1,
   },
   {
-    question: 'الاشتقاق يُعطينا:',
-    options: ['مساحة المنحنى', 'ميل المماس للمنحنى', 'طول المنحنى', 'نقطة البداية'],
+    question: 'ما هي مشتقة f(x) = 4x³؟',
+    options: ['4x²', '12x²', '12x³', '3x²'],
     correct: 1,
   },
 ];
+
+const COMPLETED_KEY = 'masar-completed-subjects';
+const SUBJECT_LABELS: Record<string, string> = {
+  math: 'الرياضيات', physics: 'الفيزياء', nature: 'العلوم الطبيعية',
+  philo: 'الفلسفة', social: 'الاجتماعيات',
+};
+const SUBJECT_COLORS: Record<string, string> = {
+  math: 'chart-1', physics: 'chart-2', nature: 'chart-3',
+  philo: 'chart-4', social: 'chart-5',
+};
+const ALL_SUBJECTS = ['math', 'physics', 'nature', 'philo', 'social'];
+
+function getCompletedSubjects(): string[] {
+  try { return JSON.parse(localStorage.getItem(COMPLETED_KEY) || '[]'); }
+  catch { return []; }
+}
+function markSubjectComplete(id: string): string[] {
+  const s = getCompletedSubjects();
+  if (!s.includes(id)) { s.push(id); localStorage.setItem(COMPLETED_KEY, JSON.stringify(s)); }
+  return s;
+}
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -212,14 +233,7 @@ export function DerivativeLesson({ onBack }: { onBack: () => void }) {
         )}
 
         {phase === 'exercises' && (
-          <div className="space-y-6 animate-[fade-in_0.3s_ease-out]">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-muted-foreground">
-                سؤال {currentQ + 1} / {total}
-              </span>
-              <span className="text-[11px] text-muted-foreground">{formatTime(elapsed)}</span>
-            </div>
-
+          <div key={currentQ} className="space-y-5 animate-[pop-in_0.3s_ease-out]">
             <div className="rounded-2xl border border-border bg-card p-5">
               <p className="text-base font-bold text-[hsl(var(--ink))] leading-relaxed mb-5">
                 {EXERCISES[currentQ].question}
@@ -234,7 +248,7 @@ export function DerivativeLesson({ onBack }: { onBack: () => void }) {
                   if (answered) {
                     if (isCorrect) { ring = 'border-[hsl(var(--sprout))]'; bg = 'bg-[hsl(var(--sprout))]/10'; }
                     else if (isSelected && !isCorrect) { ring = 'border-[hsl(var(--coral))]'; bg = 'bg-[hsl(var(--coral))]/10'; }
-                    else { ring = 'border-border opacity-50'; }
+                    else { ring = 'border-border opacity-40'; }
                   }
                   return (
                     <button
@@ -244,7 +258,11 @@ export function DerivativeLesson({ onBack }: { onBack: () => void }) {
                       className={`w-full text-right p-3.5 rounded-xl border ${ring} ${bg} transition-all text-sm font-medium text-[hsl(var(--ink))] disabled:cursor-default`}
                     >
                       <span className="inline-flex items-center gap-2.5">
-                        <span className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-[11px] font-bold text-muted-foreground shrink-0">
+                        <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 ${
+                          answered && isCorrect ? 'bg-[hsl(var(--sprout))] text-white' :
+                          answered && isSelected && !isCorrect ? 'bg-[hsl(var(--coral))] text-white' :
+                          'bg-muted text-muted-foreground'
+                        }`}>
                           {answered && isCorrect ? '✓' : answered && isSelected && !isCorrect ? '✗' : String.fromCharCode(1571 + i)}
                         </span>
                         {opt}
@@ -256,49 +274,114 @@ export function DerivativeLesson({ onBack }: { onBack: () => void }) {
             </div>
 
             {answered && (
-              <button
-                onClick={handleNext}
-                className="w-full h-11 rounded-xl bg-[hsl(var(--ink-solid))] hover:bg-[hsl(var(--ink-solid))]/90 text-white font-bold text-sm transition-all active:scale-[0.98] animate-[pop-in_0.2s_ease-out]"
-              >
-                {currentQ + 1 >= total ? 'إنهاء الدرس' : 'السؤال التالي'}
-              </button>
+              <div className="space-y-3 animate-[pop-in_0.2s_ease-out]">
+                {selected === EXERCISES[currentQ].correct ? (
+                  <p className="text-sm font-bold text-[hsl(var(--sprout))] text-center">إجابة صحيحة</p>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center">
+                    الإجابة الصحيحة هي{' '}
+                    <span className="font-bold text-[hsl(var(--sprout))]">{EXERCISES[currentQ].options[EXERCISES[currentQ].correct]}</span>
+                  </p>
+                )}
+                <button
+                  onClick={handleNext}
+                  className="w-full h-11 rounded-xl bg-[hsl(var(--ink-solid))] hover:bg-[hsl(var(--ink-solid))]/90 text-white font-bold text-sm transition-all active:scale-[0.98]"
+                >
+                  {selected === EXERCISES[currentQ].correct ? 'التالي' : 'فهمت'}
+                </button>
+              </div>
             )}
           </div>
         )}
 
-        {phase === 'done' && (
-          <div className="space-y-6 animate-[fade-in_0.4s_ease-out]">
-            <div className="rounded-2xl border border-[hsl(var(--sprout))]/30 bg-[hsl(var(--sprout))]/5 p-6 text-center">
-              <div className="w-16 h-16 rounded-full bg-[hsl(var(--sprout))] text-white flex items-center justify-center mx-auto mb-4">
-                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-              </div>
-              <h2 className="text-xl font-bold text-[hsl(var(--ink))] mb-2">أحسنت!</h2>
-              <p className="text-sm text-muted-foreground mb-4">لقد أنهيت درس الاشتقاقية</p>
+        {phase === 'done' && (() => {
+          const completed = markSubjectComplete('math');
+          const streakCount = completed.length;
+          const ratio = correctCount / total;
+          const isExcellent = ratio >= 1;
+          const isGood = ratio >= 0.6 && ratio < 1;
 
-              <div className="grid grid-cols-3 gap-3 mb-5">
-                <div className="rounded-xl bg-card border border-border p-3">
-                  <p className="text-lg font-bold text-[hsl(var(--sprout))]">{correctCount}</p>
-                  <p className="text-[10px] text-muted-foreground">إجابات صحيحة</p>
+          return (
+            <div className="space-y-5 animate-[pop-in_0.4s_ease-out]">
+              <div className={`rounded-2xl border p-6 text-center ${
+                isExcellent ? 'border-[hsl(var(--sprout))]/30 bg-[hsl(var(--sprout))]/5' :
+                isGood ? 'border-[hsl(var(--ember))]/30 bg-[hsl(var(--ember))]/5' :
+                'border-[hsl(var(--coral))]/30 bg-[hsl(var(--coral))]/5'
+              }`}>
+                <div className={`w-16 h-16 rounded-full text-white flex items-center justify-center mx-auto mb-4 ${
+                  isExcellent ? 'bg-[hsl(var(--sprout))]' :
+                  isGood ? 'bg-[hsl(var(--ember))]' :
+                  'bg-[hsl(var(--coral))]'
+                }`}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 </div>
-                <div className="rounded-xl bg-card border border-border p-3">
-                  <p className="text-lg font-bold text-[hsl(var(--coral))]">{wrongCount}</p>
-                  <p className="text-[10px] text-muted-foreground">أخطاء</p>
-                </div>
-                <div className="rounded-xl bg-card border border-border p-3">
-                  <p className="text-lg font-bold text-[hsl(var(--ink))]">{formatTime(elapsed)}</p>
-                  <p className="text-[10px] text-muted-foreground">المدة</p>
+                <h2 className="text-xl font-bold text-[hsl(var(--ink))] mb-1">أحسنت!</h2>
+                <p className={`text-sm font-bold mb-1 ${
+                  isExcellent ? 'text-[hsl(var(--sprout))]' :
+                  isGood ? 'text-[hsl(var(--ember))]' :
+                  'text-[hsl(var(--coral))]'
+                }`}>
+                  {isExcellent ? 'ممتاز' : isGood ? 'جيد' : 'تحتاج للمراجعة'}
+                </p>
+                <p className="text-xs text-muted-foreground mb-4">
+                  {isExcellent ? 'أداء رائع! أنت على الطريق الصحيح' :
+                   isGood ? 'استمر في التقدم، أنت تتطور' :
+                   'لا تستسلم، أعد مراجعة الدرس وحاول مرة أخرى'}
+                </p>
+
+                <div className="grid grid-cols-3 gap-3 mb-5">
+                  <div className="rounded-xl bg-card border border-border p-3">
+                    <p className="text-lg font-bold text-[hsl(var(--sprout))]">{correctCount}</p>
+                    <p className="text-[10px] text-muted-foreground">صحيحة</p>
+                  </div>
+                  <div className="rounded-xl bg-card border border-border p-3">
+                    <p className="text-lg font-bold text-[hsl(var(--coral))]">{wrongCount}</p>
+                    <p className="text-[10px] text-muted-foreground">خطأ</p>
+                  </div>
+                  <div className="rounded-xl bg-card border border-border p-3">
+                    <p className="text-lg font-bold text-[hsl(var(--ink))]">{formatTime(elapsed)}</p>
+                    <p className="text-[10px] text-muted-foreground">المدة</p>
+                  </div>
                 </div>
               </div>
+
+              <div className="rounded-2xl border border-border bg-card p-5">
+                <p className="text-xs text-muted-foreground mb-3 font-medium">الستريك</p>
+                <div className="flex items-center gap-1.5 mb-3">
+                  {ALL_SUBJECTS.map((sid) => (
+                    <div key={sid} className="flex-1 h-2 rounded-full transition-all" style={{
+                      background: completed.includes(sid)
+                        ? `hsl(var(--${SUBJECT_COLORS[sid]}))`
+                        : 'hsl(var(--muted))',
+                    }} />
+                  ))}
+                </div>
+                <p className="text-sm font-bold text-[hsl(var(--ink))]">
+                  {streakCount === 1
+                    ? 'لقد بدأت الستريك'
+                    : `الستريك ${streakCount} من 5`}
+                </p>
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {ALL_SUBJECTS.map((sid) => {
+                    const done = completed.includes(sid);
+                    return (
+                      <span key={sid} className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${done ? 'bg-[hsl(var(--sprout-soft))] text-[hsl(var(--sprout))]' : 'bg-muted text-muted-foreground'}`}>
+                        {done ? '✓ ' : ''}{SUBJECT_LABELS[sid]}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <button
+                onClick={onBack}
+                className="w-full h-11 rounded-xl border border-border bg-card hover:bg-muted/50 text-[hsl(var(--ink))] font-bold text-sm transition-all"
+              >
+                العودة للمسار
+              </button>
             </div>
-
-            <button
-              onClick={onBack}
-              className="w-full h-11 rounded-xl border border-border bg-card hover:bg-muted/50 text-[hsl(var(--ink))] font-bold text-sm transition-all"
-            >
-              العودة للمسار
-            </button>
-          </div>
-        )}
+          );
+        })()}
       </div>
     </div>
   );
