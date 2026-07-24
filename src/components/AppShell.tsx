@@ -109,7 +109,7 @@ export function AppShell({
           <StatPill icon={<GemIcon className="text-[hsl(var(--sprout))]" />} value={`${xp} XP`} tone="sprout" />
         </header>
 
-        <main className="flex-1 w-full max-w-2xl mx-auto px-4 md:px-8 py-6 md:py-10 pb-24 md:pb-10 overflow-y-auto md:overflow-y-visible">{children}</main>
+        <main className="flex-1 w-full max-w-2xl mx-auto px-4 md:px-8 pt-0 pb-24 md:pb-10 overflow-y-auto md:overflow-y-visible">{children}</main>
 
         {/* Mobile bottom nav */}
         <nav className="md:hidden fixed bottom-0 inset-x-0 z-20 bg-card border-t border-border">

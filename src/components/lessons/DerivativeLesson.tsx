@@ -107,7 +107,7 @@ export function DerivativeLesson({ onBack }: { onBack: () => void }) {
   return (
     <div className="space-y-0 min-h-[80vh] flex flex-col">
       {/* Progress Bar */}
-      <div className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border -mx-4 px-4 py-3 -mt-6 pt-6">
+      <div className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border -mx-4 px-4 py-3">
         <div className="flex items-center justify-between mb-2">
           <button onClick={onBack} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-[hsl(var(--ink))] transition-colors">
             <ChevronIcon size={14} />
@@ -158,17 +158,17 @@ export function DerivativeLesson({ onBack }: { onBack: () => void }) {
                 <div className="rounded-xl border border-[hsl(var(--chart-1))]/20 bg-[hsl(var(--chart-1))]/5 p-4 animate-[pop-in_0.3s_ease-out]">
                   <DerivativeGraph ready={graphReady} />
                   <p className="text-[11px] text-muted-foreground text-center mt-3">
-                     الدالة <span className="font-mono font-bold text-[hsl(var(--sprout))]">f(x) = x³</span> مع خط المماس
+                     الدالة <span className="font-mono font-bold text-[hsl(var(--ink))]">f(x) = x³</span> مع خط المماس
                   </p>
                 </div>
               )}
 
               <div className="rounded-xl bg-muted/50 p-4">
                 <p className="text-xs text-muted-foreground mb-2 font-medium">القاعدة الأساسية</p>
-                <div className="flex items-center gap-2 text-base font-bold text-[hsl(var(--sprout))] font-mono" dir="ltr">
-                  <span>f(x) = xⁿ</span>
+                <div className="flex items-center gap-2 text-base font-bold font-mono" dir="ltr">
+                  <span className="text-[hsl(var(--ink))]">f(x) = xⁿ</span>
                   <span className="text-muted-foreground text-sm">→</span>
-                  <span>f'(x) = n · xⁿ⁻¹</span>
+                  <span className="text-[hsl(var(--sprout))]">f'(x) = n · xⁿ⁻¹</span>
                 </div>
               </div>
             </div>
@@ -308,6 +308,15 @@ export function DerivativeLesson({ onBack }: { onBack: () => void }) {
 function DerivativeGraph({ ready }: { ready: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animRef = useRef(0);
+  const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setIsDark(document.documentElement.classList.contains('dark'));
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -338,7 +347,7 @@ function DerivativeGraph({ ready }: { ready: boolean }) {
 
       // Axes
       ctx.strokeStyle = 'hsl(var(--border))';
-      ctx.lineWidth = 0.8;
+      ctx.lineWidth = 0.6;
       ctx.beginPath();
       ctx.moveTo(15, cy);
       ctx.lineTo(W - 10, cy);
@@ -347,8 +356,8 @@ function DerivativeGraph({ ready }: { ready: boolean }) {
       ctx.stroke();
 
       // x³ curve
-      ctx.strokeStyle = 'hsl(var(--sprout))';
-      ctx.lineWidth = 1.8;
+      ctx.strokeStyle = isDark ? 'hsl(0 0% 85%)' : 'hsl(0 0% 15%)';
+      ctx.lineWidth = 1.4;
       ctx.beginPath();
       let first = true;
       const curveEnd = (W - 25) * ease;
@@ -394,7 +403,7 @@ function DerivativeGraph({ ready }: { ready: boolean }) {
 
     if (ready) animRef.current = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(animRef.current);
-  }, [ready]);
+  }, [ready, isDark]);
 
   return (
     <canvas
