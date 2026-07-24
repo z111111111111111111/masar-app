@@ -158,7 +158,7 @@ export function DerivativeLesson({ onBack }: { onBack: () => void }) {
                 <div className="rounded-xl border border-[hsl(var(--chart-1))]/20 bg-[hsl(var(--chart-1))]/5 p-4 animate-[pop-in_0.3s_ease-out]">
                   <DerivativeGraph ready={graphReady} />
                   <p className="text-[11px] text-muted-foreground text-center mt-3">
-                    الدالة <span className="font-mono font-bold text-[hsl(var(--chart-1))]">f(x) = x²</span> مع خط المماس
+                     الدالة <span className="font-mono font-bold text-[hsl(var(--chart-1))]">f(x) = x³</span> مع خط المماس
                   </p>
                 </div>
               )}
@@ -166,9 +166,9 @@ export function DerivativeLesson({ onBack }: { onBack: () => void }) {
               <div className="rounded-xl bg-muted/50 p-4">
                 <p className="text-xs text-muted-foreground mb-2 font-medium">القاعدة الأساسية</p>
                 <div className="flex items-center gap-2 text-base font-bold text-[hsl(var(--ink))] font-mono" dir="ltr">
-                  <span>f'(x) = n · xⁿ⁻¹</span>
-                  <span className="text-muted-foreground text-sm">←</span>
                   <span>f(x) = xⁿ</span>
+                  <span className="text-muted-foreground text-sm">→</span>
+                  <span>f'(x) = n · xⁿ⁻¹</span>
                 </div>
               </div>
             </div>
@@ -179,14 +179,14 @@ export function DerivativeLesson({ onBack }: { onBack: () => void }) {
                 في حال لم تفهم، نقترح عليك هذا الشرح:
               </p>
               <a
-                href="https://www.youtube.com/watch?v=UbfKHmI4WUQ"
+                href="https://www.youtube.com/watch?v=kNRqWehvOtE"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="block group"
               >
                 <div className="relative rounded-xl overflow-hidden border border-border bg-muted aspect-video">
                   <img
-                    src="https://img.youtube.com/vi/UbfKHmI4WUQ/maxresdefault.jpg"
+                    src="https://img.youtube.com/vi/kNRqWehvOtE/maxresdefault.jpg"
                     alt="شرح الاشتقاقية"
                     className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
                     loading="lazy"
@@ -304,7 +304,7 @@ export function DerivativeLesson({ onBack }: { onBack: () => void }) {
   );
 }
 
-/* ─── Canvas graph: x² + tangent ─── */
+/* ─── Canvas graph: x³ + tangent ─── */
 function DerivativeGraph({ ready }: { ready: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animRef = useRef(0);
@@ -322,8 +322,8 @@ function DerivativeGraph({ ready }: { ready: boolean }) {
     ctx.scale(2, 2);
 
     const cx = W * 0.4;
-    const cy = H * 0.75;
-    const scale = 22;
+    const cy = H * 0.7;
+    const scale = 14;
 
     let progress = 0;
     const duration = 900;
@@ -346,7 +346,7 @@ function DerivativeGraph({ ready }: { ready: boolean }) {
       ctx.lineTo(cx, 10);
       ctx.stroke();
 
-      // x² curve
+      // x³ curve
       ctx.strokeStyle = 'hsl(var(--chart-1))';
       ctx.lineWidth = 1.8;
       ctx.beginPath();
@@ -354,7 +354,7 @@ function DerivativeGraph({ ready }: { ready: boolean }) {
       const curveEnd = (W - 25) * ease;
       for (let px = 0; px <= curveEnd; px++) {
         const x = (px - (cx - 20)) / scale;
-        const y = x * x;
+        const y = x * x * x;
         const sy = cy - y * scale;
         if (sy < -10 || sy > H + 10) { first = true; continue; }
         const dx = px + 20;
@@ -363,20 +363,20 @@ function DerivativeGraph({ ready }: { ready: boolean }) {
       }
       ctx.stroke();
 
-      // Tangent at x=1.5 (slope = 3)
+      // Tangent at x=1 (slope = 3), point (1,1)
       if (ease > 0.5) {
         const tEase = Math.min((ease - 0.5) / 0.5, 1);
-        const tx = cx + 1.5 * scale;
-        const ty = cy - 2.25 * scale;
+        const tx = cx + 1 * scale;
+        const ty = cy - 1 * scale;
         const slope = 3;
 
         ctx.strokeStyle = 'hsl(var(--sprout))';
         ctx.lineWidth = 1.2;
         ctx.setLineDash([3, 3]);
         ctx.beginPath();
-        const len = 45 * tEase;
+        const len = 30 * tEase;
         ctx.moveTo(tx - len, ty + slope * len);
-        ctx.lineTo(tx + len * 0.4, ty - slope * len * 0.4);
+        ctx.lineTo(tx + len * 0.5, ty - slope * len * 0.5);
         ctx.stroke();
         ctx.setLineDash([]);
 
