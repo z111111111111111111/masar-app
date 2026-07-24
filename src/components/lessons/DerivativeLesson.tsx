@@ -107,11 +107,11 @@ export function DerivativeLesson({ onBack }: { onBack: () => void }) {
   return (
     <div className="space-y-0 min-h-[80vh] flex flex-col">
       {/* Progress Bar */}
-      <div className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border -mx-4 px-4 py-3">
+      <div className="bg-background border-b border-border -mx-4 px-4 py-3">
         <div className="flex items-center justify-between mb-2">
           <button onClick={onBack} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-[hsl(var(--ink))] transition-colors">
             <ChevronIcon size={14} />
-            العودة
+            التقدم
           </button>
           <div className="flex items-center gap-3 text-[11px] text-muted-foreground font-medium">
             {phase === 'exercises' || phase === 'done' ? (
