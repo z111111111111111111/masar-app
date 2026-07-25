@@ -290,12 +290,18 @@ export function DerivativeLesson({ onBack }: { onBack: () => void }) {
                       className={`w-full p-4 rounded-xl border ${ring} ${bg} transition-all text-base font-bold text-[hsl(var(--ink))] disabled:cursor-default text-center`}
                     >
                       <span className="inline-flex items-center gap-2.5">
-                        <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                        <span className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${
                           answered && isCorrect ? 'bg-[hsl(var(--sprout))] text-white' :
                           answered && isSelected && !isCorrect ? 'bg-[hsl(var(--coral))] text-white' :
                           'bg-muted text-muted-foreground'
                         }`}>
-                          {answered && isCorrect ? '✓' : answered && isSelected && !isCorrect ? '✗' : String.fromCharCode(1571 + i)}
+                          {answered && isCorrect ? (
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="square" strokeLinejoin="miter"><polyline points="4 12 10 18 20 6"/></svg>
+                          ) : answered && isSelected && !isCorrect ? (
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="square"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+                          ) : (
+                            <span className="text-xs font-bold">{String.fromCharCode(1571 + i)}</span>
+                          )}
                         </span>
                         {opt}
                       </span>
@@ -353,7 +359,7 @@ export function DerivativeLesson({ onBack }: { onBack: () => void }) {
                   isGood ? 'bg-[hsl(var(--ember))]' :
                   'bg-[hsl(var(--coral))]'
                 }`}>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="square" strokeLinejoin="miter"><polyline points="4 12 10 18 20 6"/></svg>
                 </div>
                 <h2 className="text-xl font-bold text-[hsl(var(--ink))] mb-1">أحسنت!</h2>
                 <p className={`text-sm font-bold mb-1 ${

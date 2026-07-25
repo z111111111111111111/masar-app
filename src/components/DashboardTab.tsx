@@ -88,7 +88,7 @@ export function DashboardTab({
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 pt-6">
       <div>
         <h1 className="text-xl font-bold text-[hsl(var(--ink))]">مرحباً {name}</h1>
         <p className="text-sm text-muted-foreground">{formatArabicDate(today)}</p>

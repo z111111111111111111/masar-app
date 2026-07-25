@@ -12,7 +12,7 @@ export function LeaderboardTab({ userId, name, xp }: { userId: string; name: str
   const [selected, setSelected] = useState<{ userId: string; name: string; xp: number; rank: number } | null>(null);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 pt-6">
       <div>
         <h1 className="text-xl font-bold text-[hsl(var(--ink))]">قائمة المتصدرين</h1>
         <p className="text-sm text-muted-foreground">الدوري {league.name}</p>

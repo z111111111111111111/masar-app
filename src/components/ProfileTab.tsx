@@ -84,7 +84,7 @@ export function ProfileTab({
   }));
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 pt-6">
       <div className="flex items-center gap-3">
         <div className="w-14 h-14 rounded-full bg-[hsl(var(--ink-solid))] text-white flex items-center justify-center text-xl font-bold">
           {name.slice(0, 1)}
