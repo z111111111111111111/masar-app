@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { ChevronIcon, MathIcon, AtomIcon, LeafIcon, BrainIcon, GlobeIcon, ShuffleIcon, BookIcon } from './icons';
 import { DerivativeLesson } from './lessons/DerivativeLesson';
 
@@ -66,32 +66,12 @@ function countCompleted(stages: Stage[], completed: Record<string, boolean>): nu
 
 export function RoadmapTab() {
   const [selectedSubject, setSelectedSubject] = useState<RoadmapSubject | null>(null);
-  const [openLesson, setOpenLesson] = useState<string | null>(null);
-  const [openStageId, setOpenStageId] = useState<string | null>(null);
-  const [stageProgress, setStageProgress] = useState<Record<string, boolean>>(getStageProgress);
-
-  if (openStageId === 'derivative') {
-    return (
-      <DerivativeLesson
-        onBack={() => setOpenStageId(null)}
-        onStageComplete={(passed) => {
-          if (passed) {
-            markStagePassed('s1');
-            setStageProgress(getStageProgress());
-          }
-        }}
-      />
-    );
-  }
 
   if (selectedSubject) {
     return (
       <SubjectPage
         subject={selectedSubject}
         onBack={() => setSelectedSubject(null)}
-        onStartLesson={(id) => setOpenLesson(id)}
-        onStartStage={(stageId, lessonId) => setOpenStageId(lessonId)}
-        stageProgress={stageProgress}
       />
     );
   }
@@ -162,23 +142,32 @@ function SubjectBranch({
 function SubjectPage({
   subject,
   onBack,
-  onStartLesson,
-  onStartStage,
-  stageProgress,
 }: {
   subject: RoadmapSubject;
   onBack: () => void;
-  onStartLesson: (id: string) => void;
-  onStartStage: (stageId: string, lessonId: string) => void;
-  stageProgress: Record<string, boolean>;
 }) {
   const Icon = subject.icon;
   const stages = subject.id === 'math' ? MATH_STAGES : [];
-  const completedCount = stages.length > 0 ? countCompleted(stages, stageProgress) : 0;
+  const [stageProgress, setStageProgress] = useState<Record<string, boolean>>(getStageProgress);
+  const [openStageId, setOpenStageId] = useState<string | null>(null);
 
   useEffect(() => {
     markSubjectVisited(subject.id);
   }, [subject.id]);
+
+  if (openStageId === 'derivative') {
+    return (
+      <DerivativeLesson
+        onBack={() => setOpenStageId(null)}
+        onStageComplete={(passed) => {
+          if (passed) {
+            markStagePassed('s1');
+            setStageProgress(getStageProgress());
+          }
+        }}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -204,11 +193,10 @@ function SubjectPage({
         <LessonCard
           subject={subject}
           stages={stages}
-          completedCount={completedCount}
-          totalCount={stages.length}
           stageProgress={stageProgress}
-          onStartLesson={onStartLesson}
-          onStartStage={onStartStage}
+          onSelectStage={(stage) => {
+            if (stage.lessonId) setOpenStageId(stage.lessonId);
+          }}
         />
       ) : (
         <div className="rounded-2xl border border-dashed border-border bg-card p-10 flex flex-col items-center text-center gap-3">
@@ -231,28 +219,21 @@ function SubjectPage({
 function LessonCard({
   subject,
   stages,
-  completedCount,
-  totalCount,
   stageProgress,
-  onStartLesson,
-  onStartStage,
+  onSelectStage,
 }: {
   subject: RoadmapSubject;
   stages: Stage[];
-  completedCount: number;
-  totalCount: number;
   stageProgress: Record<string, boolean>;
-  onStartLesson: (id: string) => void;
-  onStartStage: (stageId: string, lessonId: string) => void;
+  onSelectStage: (stage: Stage) => void;
 }) {
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const sheetRef = useRef<HTMLDivElement>(null);
-  const overlayRef = useRef<HTMLDivElement>(null);
+  const [expanded, setExpanded] = useState(false);
+  const completedCount = countCompleted(stages, stageProgress);
 
   return (
-    <>
+    <div className="space-y-2">
       <button
-        onClick={() => setSheetOpen(true)}
+        onClick={() => setExpanded((e) => !e)}
         className="w-full text-right"
       >
         <div className="rounded-xl border border-border bg-card p-4 hover:shadow-md hover:border-[hsl(var(--sprout))]/30 transition-all active:scale-[0.98]">
@@ -265,80 +246,15 @@ function LessonCard({
             </div>
             <h3 className="text-sm font-bold text-[hsl(var(--ink))] flex-1">الاشتقاقية</h3>
             <span className="text-xs font-bold text-muted-foreground tabular-nums">
-              {completedCount} من {totalCount}
+              {completedCount} من {stages.length}
             </span>
           </div>
         </div>
       </button>
 
-      {sheetOpen && (
-        <StagesSheet
-          stages={stages}
-          stageProgress={stageProgress}
-          subjectColor={subject.color}
-          onClose={() => setSheetOpen(false)}
-          onSelectStage={(stage) => {
-            if (stage.lessonId) {
-              onStartStage(stage.id, stage.lessonId);
-            }
-          }}
-        />
-      )}
-    </>
-  );
-}
-
-function StagesSheet({
-  stages,
-  stageProgress,
-  subjectColor,
-  onClose,
-  onSelectStage,
-}: {
-  stages: Stage[];
-  stageProgress: Record<string, boolean>;
-  subjectColor: string;
-  onClose: () => void;
-  onSelectStage: (stage: Stage) => void;
-}) {
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    requestAnimationFrame(() => setVisible(true));
-  }, []);
-
-  const handleClose = () => {
-    setVisible(false);
-    setTimeout(onClose, 250);
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center">
-      {/* Overlay */}
-      <div
-        ref={overlayRef}
-        className={`absolute inset-0 bg-black/40 transition-opacity duration-250 ${visible ? 'opacity-100' : 'opacity-0'}`}
-        onClick={handleClose}
-      />
-
-      {/* Sheet */}
-      <div
-        ref={sheetRef}
-        className={`relative w-full max-w-lg bg-card rounded-t-2xl border border-border border-b-0 shadow-xl transition-transform duration-300 ease-out ${visible ? 'translate-y-0' : 'translate-y-full'}`}
-      >
-        {/* Drag handle */}
-        <div className="flex justify-center pt-3 pb-2">
-          <div className="w-10 h-1 rounded-full bg-border" />
-        </div>
-
-        {/* Title */}
-        <div className="px-5 pb-4">
-          <h2 className="text-base font-bold text-[hsl(var(--ink))]">مراحل الاشتقاقية</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">أكمل كل مرحلة بالكامل للانتقال للتالية</p>
-        </div>
-
-        {/* Stages list */}
-        <div className="px-5 pb-6 space-y-2">
+      {expanded && (
+        <div className="rounded-xl border border-border bg-card p-3 space-y-2 animate-[pop-in_0.2s_ease-out]">
+          <p className="text-xs text-muted-foreground font-medium px-1 pb-1">أكمل كل مرحلة بالكامل للانتقال للتالية</p>
           {stages.map((stage, i) => {
             const done = !!stageProgress[stage.id];
             const unlocked = isStageUnlocked(stage.id, stageProgress);
@@ -347,20 +263,19 @@ function StagesSheet({
             return (
               <div key={stage.id}>
                 <button
-                  disabled={!unlocked}
+                  disabled={!unlocked || done}
                   onClick={() => {
-                    if (unlocked && stage.lessonId) onSelectStage(stage);
+                    if (unlocked && !done) onSelectStage(stage);
                   }}
-                  className={`w-full flex items-center gap-3 p-3.5 rounded-xl border transition-all ${
+                  className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all ${
                     done
-                      ? 'border-[hsl(var(--sprout))]/30 bg-[hsl(var(--sprout))]/5'
+                      ? 'border-[hsl(var(--sprout))]/30 bg-[hsl(var(--sprout))]/5 cursor-default'
                       : unlocked
                         ? 'border-border bg-card hover:shadow-md hover:border-[hsl(var(--sprout))]/30 active:scale-[0.98]'
                         : 'border-border bg-muted/30 opacity-50 cursor-not-allowed'
                   }`}
                 >
-                  {/* Stage number / check */}
-                  <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${
                     done
                       ? 'bg-[hsl(var(--sprout))] text-white'
                       : unlocked
@@ -368,7 +283,7 @@ function StagesSheet({
                         : 'bg-muted/60 text-muted-foreground/60'
                   }`}>
                     {done ? (
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="square" strokeLinejoin="miter">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="square" strokeLinejoin="miter">
                         <polyline points="4 12 10 18 20 6" />
                       </svg>
                     ) : (
@@ -376,7 +291,6 @@ function StagesSheet({
                     )}
                   </div>
 
-                  {/* Stage name */}
                   <div className="flex-1 text-right">
                     <p className={`text-sm font-bold ${done ? 'text-[hsl(var(--sprout))]' : unlocked ? 'text-[hsl(var(--ink))]' : 'text-muted-foreground'}`}>
                       {stage.name}
@@ -386,7 +300,6 @@ function StagesSheet({
                     </p>
                   </div>
 
-                  {/* Lock / chevron */}
                   {!unlocked && !done && (
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-muted-foreground/50 shrink-0">
                       <rect x="5" y="11" width="14" height="10" rx="2" />
@@ -398,17 +311,16 @@ function StagesSheet({
                   )}
                 </button>
 
-                {/* Connector line between stages */}
                 {!isLast && (
                   <div className="flex justify-center py-0.5">
-                    <div className={`w-0.5 h-3 ${done ? 'bg-[hsl(var(--sprout))]' : 'bg-border'}`} />
+                    <div className={`w-0.5 h-2.5 ${done ? 'bg-[hsl(var(--sprout))]' : 'bg-border'}`} />
                   </div>
                 )}
               </div>
             );
           })}
         </div>
-      </div>
+      )}
     </div>
   );
 }
