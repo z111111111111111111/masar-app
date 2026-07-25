@@ -62,7 +62,7 @@ function formatTime(seconds: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-export function DerivativeLesson({ onBack }: { onBack: () => void }) {
+export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => void; onStageComplete?: (passed: boolean) => void }) {
   const [phase, setPhase] = useState<'intro' | 'lesson' | 'exercises' | 'done'>('intro');
   const [progress, setProgress] = useState(0);
   const [showGraph, setShowGraph] = useState(false);
@@ -96,6 +96,7 @@ export function DerivativeLesson({ onBack }: { onBack: () => void }) {
   useEffect(() => {
     if (phase === 'done') {
       setCompletedSubjects(markSubjectComplete('math'));
+      onStageComplete?.(correctCount === total);
     }
   }, [phase]);
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ChevronIcon, MathIcon, AtomIcon, LeafIcon, BrainIcon, GlobeIcon, ShuffleIcon, BookIcon } from './icons';
 import { DerivativeLesson } from './lessons/DerivativeLesson';
 
@@ -10,6 +10,17 @@ function getCompletedSubjects(): string[] {
 function markSubjectVisited(id: string) {
   const s = getCompletedSubjects();
   if (!s.includes(id)) { s.push(id); localStorage.setItem(COMPLETED_KEY, JSON.stringify(s)); }
+}
+
+const STAGES_KEY = 'masar-lesson-stages';
+function getStageProgress(): Record<string, boolean> {
+  try { return JSON.parse(localStorage.getItem(STAGES_KEY) || '{}'); }
+  catch { return {}; }
+}
+function markStagePassed(stageId: string) {
+  const p = getStageProgress();
+  p[stageId] = true;
+  localStorage.setItem(STAGES_KEY, JSON.stringify(p));
 }
 
 interface RoadmapSubject {
@@ -28,12 +39,49 @@ const SUBJECTS: RoadmapSubject[] = [
   { id: 'random', name: 'تدريب عشوائي', icon: ShuffleIcon, color: 'hsl(var(--sprout))' },
 ];
 
+interface Stage {
+  id: string;
+  name: string;
+  lessonId: string | null;
+  requiredStage: string | null;
+}
+
+const MATH_STAGES: Stage[] = [
+  { id: 's1', name: 'مقدمة في الاشتقاق', lessonId: 'derivative', requiredStage: null },
+  { id: 's2', name: 'قواعد الاشتقاق', lessonId: null, requiredStage: 's1' },
+  { id: 's3', name: 'تطبيقات الاشتقاقية', lessonId: null, requiredStage: 's2' },
+  { id: 's4', name: 'تمارين مركبة', lessonId: null, requiredStage: 's3' },
+];
+
+function isStageUnlocked(stageId: string, completed: Record<string, boolean>): boolean {
+  const stage = MATH_STAGES.find((s) => s.id === stageId);
+  if (!stage) return false;
+  if (!stage.requiredStage) return true;
+  return !!completed[stage.requiredStage];
+}
+
+function countCompleted(stages: Stage[], completed: Record<string, boolean>): number {
+  return stages.filter((s) => !!completed[s.id]).length;
+}
+
 export function RoadmapTab() {
   const [selectedSubject, setSelectedSubject] = useState<RoadmapSubject | null>(null);
   const [openLesson, setOpenLesson] = useState<string | null>(null);
+  const [openStageId, setOpenStageId] = useState<string | null>(null);
+  const [stageProgress, setStageProgress] = useState<Record<string, boolean>>(getStageProgress);
 
-  if (openLesson === 'derivative') {
-    return <DerivativeLesson onBack={() => setOpenLesson(null)} />;
+  if (openStageId === 'derivative') {
+    return (
+      <DerivativeLesson
+        onBack={() => setOpenStageId(null)}
+        onStageComplete={(passed) => {
+          if (passed) {
+            markStagePassed('s1');
+            setStageProgress(getStageProgress());
+          }
+        }}
+      />
+    );
   }
 
   if (selectedSubject) {
@@ -42,6 +90,8 @@ export function RoadmapTab() {
         subject={selectedSubject}
         onBack={() => setSelectedSubject(null)}
         onStartLesson={(id) => setOpenLesson(id)}
+        onStartStage={(stageId, lessonId) => setOpenStageId(lessonId)}
+        stageProgress={stageProgress}
       />
     );
   }
@@ -113,20 +163,22 @@ function SubjectPage({
   subject,
   onBack,
   onStartLesson,
+  onStartStage,
+  stageProgress,
 }: {
   subject: RoadmapSubject;
   onBack: () => void;
   onStartLesson: (id: string) => void;
+  onStartStage: (stageId: string, lessonId: string) => void;
+  stageProgress: Record<string, boolean>;
 }) {
   const Icon = subject.icon;
+  const stages = subject.id === 'math' ? MATH_STAGES : [];
+  const completedCount = stages.length > 0 ? countCompleted(stages, stageProgress) : 0;
 
   useEffect(() => {
     markSubjectVisited(subject.id);
   }, [subject.id]);
-
-  const lessons = subject.id === 'math'
-    ? [{ id: 'derivative', name: 'الاشتقاقية', done: false }]
-    : [];
 
   return (
     <div className="space-y-6">
@@ -148,29 +200,16 @@ function SubjectPage({
         </div>
       </div>
 
-      {lessons.length > 0 ? (
-        <div className="space-y-3">
-          {lessons.map((lesson, i) => (
-            <button
-              key={lesson.id}
-              onClick={() => onStartLesson(lesson.id)}
-              className="w-full text-right"
-            >
-              <div className="rounded-xl border border-border bg-card p-4 hover:shadow-md hover:border-[hsl(var(--sprout))]/30 transition-all active:scale-[0.98]">
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-                    style={{ background: `${subject.color}15`, color: subject.color }}
-                  >
-                    {i + 1}
-                  </div>
-                  <h3 className="text-sm font-bold text-[hsl(var(--ink))] flex-1">{lesson.name}</h3>
-                  <ChevronIcon size={14} className="rotate-180 text-muted-foreground" />
-                </div>
-              </div>
-            </button>
-          ))}
-        </div>
+      {stages.length > 0 ? (
+        <LessonCard
+          subject={subject}
+          stages={stages}
+          completedCount={completedCount}
+          totalCount={stages.length}
+          stageProgress={stageProgress}
+          onStartLesson={onStartLesson}
+          onStartStage={onStartStage}
+        />
       ) : (
         <div className="rounded-2xl border border-dashed border-border bg-card p-10 flex flex-col items-center text-center gap-3">
           <span
@@ -185,6 +224,191 @@ function SubjectPage({
           </p>
         </div>
       )}
+    </div>
+  );
+}
+
+function LessonCard({
+  subject,
+  stages,
+  completedCount,
+  totalCount,
+  stageProgress,
+  onStartLesson,
+  onStartStage,
+}: {
+  subject: RoadmapSubject;
+  stages: Stage[];
+  completedCount: number;
+  totalCount: number;
+  stageProgress: Record<string, boolean>;
+  onStartLesson: (id: string) => void;
+  onStartStage: (stageId: string, lessonId: string) => void;
+}) {
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
+
+  return (
+    <>
+      <button
+        onClick={() => setSheetOpen(true)}
+        className="w-full text-right"
+      >
+        <div className="rounded-xl border border-border bg-card p-4 hover:shadow-md hover:border-[hsl(var(--sprout))]/30 transition-all active:scale-[0.98]">
+          <div className="flex items-center gap-3">
+            <div
+              className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+              style={{ background: `${subject.color}15`, color: subject.color }}
+            >
+              1
+            </div>
+            <h3 className="text-sm font-bold text-[hsl(var(--ink))] flex-1">الاشتقاقية</h3>
+            <span className="text-xs font-bold text-muted-foreground tabular-nums">
+              {completedCount} من {totalCount}
+            </span>
+          </div>
+        </div>
+      </button>
+
+      {sheetOpen && (
+        <StagesSheet
+          stages={stages}
+          stageProgress={stageProgress}
+          subjectColor={subject.color}
+          onClose={() => setSheetOpen(false)}
+          onSelectStage={(stage) => {
+            if (stage.lessonId) {
+              onStartStage(stage.id, stage.lessonId);
+            }
+          }}
+        />
+      )}
+    </>
+  );
+}
+
+function StagesSheet({
+  stages,
+  stageProgress,
+  subjectColor,
+  onClose,
+  onSelectStage,
+}: {
+  stages: Stage[];
+  stageProgress: Record<string, boolean>;
+  subjectColor: string;
+  onClose: () => void;
+  onSelectStage: (stage: Stage) => void;
+}) {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    requestAnimationFrame(() => setVisible(true));
+  }, []);
+
+  const handleClose = () => {
+    setVisible(false);
+    setTimeout(onClose, 250);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center">
+      {/* Overlay */}
+      <div
+        ref={overlayRef}
+        className={`absolute inset-0 bg-black/40 transition-opacity duration-250 ${visible ? 'opacity-100' : 'opacity-0'}`}
+        onClick={handleClose}
+      />
+
+      {/* Sheet */}
+      <div
+        ref={sheetRef}
+        className={`relative w-full max-w-lg bg-card rounded-t-2xl border border-border border-b-0 shadow-xl transition-transform duration-300 ease-out ${visible ? 'translate-y-0' : 'translate-y-full'}`}
+      >
+        {/* Drag handle */}
+        <div className="flex justify-center pt-3 pb-2">
+          <div className="w-10 h-1 rounded-full bg-border" />
+        </div>
+
+        {/* Title */}
+        <div className="px-5 pb-4">
+          <h2 className="text-base font-bold text-[hsl(var(--ink))]">مراحل الاشتقاقية</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">أكمل كل مرحلة بالكامل للانتقال للتالية</p>
+        </div>
+
+        {/* Stages list */}
+        <div className="px-5 pb-6 space-y-2">
+          {stages.map((stage, i) => {
+            const done = !!stageProgress[stage.id];
+            const unlocked = isStageUnlocked(stage.id, stageProgress);
+            const isLast = i === stages.length - 1;
+
+            return (
+              <div key={stage.id}>
+                <button
+                  disabled={!unlocked}
+                  onClick={() => {
+                    if (unlocked && stage.lessonId) onSelectStage(stage);
+                  }}
+                  className={`w-full flex items-center gap-3 p-3.5 rounded-xl border transition-all ${
+                    done
+                      ? 'border-[hsl(var(--sprout))]/30 bg-[hsl(var(--sprout))]/5'
+                      : unlocked
+                        ? 'border-border bg-card hover:shadow-md hover:border-[hsl(var(--sprout))]/30 active:scale-[0.98]'
+                        : 'border-border bg-muted/30 opacity-50 cursor-not-allowed'
+                  }`}
+                >
+                  {/* Stage number / check */}
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${
+                    done
+                      ? 'bg-[hsl(var(--sprout))] text-white'
+                      : unlocked
+                        ? 'bg-muted text-muted-foreground'
+                        : 'bg-muted/60 text-muted-foreground/60'
+                  }`}>
+                    {done ? (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="square" strokeLinejoin="miter">
+                        <polyline points="4 12 10 18 20 6" />
+                      </svg>
+                    ) : (
+                      <span>{i + 1}</span>
+                    )}
+                  </div>
+
+                  {/* Stage name */}
+                  <div className="flex-1 text-right">
+                    <p className={`text-sm font-bold ${done ? 'text-[hsl(var(--sprout))]' : unlocked ? 'text-[hsl(var(--ink))]' : 'text-muted-foreground'}`}>
+                      {stage.name}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      {done ? 'مكتمل' : unlocked ? (stage.lessonId ? 'اضغط للبدء' : 'قريباً إن شاء الله') : 'مقفل'}
+                    </p>
+                  </div>
+
+                  {/* Lock / chevron */}
+                  {!unlocked && !done && (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-muted-foreground/50 shrink-0">
+                      <rect x="5" y="11" width="14" height="10" rx="2" />
+                      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+                    </svg>
+                  )}
+                  {unlocked && !done && stage.lessonId && (
+                    <ChevronIcon size={14} className="rotate-180 text-muted-foreground shrink-0" />
+                  )}
+                </button>
+
+                {/* Connector line between stages */}
+                {!isLast && (
+                  <div className="flex justify-center py-0.5">
+                    <div className={`w-0.5 h-3 ${done ? 'bg-[hsl(var(--sprout))]' : 'bg-border'}`} />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
