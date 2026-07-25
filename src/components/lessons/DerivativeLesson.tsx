@@ -73,6 +73,7 @@ export function DerivativeLesson({ onBack }: { onBack: () => void }) {
   const [wrongCount, setWrongCount] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [answered, setAnswered] = useState(false);
+  const [verified, setVerified] = useState(false);
 
   const [elapsed, setElapsed] = useState(0);
   const [completedSubjects, setCompletedSubjects] = useState<string[]>([]);
@@ -129,8 +130,13 @@ export function DerivativeLesson({ onBack }: { onBack: () => void }) {
   const handleAnswer = (idx: number) => {
     if (answered) return;
     setSelected(idx);
+  };
+
+  const handleVerify = () => {
+    if (selected === null || answered) return;
     setAnswered(true);
-    if (idx === EXERCISES[currentQ].correct) setCorrectCount((c) => c + 1);
+    setVerified(true);
+    if (selected === shuffledExercises[currentQ].correct) setCorrectCount((c) => c + 1);
     else setWrongCount((w) => w + 1);
   };
 
@@ -143,6 +149,7 @@ export function DerivativeLesson({ onBack }: { onBack: () => void }) {
       setCurrentQ((q) => q + 1);
       setSelected(null);
       setAnswered(false);
+      setVerified(false);
       setProgress(30 + Math.round(((currentQ + 1) / total) * 70));
     }
   };
@@ -272,6 +279,8 @@ export function DerivativeLesson({ onBack }: { onBack: () => void }) {
                     if (isCorrect) { ring = 'border-[hsl(var(--sprout))]'; bg = 'bg-[hsl(var(--sprout))]/10'; }
                     else if (isSelected && !isCorrect) { ring = 'border-[hsl(var(--coral))]'; bg = 'bg-[hsl(var(--coral))]/10'; }
                     else { ring = 'border-border opacity-40'; }
+                  } else if (isSelected) {
+                    ring = 'border-[hsl(var(--sprout))]'; bg = 'bg-[hsl(var(--sprout))]/5';
                   }
                   return (
                     <button
@@ -296,7 +305,16 @@ export function DerivativeLesson({ onBack }: { onBack: () => void }) {
               </div>
             </div>
 
-            {answered && (
+            {selected !== null && !answered && (
+              <button
+                onClick={handleVerify}
+                className="w-full h-11 rounded-xl bg-[hsl(var(--ink-solid))] hover:bg-[hsl(var(--ink-solid))]/90 text-white font-bold text-sm transition-all active:scale-[0.98] animate-[pop-in_0.2s_ease-out]"
+              >
+                تحقق
+              </button>
+            )}
+
+            {answered && verified && (
               <div className="space-y-3 animate-[pop-in_0.2s_ease-out]">
                 {selected === shuffledExercises[currentQ].correct ? (
                   <p className="text-sm font-bold text-[hsl(var(--sprout))] text-center">إجابة صحيحة</p>
@@ -310,7 +328,7 @@ export function DerivativeLesson({ onBack }: { onBack: () => void }) {
                   onClick={handleNext}
                   className="w-full h-11 rounded-xl bg-[hsl(var(--ink-solid))] hover:bg-[hsl(var(--ink-solid))]/90 text-white font-bold text-sm transition-all active:scale-[0.98]"
                 >
-                  {selected === shuffledExercises[currentQ].correct ? 'التالي' : 'فهمت'}
+                  متابعة
                 </button>
               </div>
             )}
