@@ -1,6 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChevronIcon, MathIcon, AtomIcon, LeafIcon, BrainIcon, GlobeIcon, ShuffleIcon, BookIcon } from './icons';
 import { DerivativeLesson } from './lessons/DerivativeLesson';
+
+const COMPLETED_KEY = 'masar-completed-subjects';
+function getCompletedSubjects(): string[] {
+  try { return JSON.parse(localStorage.getItem(COMPLETED_KEY) || '[]'); }
+  catch { return []; }
+}
+function markSubjectVisited(id: string) {
+  const s = getCompletedSubjects();
+  if (!s.includes(id)) { s.push(id); localStorage.setItem(COMPLETED_KEY, JSON.stringify(s)); }
+}
 
 interface RoadmapSubject {
   id: string;
@@ -109,6 +119,10 @@ function SubjectPage({
   onStartLesson: (id: string) => void;
 }) {
   const Icon = subject.icon;
+
+  useEffect(() => {
+    markSubjectVisited(subject.id);
+  }, [subject.id]);
 
   const lessons = subject.id === 'math'
     ? [{ id: 'derivative', name: 'الاشتقاقية', done: false }]
