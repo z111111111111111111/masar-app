@@ -1,3 +1,4 @@
+import { useRef, useEffect } from 'react';
 import {
   ResponsiveContainer,
   LineChart,
@@ -14,12 +15,23 @@ import {
 import { SUBJECTS, subjectColor } from '@/lib/subjects';
 import { MAX_SCORE } from '@/lib/dates';
 
+const DAY_WIDTH = 100;
+const VISIBLE_DAYS = 3;
+
 export function SubjectLineChart({
   series,
 }: {
   series: Array<{ day: number } & Record<string, number | null | undefined>>;
 }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
   const hasAnyData = series.some((row) => SUBJECTS.some((s) => typeof row[s.id] === 'number'));
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollLeft = scrollRef.current.scrollWidth;
+    }
+  }, [series]);
 
   if (!hasAnyData) {
     return (
@@ -29,17 +41,22 @@ export function SubjectLineChart({
     );
   }
 
+  const chartWidth = Math.max(series.length, VISIBLE_DAYS) * DAY_WIDTH;
+
   return (
-    <div className="h-64 w-full" dir="ltr">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={series} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+    <div
+      ref={scrollRef}
+      className="w-full overflow-x-auto masar-scroll"
+    >
+      <div className="h-64" dir="ltr" style={{ width: chartWidth }}>
+        <LineChart data={series} width={chartWidth} height={256} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
           <CartesianGrid stroke="hsl(var(--border))" vertical={false} />
           <XAxis
             dataKey="day"
             tick={{ fontSize: 11, fill: 'hsl(var(--slate))' }}
             axisLine={{ stroke: 'hsl(var(--border))' }}
             tickLine={false}
-            interval={Math.max(0, Math.ceil(series.length / 10) - 1)}
+            interval={0}
           />
           <YAxis
             domain={[0, MAX_SCORE]}
@@ -80,7 +97,7 @@ export function SubjectLineChart({
             />
           ))}
         </LineChart>
-      </ResponsiveContainer>
+      </div>
     </div>
   );
 }
