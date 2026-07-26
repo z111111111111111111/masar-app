@@ -91,14 +91,12 @@ export function TodayTimerCard({
             <button
               key={s.id}
               onClick={() => {
-                if (isBusy && !isRunning && !done) return;
                 setSelected(s.id);
                 setRating(false);
               }}
-              disabled={isBusy && !isRunning && !done}
               className={`shrink-0 flex flex-col items-center gap-1.5 px-3.5 py-2.5 rounded-xl border text-[11px] font-semibold transition-colors ${
                 isSel ? 'border-[hsl(var(--ink))] bg-muted/40' : 'border-border'
-              } ${isBusy && !isRunning && !done ? 'opacity-40 cursor-not-allowed' : ''}`}
+              } ${isBusy && !isRunning && !done ? 'opacity-60' : ''}`}
             >
               <SubjectIcon id={s.id} className={isSel ? 'text-[hsl(var(--ink))]' : 'text-muted-foreground'} />
               <span className="text-[hsl(var(--ink))]">{s.short}</span>
@@ -131,7 +129,7 @@ export function TodayTimerCard({
 
             {!rating ? (
               <div className="flex items-center justify-center gap-2 flex-wrap">
-                {status === 'idle' && (
+                {status === 'idle' && !isBusy && (
                   <ActionButton onClick={() => onStart(selected)} tone="ink">
                     <PlayIcon size={14} /> ابدأ
                   </ActionButton>
