@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useMutation } from 'convex/react';
 import { api } from 'convex/_generated/api';
 import { SUBJECTS, subjectColor } from '@/lib/subjects';
@@ -76,7 +76,13 @@ export function ProfileTab({
     return all.reduce((a, b) => a + b, 0) / all.length;
   })();
 
-  const series = subjectDailySeries(records, startDate, daysElapsed);
+  const VISIBLE_DAYS = 3;
+  const fullSeries = subjectDailySeries(records, startDate, daysElapsed);
+  const totalDays = fullSeries.length;
+  const [dayOffset, setDayOffset] = useState(() => Math.max(0, totalDays - VISIBLE_DAYS));
+  const maxOffset = Math.max(0, totalDays - VISIBLE_DAYS);
+  const series = useMemo(() => fullSeries.slice(dayOffset, dayOffset + VISIBLE_DAYS), [fullSeries, dayOffset]);
+
   const percentData = perSubject.map((s) => ({
     id: s.id,
     short: s.short,
@@ -126,6 +132,25 @@ export function ProfileTab({
       <div className="rounded-2xl border border-border bg-card p-4">
         <h3 className="text-sm font-bold text-[hsl(var(--ink))] mb-1">أداؤك حسب المادة</h3>
         <p className="text-[11px] text-muted-foreground mb-3">علاماتك اليومية في كل مادة، بدلالة الأيام منذ بدايتك</p>
+        <div className="flex items-center gap-2 mb-2">
+          <button
+            onClick={() => setDayOffset((o) => Math.max(0, o - VISIBLE_DAYS))}
+            disabled={dayOffset === 0}
+            className="w-8 h-8 rounded-full border border-border bg-card flex items-center justify-center text-muted-foreground hover:text-[hsl(var(--ink))] hover:bg-muted/60 transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+          <span className="flex-1 text-center text-[11px] text-muted-foreground tabular-nums">
+            {dayOffset + 1}–{Math.min(dayOffset + VISIBLE_DAYS, totalDays)} من {totalDays} يوم
+          </span>
+          <button
+            onClick={() => setDayOffset((o) => Math.min(maxOffset, o + VISIBLE_DAYS))}
+            disabled={dayOffset >= maxOffset}
+            className="w-8 h-8 rounded-full border border-border bg-card flex items-center justify-center text-muted-foreground hover:text-[hsl(var(--ink))] hover:bg-muted/60 transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+        </div>
         <SubjectLineChart series={series} />
       </div>
 
