@@ -253,7 +253,7 @@ function LessonCard({
       </button>
 
       {expanded && (
-        <div className="rounded-xl border border-border bg-card p-3 space-y-2 animate-[pop-in_0.2s_ease-out]">
+        <div className="rounded-xl border border-border bg-card p-3 space-y-2 animate-[slideDown_0.25s_ease-out] origin-top">
           <p className="text-xs text-muted-foreground font-medium px-1 pb-1">أكمل كل مرحلة بالكامل للانتقال للتالية</p>
           {stages.map((stage, i) => {
             const done = !!stageProgress[stage.id];
@@ -263,13 +263,13 @@ function LessonCard({
             return (
               <div key={stage.id}>
                 <button
-                  disabled={!unlocked || done}
+                  disabled={!unlocked}
                   onClick={() => {
-                    if (unlocked && !done) onSelectStage(stage);
+                    if (unlocked && stage.lessonId) onSelectStage(stage);
                   }}
                   className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all ${
                     done
-                      ? 'border-[hsl(var(--sprout))]/30 bg-[hsl(var(--sprout))]/5 cursor-default'
+                      ? 'border-[hsl(var(--sprout))]/30 bg-[hsl(var(--sprout))]/5 hover:shadow-md active:scale-[0.98]'
                       : unlocked
                         ? 'border-border bg-card hover:shadow-md hover:border-[hsl(var(--sprout))]/30 active:scale-[0.98]'
                         : 'border-border bg-muted/30 opacity-50 cursor-not-allowed'

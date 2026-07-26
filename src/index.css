@@ -237,6 +237,11 @@
 }
 .animate-progress { animation: progress-fill 8s linear; }
 
+@keyframes slideDown {
+  0% { transform: translateY(-8px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
 /* KaTeX overrides for dark mode */
 .dark .katex { color: hsl(var(--ink)); }
 .dark .katex .mord,
