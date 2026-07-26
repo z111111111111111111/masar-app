@@ -10,13 +10,11 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
 } from 'recharts';
 import { SUBJECTS, subjectColor } from '@/lib/subjects';
 import { MAX_SCORE } from '@/lib/dates';
 
 const DAY_WIDTH = 100;
-const VISIBLE_DAYS = 3;
 
 export function SubjectLineChart({
   series,
@@ -41,62 +39,68 @@ export function SubjectLineChart({
     );
   }
 
-  const chartWidth = Math.max(series.length, VISIBLE_DAYS) * DAY_WIDTH;
+  const chartWidth = Math.max(series.length, 1) * DAY_WIDTH;
 
   return (
-    <div
-      ref={scrollRef}
-      className="w-full overflow-x-auto masar-scroll"
-    >
-      <div className="h-64" dir="ltr" style={{ width: chartWidth }}>
-        <LineChart data={series} width={chartWidth} height={256} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-          <CartesianGrid stroke="hsl(var(--border))" vertical={false} />
-          <XAxis
-            dataKey="day"
-            tick={{ fontSize: 11, fill: 'hsl(var(--slate))' }}
-            axisLine={{ stroke: 'hsl(var(--border))' }}
-            tickLine={false}
-            interval={0}
-          />
-          <YAxis
-            domain={[0, MAX_SCORE]}
-            allowDecimals={false}
-            tick={{ fontSize: 11, fill: 'hsl(var(--slate))' }}
-            axisLine={false}
-            tickLine={false}
-            width={22}
-          />
-          <Tooltip
-            contentStyle={{
-              fontSize: 12,
-              borderRadius: 10,
-              border: '1px solid hsl(var(--border))',
-              background: 'hsl(var(--paper))',
-            }}
-            labelFormatter={(d) => `اليوم ${d}`}
-            formatter={(value: number, name: string) => {
-              const subj = SUBJECTS.find((s) => s.id === name);
-              return [`${value}/${MAX_SCORE}`, subj?.name ?? name];
-            }}
-          />
-          <Legend
-            formatter={(value) => SUBJECTS.find((s) => s.id === value)?.short ?? value}
-            wrapperStyle={{ fontSize: 11 }}
-          />
-          {SUBJECTS.map((s) => (
-            <Line
-              key={s.id}
-              type="linear"
-              dataKey={s.id}
-              name={s.id}
-              stroke={subjectColor(s.id)}
-              strokeWidth={2}
-              dot={{ r: 2.5 }}
-              connectNulls={false}
-              isAnimationActive={false}
+    <div>
+      <div
+        ref={scrollRef}
+        className="w-full overflow-x-auto masar-scroll"
+      >
+        <div className="h-64" dir="ltr" style={{ width: chartWidth }}>
+          <LineChart data={series} width={chartWidth} height={256} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+            <CartesianGrid stroke="hsl(var(--border))" vertical={false} />
+            <XAxis
+              dataKey="day"
+              tick={{ fontSize: 11, fill: 'hsl(var(--slate))' }}
+              axisLine={{ stroke: 'hsl(var(--border))' }}
+              tickLine={false}
+              interval={0}
             />
-          ))}
-        </LineChart>
+            <YAxis
+              domain={[0, MAX_SCORE]}
+              allowDecimals={false}
+              tick={{ fontSize: 11, fill: 'hsl(var(--slate))' }}
+              axisLine={false}
+              tickLine={false}
+              width={22}
+            />
+            <Tooltip
+              contentStyle={{
+                fontSize: 12,
+                borderRadius: 10,
+                border: '1px solid hsl(var(--border))',
+                background: 'hsl(var(--paper))',
+              }}
+              labelFormatter={(d) => `اليوم ${d}`}
+              formatter={(value: number, name: string) => {
+                const subj = SUBJECTS.find((s) => s.id === name);
+                return [`${value}/${MAX_SCORE}`, subj?.name ?? name];
+              }}
+            />
+            {SUBJECTS.map((s) => (
+              <Line
+                key={s.id}
+                type="linear"
+                dataKey={s.id}
+                name={s.id}
+                stroke={subjectColor(s.id)}
+                strokeWidth={2}
+                dot={{ r: 2.5 }}
+                connectNulls={false}
+                isAnimationActive={false}
+              />
+            ))}
+          </LineChart>
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
+        {SUBJECTS.map((s) => (
+          <span key={s.id} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: subjectColor(s.id) }} />
+            {s.short}
+          </span>
+        ))}
       </div>
     </div>
   );
