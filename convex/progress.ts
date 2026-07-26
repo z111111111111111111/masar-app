@@ -121,8 +121,7 @@ export const create = mutation({
 
 // --- Valid subjects list (server-side allowlist) ---
 const VALID_SUBJECTS = new Set([
-  "arabic","english","french","math","physics","chemistry",
-  "biology","history","geography","civics","philosophy","it",
+  "math","physics","nature","philo","social",
 ]);
 
 // --- Update progress after finishing a subject (IMMUTABLE) ---
