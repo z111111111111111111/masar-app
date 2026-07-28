@@ -59,11 +59,20 @@ export default defineSchema({
     estimatedMinutes: v.number(),
   }).index("by_subject_week", ["subject", "weekNumber"]),
 
+  // --- Corrector Conversations ---
+  correctorConversations: defineTable({
+    userId: v.string(),
+    title: v.string(),
+    createdAt: v.number(),
+  }).index("by_userId", ["userId"]),
+
   // --- Corrector Chat Messages ---
   correctorMessages: defineTable({
     userId: v.string(),
+    conversationId: v.id("correctorConversations"),
     role: v.union(v.literal("user"), v.literal("assistant")),
     content: v.string(),
     createdAt: v.number(),
-  }).index("by_userId", ["userId"]),
+  }).index("by_conversation", ["conversationId"])
+    .index("by_userId", ["userId"]),
 });

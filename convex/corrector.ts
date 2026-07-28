@@ -4,27 +4,67 @@ import { api } from "./_generated/api";
 
 const DEEPSEEK_URL = "https://api.deepseek.com/v1/chat/completions";
 
-export const getHistory = query({
+// --- Conversations ---
+
+export const createConversation = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    return await ctx.db.insert("correctorConversations", {
+      userId: identity.subject,
+      title: "محادثة جديدة",
+      createdAt: Date.now(),
+    });
+  },
+});
+
+export const getConversations = query({
   args: {},
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return [];
     return await ctx.db
-      .query("correctorMessages")
+      .query("correctorConversations")
       .withIndex("by_userId", (q) => q.eq("userId", identity.subject))
+      .order("desc")
       .collect();
   },
 });
 
-export const saveMessage = mutation({
+export const updateTitle = mutation({
+  args: {
+    conversationId: v.id("correctorConversations"),
+    title: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.conversationId, { title: args.title });
+  },
+});
+
+// --- Messages ---
+
+export const getMessages = query({
+  args: { conversationId: v.id("correctorConversations") },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("correctorMessages")
+      .withIndex("by_conversation", (q) => q.eq("conversationId", args.conversationId))
+      .collect();
+  },
+});
+
+const saveMessage = mutation({
   args: {
     userId: v.string(),
+    conversationId: v.id("correctorConversations"),
     role: v.union(v.literal("user"), v.literal("assistant")),
     content: v.string(),
   },
   handler: async (ctx, args) => {
     await ctx.db.insert("correctorMessages", {
       userId: args.userId,
+      conversationId: args.conversationId,
       role: args.role,
       content: args.content,
       createdAt: Date.now(),
@@ -32,8 +72,13 @@ export const saveMessage = mutation({
   },
 });
 
+// --- Chat action ---
+
 export const chat = action({
-  args: { content: v.string() },
+  args: {
+    conversationId: v.id("correctorConversations"),
+    content: v.string(),
+  },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
@@ -42,13 +87,20 @@ export const chat = action({
     const apiKey = process.env.DEEPSEEK_API_KEY;
     if (!apiKey) throw new Error("DEEPSEEK_API_KEY not configured");
 
+    // Save user message
     await ctx.runMutation(api.corrector.saveMessage, {
       userId,
+      conversationId: args.conversationId,
       role: "user",
       content: args.content,
     });
 
-    const messages = await ctx.runQuery(api.corrector.getHistory);
+    // Get conversation history
+    const history = await ctx.runQuery(api.corrector.getMessages, {
+      conversationId: args.conversationId,
+    });
+
+    // Call DeepSeek
     const systemPrompt = {
       role: "system" as const,
       content: "أنت مصحح ذكي لموقع مسار — منصة تعليمية لطلبة البكالوريا الجزائرية. أنت تجيب بالعربية الفصحى. مهمتك: مراجعة حلول الطالب، تصحيح الأخطاء خطوة بخطوة، شرح المفاهيم التي أخطأ فيها، وتقديم توجيهات دقيقة ومفيدة. أسلوبك ودود ومشجع."
@@ -56,7 +108,7 @@ export const chat = action({
 
     const body = {
       model: "deepseek-chat",
-      messages: [systemPrompt, ...messages.map((m) => ({ role: m.role, content: m.content }))],
+      messages: [systemPrompt, ...history.map((m) => ({ role: m.role, content: m.content }))],
       max_tokens: 2000,
       temperature: 0.7,
     };
@@ -82,12 +134,68 @@ export const chat = action({
     const reply = data.choices?.[0]?.message?.content;
     if (!reply) throw new Error("Empty response from DeepSeek");
 
+    // Save assistant reply
     await ctx.runMutation(api.corrector.saveMessage, {
       userId,
+      conversationId: args.conversationId,
       role: "assistant",
       content: reply,
     });
 
+    // If title is still default, generate one from first user message
+    const conversation = await ctx.runQuery(api.corrector.getConversation, {
+      conversationId: args.conversationId,
+    });
+    if (conversation?.title === "محادثة جديدة" && history.length <= 1) {
+      await ctx.runMutation(api.corrector.updateTitle, {
+        conversationId: args.conversationId,
+        title: await generateTitle(args.content),
+      });
+    }
+
     return reply;
+  },
+});
+
+// --- Helper: generate a short title from the first user message ---
+
+async function generateTitle(userMessage: string): Promise<string> {
+  try {
+    const apiKey = process.env.DEEPSEEK_API_KEY;
+    if (!apiKey) return "محادثة";
+
+    const response = await fetch(DEEPSEEK_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "deepseek-chat",
+        messages: [
+          { role: "system", content: "لخص رسالة المستخدم التالية في عنوان قصير جداً (3-5 كلمات). أعد فقط العنوان بدون علامات اقتباس." },
+          { role: "user", content: userMessage },
+        ],
+        max_tokens: 20,
+        temperature: 0.3,
+      }),
+      signal: AbortSignal.timeout(10000),
+    });
+
+    if (!response.ok) return "محادثة";
+    const data = (await response.json()) as { choices: Array<{ message: { content: string } }> };
+    return data.choices?.[0]?.message?.content?.trim().slice(0, 40) || "محادثة";
+  } catch {
+    return "محادثة";
+  }
+}
+
+// Need to expose saveMessage and getConversation for internal use
+export { saveMessage };
+
+export const getConversation = query({
+  args: { conversationId: v.id("correctorConversations") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.conversationId);
   },
 });
