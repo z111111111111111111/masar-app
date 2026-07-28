@@ -48,18 +48,20 @@ export function DashboardTab({
 
   const quote = useMemo(() => QUOTES[today.getDate() % QUOTES.length], []); // eslint-disable-line
 
-  const last7 = useMemo(() => {
+  const week = useMemo(() => {
     const days = [];
-    for (let i = 0; i <= 6; i++) {
-      const d = addDays(today, -i);
+    for (let i = -3; i <= 3; i++) {
+      const d = addDays(today, i);
       const iso = toISODate(d);
       const count = finishedSubjectsCount(records[iso]);
+      const isFuture = i > 0;
       days.push({
         iso,
         label: d.toLocaleDateString('ar-DZ', { weekday: 'short' }),
         count,
-        complete: count === SUBJECTS.length,
+        complete: !isFuture && count === SUBJECTS.length,
         isToday: iso === todayISO,
+        isFuture,
       });
     }
     return days;
@@ -123,15 +125,17 @@ export function DashboardTab({
 
       <RandomExerciseCard dayIndexToday={dayIndexToday} />
 
-      {/* Last 7 days strip */}
+      {/* Weekly strip — today in the center */}
       <div className="rounded-2xl border border-border bg-card p-4">
-        <h3 className="text-xs font-bold text-muted-foreground mb-3">آخر 7 أيام</h3>
+        <h3 className="text-xs font-bold text-muted-foreground mb-3">أيام الأسبوع</h3>
         <div className="flex justify-between" dir="rtl">
-          {last7.map((d) => (
+          {week.map((d) => (
             <div key={d.iso} className="flex flex-col items-center gap-1.5">
               <div
                 className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold ${
-                  d.complete
+                  d.isFuture
+                    ? 'bg-muted/30 text-muted-foreground/40'
+                    : d.complete
                     ? 'bg-[hsl(var(--sprout))] text-white'
                     : d.count > 0
                     ? 'bg-[hsl(var(--ember-soft))] text-[hsl(var(--ember))]'
@@ -140,7 +144,9 @@ export function DashboardTab({
                     : 'bg-muted text-muted-foreground'
                 }`}
               >
-                {d.complete ? (
+                {d.isFuture ? (
+                  '—'
+                ) : d.complete ? (
                   <CheckCircleIcon size={14} className="text-white" />
                 ) : d.count > 0 ? (
                   d.count
@@ -148,7 +154,7 @@ export function DashboardTab({
                   ''
                 )}
               </div>
-              <span className="text-[10px] text-muted-foreground">{d.label}</span>
+              <span className={`text-[10px] ${d.isToday ? 'font-bold text-[hsl(var(--ink))]' : 'text-muted-foreground'}`}>{d.label}</span>
             </div>
           ))}
         </div>
