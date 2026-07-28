@@ -2,7 +2,8 @@ import { action, query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { api } from "./_generated/api";
 
-const DEEPSEEK_URL = "https://api.deepseek.com/v1/chat/completions";
+const GEMINI_URL =
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 
 // --- Conversations ---
 
@@ -84,8 +85,8 @@ export const chat = action({
     if (!identity) throw new Error("Not authenticated");
     const userId = identity.subject;
 
-    const apiKey = process.env.DEEPSEEK_API_KEY;
-    if (!apiKey) throw new Error("DEEPSEEK_API_KEY not configured");
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) throw new Error("GEMINI_API_KEY not configured");
 
     // Save user message
     await ctx.runMutation(api.corrector.saveMessage, {
@@ -100,39 +101,42 @@ export const chat = action({
       conversationId: args.conversationId,
     });
 
-    // Call DeepSeek
-    const systemPrompt = {
-      role: "system" as const,
-      content: "أنت مصحح ذكي لموقع مسار — منصة تعليمية لطلبة البكالوريا الجزائرية. أنت تجيب بالعربية الفصحى. مهمتك: مراجعة حلول الطالب، تصحيح الأخطاء خطوة بخطوة، شرح المفاهيم التي أخطأ فيها، وتقديم توجيهات دقيقة ومفيدة. أسلوبك ودود ومشجع."
-    };
+    // Call Gemini Flash
+    const contents = history.map((m) => ({
+      role: m.role === "assistant" ? "model" as const : "user" as const,
+      parts: [{ text: m.content }],
+    }));
 
     const body = {
-      model: "deepseek-chat",
-      messages: [systemPrompt, ...history.map((m) => ({ role: m.role, content: m.content }))],
-      max_tokens: 2000,
-      temperature: 0.7,
+      system_instruction: {
+        parts: [{
+          text: "أنت مصحح ذكي لموقع مسار — منصة تعليمية لطلبة البكالوريا الجزائرية. أنت تجيب بالعربية الفصحى. مهمتك: مراجعة حلول الطالب، تصحيح الأخطاء خطوة بخطوة، شرح المفاهيم التي أخطأ فيها، وتقديم توجيهات دقيقة ومفيدة. أسلوبك ودود ومشجع."
+        }],
+      },
+      contents,
+      generationConfig: {
+        maxOutputTokens: 2000,
+        temperature: 0.7,
+      },
     };
 
-    const response = await fetch(DEEPSEEK_URL, {
+    const response = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(30000),
     });
 
     if (!response.ok) {
       const err = await response.text();
-      throw new Error(`DeepSeek API error: ${response.status} ${err}`);
+      throw new Error(`Gemini API error: ${response.status} ${err}`);
     }
 
     const data = (await response.json()) as {
-      choices: Array<{ message: { content: string } }>;
+      candidates?: Array<{ content: { parts: Array<{ text: string }> } }>;
     };
-    const reply = data.choices?.[0]?.message?.content;
-    if (!reply) throw new Error("Empty response from DeepSeek");
+    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!reply) throw new Error("Empty response from Gemini");
 
     // Save assistant reply
     await ctx.runMutation(api.corrector.saveMessage, {
@@ -149,7 +153,7 @@ export const chat = action({
     if (conversation?.title === "محادثة جديدة" && history.length <= 1) {
       await ctx.runMutation(api.corrector.updateTitle, {
         conversationId: args.conversationId,
-        title: await generateTitle(args.content),
+        title: await generateTitle(args.content, apiKey),
       });
     }
 
@@ -159,38 +163,38 @@ export const chat = action({
 
 // --- Helper: generate a short title from the first user message ---
 
-async function generateTitle(userMessage: string): Promise<string> {
+async function generateTitle(userMessage: string, apiKey: string): Promise<string> {
   try {
-    const apiKey = process.env.DEEPSEEK_API_KEY;
-    if (!apiKey) return "محادثة";
-
-    const response = await fetch(DEEPSEEK_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
+    const body = {
+      contents: [{
+        role: "user" as const,
+        parts: [{ text: userMessage }],
+      }],
+      system_instruction: {
+        parts: [{
+          text: "لخص رسالة المستخدم التالية في عنوان قصير جداً (3-5 كلمات). أعد فقط العنوان بدون علامات اقتباس."
+        }],
       },
-      body: JSON.stringify({
-        model: "deepseek-chat",
-        messages: [
-          { role: "system", content: "لخص رسالة المستخدم التالية في عنوان قصير جداً (3-5 كلمات). أعد فقط العنوان بدون علامات اقتباس." },
-          { role: "user", content: userMessage },
-        ],
-        max_tokens: 20,
-        temperature: 0.3,
-      }),
+      generationConfig: { maxOutputTokens: 20, temperature: 0.3 },
+    };
+
+    const response = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
       signal: AbortSignal.timeout(10000),
     });
 
     if (!response.ok) return "محادثة";
-    const data = (await response.json()) as { choices: Array<{ message: { content: string } }> };
-    return data.choices?.[0]?.message?.content?.trim().slice(0, 40) || "محادثة";
+    const data = (await response.json()) as {
+      candidates?: Array<{ content: { parts: Array<{ text: string }> } }>;
+    };
+    return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim().slice(0, 40) || "محادثة";
   } catch {
     return "محادثة";
   }
 }
 
-// Need to expose saveMessage and getConversation for internal use
 export { saveMessage };
 
 export const getConversation = query({
