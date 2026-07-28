@@ -4,6 +4,7 @@ import { api } from 'convex/_generated/api';
 import type { Id } from 'convex/_generated/dataModel';
 import { Dialog, DialogContent, DialogHeader } from '@/components/ui/dialog';
 import { ChatIcon, SendIcon, TrashIcon } from './icons';
+import { MarkdownText } from './MarkdownText';
 
 export function CorrectorChatSheet({ open, onOpenChange, userName }: { open: boolean; onOpenChange: (v: boolean) => void; userName: string }) {
   const [input, setInput] = useState('');
@@ -172,7 +173,7 @@ export function CorrectorChatSheet({ open, onOpenChange, userName }: { open: boo
                           <span className="w-1.5 h-1.5 rounded-full bg-current animate-bounce" style={{ animationDelay: '150ms' }} />
                           <span className="w-1.5 h-1.5 rounded-full bg-current animate-bounce" style={{ animationDelay: '300ms' }} />
                         </span>
-                      ) : m.content}
+                      ) : <MarkdownText content={m.content} />}
                     </div>
                   </div>
                 );
