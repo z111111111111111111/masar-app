@@ -64,6 +64,7 @@ export default defineSchema({
     userId: v.string(),
     title: v.string(),
     createdAt: v.number(),
+    deleted: v.optional(v.boolean()),
   }).index("by_userId", ["userId"]),
 
   // --- Corrector Chat Messages ---

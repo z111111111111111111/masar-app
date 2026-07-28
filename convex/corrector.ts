@@ -27,11 +27,12 @@ export const getConversations = query({
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return [];
-    return await ctx.db
+    const all = await ctx.db
       .query("correctorConversations")
       .withIndex("by_userId", (q) => q.eq("userId", identity.subject))
       .order("desc")
       .collect();
+    return all.filter((c) => !c.deleted);
   },
 });
 
@@ -42,6 +43,13 @@ export const updateTitle = mutation({
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.conversationId, { title: args.title });
+  },
+});
+
+export const softDeleteConversation = mutation({
+  args: { conversationId: v.id("correctorConversations") },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.conversationId, { deleted: true });
   },
 });
 
@@ -132,19 +140,32 @@ export const chat = action({
       conversationId: args.conversationId,
     });
 
+    // If first message, generate title immediately (before streaming)
+    if (history.length <= 1) {
+      const conversation = await ctx.runQuery(api.corrector.getConversation, {
+        conversationId: args.conversationId,
+      });
+      if (conversation?.title === "محادثة جديدة") {
+        const title = await generateTitle(args.content, apiKey);
+        await ctx.runMutation(api.corrector.updateTitle, {
+          conversationId: args.conversationId,
+          title,
+        });
+      }
+    }
+
     // Create empty assistant message for streaming
     const msgId = await ctx.runMutation(api.corrector.createEmptyMessage, {
       userId,
       conversationId: args.conversationId,
     });
 
-    // Build system prompt + history
+    // Build system prompt + history (exclude empty assistant message)
     const systemPrompt = {
       role: "system" as const,
       content: "أنت مصحح ذكي لموقع مسار — منصة تعليمية لطلبة البكالوريا الجزائرية. أنت تجيب بالعربية الفصحى. مهمتك: مراجعة حلول الطالب، تصحيح الأخطاء خطوة بخطوة، شرح المفاهيم التي أخطأ فيها، وتقديم توجيهات دقيقة ومفيدة. أسلوبك ودود ومشجع."
     };
 
-    // We need to exclude the empty message from history for the API call
     const nonEmptyMessages = history.filter(m => m.content !== "");
 
     const body = {
@@ -168,7 +189,6 @@ export const chat = action({
     });
 
     if (!response.ok) {
-      // Remove empty message on error
       await ctx.runMutation(api.corrector.removeMessage, { messageId: msgId });
       const err = await response.text();
       throw new Error(`OpenRouter API error: ${response.status} ${err}`);
@@ -204,23 +224,9 @@ export const chat = action({
       }
     }
 
-    // If reply is empty after streaming, clean up
     if (!fullReply) {
       await ctx.runMutation(api.corrector.removeMessage, { messageId: msgId });
       throw new Error("Empty response from OpenRouter");
-    }
-
-    // Generate title from first user message
-    if (history.length <= 1) {
-      const conversation = await ctx.runQuery(api.corrector.getConversation, {
-        conversationId: args.conversationId,
-      });
-      if (conversation?.title === "محادثة جديدة") {
-        await ctx.runMutation(api.corrector.updateTitle, {
-          conversationId: args.conversationId,
-          title: await generateTitle(args.content, apiKey),
-        });
-      }
     }
 
     return fullReply;

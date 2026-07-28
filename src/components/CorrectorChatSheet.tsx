@@ -3,7 +3,7 @@ import { useAction, useQuery, useMutation } from 'convex/react';
 import { api } from 'convex/_generated/api';
 import type { Id } from 'convex/_generated/dataModel';
 import { Dialog, DialogContent, DialogHeader } from '@/components/ui/dialog';
-import { ChatIcon, SendIcon } from './icons';
+import { ChatIcon, SendIcon, TrashIcon } from './icons';
 
 export function CorrectorChatSheet({ open, onOpenChange, userName }: { open: boolean; onOpenChange: (v: boolean) => void; userName: string }) {
   const [input, setInput] = useState('');
@@ -15,6 +15,7 @@ export function CorrectorChatSheet({ open, onOpenChange, userName }: { open: boo
   const inputRef = useRef<HTMLInputElement>(null);
 
   const createConversation = useMutation(api.corrector.createConversation);
+  const deleteConversation = useMutation(api.corrector.softDeleteConversation);
   const conversations = useQuery(api.corrector.getConversations) ?? [];
   const messages = useQuery(api.corrector.getMessages, activeConversationId ? { conversationId: activeConversationId } : 'skip') ?? [];
   const chatAction = useAction(api.corrector.chat);
@@ -100,20 +101,28 @@ export function CorrectorChatSheet({ open, onOpenChange, userName }: { open: boo
               <p className="text-sm text-muted-foreground text-center py-6">لا توجد محادثات سابقة</p>
             ) : (
               conversations.map((c) => (
-                <button
-                  key={c._id}
-                  onClick={() => { setActiveConversationId(c._id); setViewConversations(false); }}
-                  className={`w-full text-right rounded-xl border p-3 text-sm transition-colors ${
-                    c._id === activeConversationId
-                      ? 'border-[hsl(var(--sprout))] bg-[hsl(var(--sprout-soft))]'
-                      : 'border-border hover:bg-muted/50'
-                  }`}
-                >
-                  <p className="font-semibold text-[hsl(var(--ink))] truncate">{c.title}</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">
-                    {new Date(c.createdAt).toLocaleDateString('ar-DZ', { weekday: 'short', day: 'numeric', month: 'short' })}
-                  </p>
-                </button>
+                <div key={c._id} className="flex items-center gap-1">
+                  <button
+                    onClick={() => { setActiveConversationId(c._id); setViewConversations(false); }}
+                    className={`flex-1 text-right rounded-xl border p-3 text-sm transition-colors ${
+                      c._id === activeConversationId
+                        ? 'border-[hsl(var(--sprout))] bg-[hsl(var(--sprout-soft))]'
+                        : 'border-border hover:bg-muted/50'
+                    }`}
+                  >
+                    <p className="font-semibold text-[hsl(var(--ink))] truncate">{c.title}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      {new Date(c.createdAt).toLocaleDateString('ar-DZ', { weekday: 'short', day: 'numeric', month: 'short' })}
+                    </p>
+                  </button>
+                  <button
+                    onClick={() => deleteConversation({ conversationId: c._id })}
+                    className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-[hsl(var(--coral))] hover:bg-muted/60 transition-colors"
+                    title="حذف المحادثة"
+                  >
+                    <TrashIcon size={14} />
+                  </button>
+                </div>
               ))
             )}
           </div>
