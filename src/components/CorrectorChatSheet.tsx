@@ -140,7 +140,7 @@ export function CorrectorChatSheet({ open, onOpenChange, userName }: { open: boo
           </div>
         ) : (
           <>
-            <div ref={scrollRef} className="px-4 py-4 space-y-3 bg-muted/20 min-h-[260px] max-h-[360px] overflow-y-auto">
+            <div ref={scrollRef} className="px-4 py-4 space-y-3 bg-muted/20 min-h-[260px] max-h-[360px] overflow-y-auto masar-scroll">
               {isWelcome && (
                 <div className="flex gap-2">
                   <span className="w-7 h-7 shrink-0 rounded-full bg-[hsl(var(--ink-solid))] text-white flex items-center justify-center">
