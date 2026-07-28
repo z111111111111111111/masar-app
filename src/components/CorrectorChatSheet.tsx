@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAction, useQuery, useMutation } from 'convex/react';
 import { api } from 'convex/_generated/api';
 import type { Id } from 'convex/_generated/dataModel';
@@ -8,6 +8,7 @@ import { ChatIcon, SendIcon, TrashIcon } from './icons';
 export function CorrectorChatSheet({ open, onOpenChange, userName }: { open: boolean; onOpenChange: (v: boolean) => void; userName: string }) {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [viewConversations, setViewConversations] = useState(false);
   const [activeConversationId, setActiveConversationId] = useState<Id<"correctorConversations"> | null>(null);
@@ -20,23 +21,16 @@ export function CorrectorChatSheet({ open, onOpenChange, userName }: { open: boo
   const messages = useQuery(api.corrector.getMessages, activeConversationId ? { conversationId: activeConversationId } : 'skip') ?? [];
   const chatAction = useAction(api.corrector.chat);
 
-  const isStreaming = messages.length > 0 && messages[messages.length - 1].role === 'assistant' && messages[messages.length - 1].content === '';
-
-  const startNew = useCallback(async () => {
-    const id = await createConversation();
-    setActiveConversationId(id);
-    setViewConversations(false);
-    setError(null);
-  }, [createConversation]);
+  const isStreaming = activeConversationId && messages.length > 0 && messages[messages.length - 1].role === 'assistant' && messages[messages.length - 1].content === '';
 
   useEffect(() => {
-    if (open && !activeConversationId) {
-      startNew();
-    }
     if (!open) {
       setActiveConversationId(null);
+      setViewConversations(false);
+      setError(null);
+      setInput('');
     }
-  }, [open, activeConversationId, startNew]);
+  }, [open]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -45,25 +39,42 @@ export function CorrectorChatSheet({ open, onOpenChange, userName }: { open: boo
   }, [messages]);
 
   useEffect(() => {
-    if (!sending && !isStreaming && activeConversationId && inputRef.current) {
+    if (!sending && !isStreaming && inputRef.current) {
       inputRef.current.focus();
     }
-  }, [sending, isStreaming, activeConversationId]);
+  }, [sending, isStreaming]);
 
   const send = async () => {
     const text = input.trim();
-    if (!text || sending || !activeConversationId) return;
+    if (!text || sending || creating) return;
     setInput('');
-    setSending(true);
     setError(null);
+
     try {
-      await chatAction({ conversationId: activeConversationId, content: text });
+      let convId = activeConversationId;
+      if (!convId) {
+        setCreating(true);
+        convId = await createConversation();
+        setActiveConversationId(convId);
+        setCreating(false);
+      }
+      setSending(true);
+      await chatAction({ conversationId: convId, content: text });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'حدث خطأ غير متوقع');
     } finally {
       setSending(false);
     }
   };
+
+  const startNew = () => {
+    setActiveConversationId(null);
+    setViewConversations(false);
+    setError(null);
+    setInput('');
+  };
+
+  const isWelcome = !activeConversationId && !creating;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -129,7 +140,7 @@ export function CorrectorChatSheet({ open, onOpenChange, userName }: { open: boo
         ) : (
           <>
             <div ref={scrollRef} className="px-4 py-4 space-y-3 bg-muted/20 min-h-[260px] max-h-[360px] overflow-y-auto">
-              {messages.length === 0 && !sending && (
+              {isWelcome && (
                 <div className="flex gap-2">
                   <span className="w-7 h-7 shrink-0 rounded-full bg-[hsl(var(--ink-solid))] text-white flex items-center justify-center">
                     <ChatIcon size={13} />
@@ -180,12 +191,12 @@ export function CorrectorChatSheet({ open, onOpenChange, userName }: { open: boo
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
                 placeholder="اكتب حلّك هنا..."
-                disabled={sending}
+                disabled={sending || creating}
                 className="flex-1 h-10 rounded-full border border-border bg-card px-4 text-sm text-[hsl(var(--ink))] placeholder:text-muted-foreground outline-none focus:border-[hsl(var(--sprout))] transition-colors disabled:opacity-50"
               />
               <button
                 onClick={send}
-                disabled={!input.trim() || sending}
+                disabled={!input.trim() || sending || creating}
                 className="h-10 w-10 rounded-full bg-[hsl(var(--sprout))] text-white flex items-center justify-center hover:bg-[hsl(var(--sprout))]/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <SendIcon size={16} />
