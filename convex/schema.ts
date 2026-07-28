@@ -58,4 +58,12 @@ export default defineSchema({
     correction: v.optional(v.string()),
     estimatedMinutes: v.number(),
   }).index("by_subject_week", ["subject", "weekNumber"]),
+
+  // --- Corrector Chat Messages ---
+  correctorMessages: defineTable({
+    userId: v.string(),
+    role: v.union(v.literal("user"), v.literal("assistant")),
+    content: v.string(),
+    createdAt: v.number(),
+  }).index("by_userId", ["userId"]),
 });

@@ -109,7 +109,7 @@ export function DashboardTab({
         <span className="flex-1">
           <span className="block text-sm font-semibold text-[hsl(var(--ink))]">تحدّث مع المصحّح الذكي</span>
           <span className="block text-xs text-muted-foreground mt-0.5">
-            سيراجع حلولك ويصحح أخطاءك تلقائياً — قيد الربط حالياً
+            يراجع حلولك ويصحح أخطاءك تلقائياً
           </span>
         </span>
         <ChevronIcon className="text-muted-foreground rotate-180 shrink-0" size={16} />

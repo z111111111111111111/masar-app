@@ -9,6 +9,7 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as corrector from "../corrector.js";
 import type * as exercises from "../exercises.js";
 import type * as http from "../http.js";
 import type * as leaderboard from "../leaderboard.js";
@@ -23,6 +24,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  corrector: typeof corrector;
   exercises: typeof exercises;
   http: typeof http;
   leaderboard: typeof leaderboard;
