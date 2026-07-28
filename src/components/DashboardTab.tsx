@@ -127,10 +127,14 @@ export function DashboardTab({
 
       {/* Weekly strip — today in the center */}
       <div className="rounded-2xl border border-border bg-card p-4">
-        <h3 className="text-xs font-bold text-muted-foreground mb-3">أيام الأسبوع</h3>
         <div className="flex justify-between" dir="rtl">
           {week.map((d) => (
             <div key={d.iso} className="flex flex-col items-center gap-1.5">
+              {d.isToday ? (
+                <span className="text-[10px] font-bold text-[hsl(var(--sprout))] tracking-wide">اليوم</span>
+              ) : (
+                <span className="text-[10px] text-transparent select-none">اليوم</span>
+              )}
               <div
                 className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold ${
                   d.isFuture
