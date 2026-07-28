@@ -69,7 +69,7 @@ export default defineSchema({
   // --- Corrector Chat Messages ---
   correctorMessages: defineTable({
     userId: v.string(),
-    conversationId: v.id("correctorConversations"),
+    conversationId: v.optional(v.id("correctorConversations")),
     role: v.union(v.literal("user"), v.literal("assistant")),
     content: v.string(),
     createdAt: v.number(),

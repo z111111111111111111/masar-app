@@ -57,7 +57,7 @@ export const getMessages = query({
 const saveMessage = mutation({
   args: {
     userId: v.string(),
-    conversationId: v.id("correctorConversations"),
+    conversationId: v.optional(v.id("correctorConversations")),
     role: v.union(v.literal("user"), v.literal("assistant")),
     content: v.string(),
   },
