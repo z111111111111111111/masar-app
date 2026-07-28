@@ -7,6 +7,7 @@ import { ChatIcon, SendIcon } from './icons';
 export function CorrectorChatSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const chatAction = useAction(api.corrector.chat);
@@ -23,10 +24,11 @@ export function CorrectorChatSheet({ open, onOpenChange }: { open: boolean; onOp
     if (!text || sending) return;
     setInput('');
     setSending(true);
+    setError(null);
     try {
       await chatAction({ content: text });
     } catch (e) {
-      console.error(e);
+      setError(e instanceof Error ? e.message : 'حدث خطأ غير متوقع');
     } finally {
       setSending(false);
     }
@@ -79,6 +81,11 @@ export function CorrectorChatSheet({ open, onOpenChange }: { open: boolean; onOp
               <div className="bg-card border border-border rounded-2xl rounded-tr-sm px-3 py-2 text-sm text-muted-foreground">
                 جارٍ الكتابة...
               </div>
+            </div>
+          )}
+          {error && (
+            <div className="text-xs text-[hsl(var(--coral))] text-center px-2">
+              {error}
             </div>
           )}
         </div>
