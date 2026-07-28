@@ -182,7 +182,7 @@ export function DashboardTab({
 
       <p className="text-center text-xs text-muted-foreground italic px-4">"{quote}"</p>
 
-      <CorrectorChatSheet open={chatOpen} onOpenChange={setChatOpen} />
+      <CorrectorChatSheet open={chatOpen} onOpenChange={setChatOpen} userName={name} />
     </div>
   );
 }

@@ -75,7 +75,36 @@ const saveMessage = mutation({
   },
 });
 
-// --- Chat action ---
+const createEmptyMessage = mutation({
+  args: {
+    userId: v.string(),
+    conversationId: v.id("correctorConversations"),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.insert("correctorMessages", {
+      userId: args.userId,
+      conversationId: args.conversationId,
+      role: "assistant",
+      content: "",
+      createdAt: Date.now(),
+    });
+  },
+});
+
+const appendToMessage = mutation({
+  args: {
+    messageId: v.id("correctorMessages"),
+    chunk: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const msg = await ctx.db.get(args.messageId);
+    if (msg) {
+      await ctx.db.patch(args.messageId, { content: msg.content + args.chunk });
+    }
+  },
+});
+
+// --- Chat action (streaming) ---
 
 export const chat = action({
   args: {
@@ -103,17 +132,27 @@ export const chat = action({
       conversationId: args.conversationId,
     });
 
-    // Call OpenRouter (OpenAI-compatible format)
+    // Create empty assistant message for streaming
+    const msgId = await ctx.runMutation(api.corrector.createEmptyMessage, {
+      userId,
+      conversationId: args.conversationId,
+    });
+
+    // Build system prompt + history
     const systemPrompt = {
       role: "system" as const,
       content: "أنت مصحح ذكي لموقع مسار — منصة تعليمية لطلبة البكالوريا الجزائرية. أنت تجيب بالعربية الفصحى. مهمتك: مراجعة حلول الطالب، تصحيح الأخطاء خطوة بخطوة، شرح المفاهيم التي أخطأ فيها، وتقديم توجيهات دقيقة ومفيدة. أسلوبك ودود ومشجع."
     };
 
+    // We need to exclude the empty message from history for the API call
+    const nonEmptyMessages = history.filter(m => m.content !== "");
+
     const body = {
       model: MODEL,
-      messages: [systemPrompt, ...history.map((m) => ({ role: m.role as "user" | "assistant", content: m.content }))],
+      messages: [systemPrompt, ...nonEmptyMessages.map((m) => ({ role: m.role as "user" | "assistant", content: m.content }))],
       max_tokens: 2000,
       temperature: 0.7,
+      stream: true,
     };
 
     const response = await fetch(API_URL, {
@@ -129,36 +168,71 @@ export const chat = action({
     });
 
     if (!response.ok) {
+      // Remove empty message on error
+      await ctx.runMutation(api.corrector.removeMessage, { messageId: msgId });
       const err = await response.text();
       throw new Error(`OpenRouter API error: ${response.status} ${err}`);
     }
 
-    const data = (await response.json()) as {
-      choices: Array<{ message: { content: string } }>;
-    };
-    const reply = data.choices?.[0]?.message?.content;
-    if (!reply) throw new Error("Empty response from OpenRouter");
+    const reader = response.body!.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let fullReply = "";
 
-    // Save assistant reply
-    await ctx.runMutation(api.corrector.saveMessage, {
-      userId,
-      conversationId: args.conversationId,
-      role: "assistant",
-      content: reply,
-    });
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
 
-    // If title is still default, generate one from first user message
-    const conversation = await ctx.runQuery(api.corrector.getConversation, {
-      conversationId: args.conversationId,
-    });
-    if (conversation?.title === "محادثة جديدة" && history.length <= 1) {
-      await ctx.runMutation(api.corrector.updateTitle, {
-        conversationId: args.conversationId,
-        title: await generateTitle(args.content, apiKey),
-      });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        if (line.startsWith("data: ") && line.trim() !== "data: [DONE]") {
+          try {
+            const json = JSON.parse(line.slice(6));
+            const chunk = json.choices?.[0]?.delta?.content;
+            if (chunk) {
+              fullReply += chunk;
+              await ctx.runMutation(api.corrector.appendToMessage, {
+                messageId: msgId,
+                chunk,
+              });
+            }
+          } catch { /* skip parse errors */ }
+        }
+      }
     }
 
-    return reply;
+    // If reply is empty after streaming, clean up
+    if (!fullReply) {
+      await ctx.runMutation(api.corrector.removeMessage, { messageId: msgId });
+      throw new Error("Empty response from OpenRouter");
+    }
+
+    // Generate title from first user message
+    if (history.length <= 1) {
+      const conversation = await ctx.runQuery(api.corrector.getConversation, {
+        conversationId: args.conversationId,
+      });
+      if (conversation?.title === "محادثة جديدة") {
+        await ctx.runMutation(api.corrector.updateTitle, {
+          conversationId: args.conversationId,
+          title: await generateTitle(args.content, apiKey),
+        });
+      }
+    }
+
+    return fullReply;
+  },
+});
+
+// --- Cleanup for failed messages ---
+
+export const removeMessage = mutation({
+  args: { messageId: v.id("correctorMessages") },
+  handler: async (ctx, args) => {
+    await ctx.db.delete(args.messageId);
   },
 });
 
@@ -196,7 +270,7 @@ async function generateTitle(userMessage: string, apiKey: string): Promise<strin
   }
 }
 
-export { saveMessage };
+export { saveMessage, createEmptyMessage, appendToMessage };
 
 export const getConversation = query({
   args: { conversationId: v.id("correctorConversations") },

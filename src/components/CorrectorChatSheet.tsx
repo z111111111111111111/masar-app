@@ -5,7 +5,7 @@ import type { Id } from 'convex/_generated/dataModel';
 import { Dialog, DialogContent, DialogHeader } from '@/components/ui/dialog';
 import { ChatIcon, SendIcon } from './icons';
 
-export function CorrectorChatSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+export function CorrectorChatSheet({ open, onOpenChange, userName }: { open: boolean; onOpenChange: (v: boolean) => void; userName: string }) {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -19,7 +19,8 @@ export function CorrectorChatSheet({ open, onOpenChange }: { open: boolean; onOp
   const messages = useQuery(api.corrector.getMessages, activeConversationId ? { conversationId: activeConversationId } : 'skip') ?? [];
   const chatAction = useAction(api.corrector.chat);
 
-  // Create new conversation when dialog opens
+  const isStreaming = messages.length > 0 && messages[messages.length - 1].role === 'assistant' && messages[messages.length - 1].content === '';
+
   const startNew = useCallback(async () => {
     const id = await createConversation();
     setActiveConversationId(id);
@@ -43,10 +44,10 @@ export function CorrectorChatSheet({ open, onOpenChange }: { open: boolean; onOp
   }, [messages]);
 
   useEffect(() => {
-    if (!sending && activeConversationId && inputRef.current) {
+    if (!sending && !isStreaming && activeConversationId && inputRef.current) {
       inputRef.current.focus();
     }
-  }, [sending, activeConversationId]);
+  }, [sending, isStreaming, activeConversationId]);
 
   const send = async () => {
     const text = input.trim();
@@ -119,7 +120,7 @@ export function CorrectorChatSheet({ open, onOpenChange }: { open: boolean; onOp
         ) : (
           <>
             <div ref={scrollRef} className="px-4 py-4 space-y-3 bg-muted/20 min-h-[260px] max-h-[360px] overflow-y-auto">
-              {messages.length === 0 && (
+              {messages.length === 0 && !sending && (
                 <div className="flex gap-2">
                   <span className="w-7 h-7 shrink-0 rounded-full bg-[hsl(var(--ink-solid))] text-white flex items-center justify-center">
                     <ChatIcon size={13} />
@@ -129,32 +130,33 @@ export function CorrectorChatSheet({ open, onOpenChange }: { open: boolean; onOp
                   </div>
                 </div>
               )}
-              {messages.map((m, i) => (
-                <div key={i} className={`flex gap-2 ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                  <span className={`w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-white ${
-                    m.role === 'user' ? 'bg-[hsl(var(--sprout))]' : 'bg-[hsl(var(--ink-solid))]'
-                  }`}>
-                    <ChatIcon size={13} />
-                  </span>
-                  <div className={`rounded-2xl px-3 py-2 text-sm leading-relaxed max-w-[85%] ${
-                    m.role === 'user'
-                      ? 'bg-[hsl(var(--sprout))] text-white rounded-tl-sm'
-                      : 'bg-card border border-border rounded-tr-sm text-[hsl(var(--ink))]'
-                  }`}>
-                    {m.content}
+              {messages.map((m, i) => {
+                const isUser = m.role === 'user';
+                const isLast = i === messages.length - 1;
+                const showStreaming = !isUser && isLast && m.content === '' && isStreaming;
+                return (
+                  <div key={i} className={`flex gap-2 ${isUser ? 'flex-row-reverse' : ''}`}>
+                    <span className={`w-7 h-7 shrink-0 rounded-full flex items-center justify-center font-semibold text-white ${
+                      isUser ? 'bg-[hsl(var(--sprout))]' : 'bg-[hsl(var(--ink-solid))]'
+                    }`}>
+                      {isUser ? userName.slice(0, 1) : <ChatIcon size={13} />}
+                    </span>
+                    <div className={`rounded-2xl px-3 py-2 leading-relaxed max-w-[85%] ${
+                      isUser
+                        ? 'bg-[hsl(var(--sprout))] text-white rounded-tl-sm text-sm'
+                        : 'bg-card border border-border rounded-tr-sm text-[hsl(var(--ink))] text-sm'
+                    }`}>
+                      {showStreaming ? (
+                        <span className="flex gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-current animate-bounce" style={{ animationDelay: '0ms' }} />
+                          <span className="w-1.5 h-1.5 rounded-full bg-current animate-bounce" style={{ animationDelay: '150ms' }} />
+                          <span className="w-1.5 h-1.5 rounded-full bg-current animate-bounce" style={{ animationDelay: '300ms' }} />
+                        </span>
+                      ) : m.content}
+                    </div>
                   </div>
-                </div>
-              ))}
-              {sending && (
-                <div className="flex gap-2">
-                  <span className="w-7 h-7 shrink-0 rounded-full bg-[hsl(var(--ink-solid))] text-white flex items-center justify-center">
-                    <ChatIcon size={13} />
-                  </span>
-                  <div className="bg-card border border-border rounded-2xl rounded-tr-sm px-3 py-2 text-sm text-muted-foreground">
-                    جارٍ الكتابة...
-                  </div>
-                </div>
-              )}
+                );
+              })}
               {error && (
                 <div className="text-xs text-[hsl(var(--coral))] text-center px-2">
                   {error}
