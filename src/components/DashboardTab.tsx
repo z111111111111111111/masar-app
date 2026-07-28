@@ -127,14 +127,13 @@ export function DashboardTab({
 
       {/* Weekly strip — today in the center */}
       <div className="rounded-2xl border border-border bg-card p-4">
-        <div className="flex justify-between" dir="rtl">
+        <div dir="rtl" className="grid grid-cols-7 mb-3">
+          <span className="col-start-1 text-[11px] font-bold text-muted-foreground text-center">اجتهادك اليومي</span>
+          <span className="col-start-4 text-[11px] font-bold text-[hsl(var(--sprout))] text-center">اليوم الحالي</span>
+        </div>
+        <div dir="rtl" className="grid grid-cols-7">
           {week.map((d) => (
             <div key={d.iso} className="flex flex-col items-center gap-1.5">
-              {d.isToday ? (
-                <span className="text-[10px] font-bold text-[hsl(var(--sprout))] tracking-wide">اليوم</span>
-              ) : (
-                <span className="text-[10px] text-transparent select-none">اليوم</span>
-              )}
               <div
                 className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold ${
                   d.isFuture
