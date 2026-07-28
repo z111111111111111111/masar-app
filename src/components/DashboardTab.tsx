@@ -126,7 +126,7 @@ export function DashboardTab({
       {/* Last 7 days strip */}
       <div className="rounded-2xl border border-border bg-card p-4">
         <h3 className="text-xs font-bold text-muted-foreground mb-3">آخر 7 أيام</h3>
-        <div className="flex justify-between">
+        <div className="flex justify-between" dir="rtl">
           {last7.map((d) => (
             <div key={d.iso} className="flex flex-col items-center gap-1.5">
               <div
