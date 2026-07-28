@@ -126,12 +126,12 @@ export function DashboardTab({
       <RandomExerciseCard dayIndexToday={dayIndexToday} />
 
       {/* Weekly strip — today in the center */}
-      <div className="rounded-2xl border border-border bg-card p-4">
-        <div dir="rtl" className="grid grid-cols-7 mb-3">
-          <span className="col-start-1 text-[11px] font-bold text-muted-foreground text-center">اجتهادك اليومي</span>
-          <span className="col-start-4 text-[11px] font-bold text-[hsl(var(--sprout))] text-center">اليوم الحالي</span>
-        </div>
+      <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
+        <h2 className="font-semibold text-[hsl(var(--ink))] text-sm">اجتهادك اليومي</h2>
         <div dir="rtl" className="grid grid-cols-7">
+          <span className="col-start-4 text-[10px] font-bold text-[hsl(var(--sprout))] text-center">اليوم الحالي</span>
+        </div>
+        <div dir="rtl" className="grid grid-cols-7 pt-0.5">
           {week.map((d) => (
             <div key={d.iso} className="flex flex-col items-center gap-1.5">
               <div
