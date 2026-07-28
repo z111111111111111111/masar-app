@@ -73,7 +73,7 @@ export function RandomExerciseCard({ dayIndexToday }: { dayIndexToday: number })
               {status === 'idle' && 'مؤقّت مستقل لهذا التمرين — 30 دقيقة'}
               {status === 'running' && 'العدّ التنازلي جارٍ'}
               {status === 'stopped' && 'تم إيقاف المؤقّت'}
-              {status === 'done' && 'انتهت الثلاثون دقيقة'}
+              {status === 'done' && 'أحسنت! انتهى التمرين'}
             </p>
 
             <div className="flex items-center justify-center gap-2 mt-3">
@@ -83,11 +83,32 @@ export function RandomExerciseCard({ dayIndexToday }: { dayIndexToday: number })
                 </TimerButton>
               )}
               {status === 'running' && (
-                <TimerButton tone="ember" onClick={() => setStatus('stopped')}>
-                  <PauseIcon size={13} /> إيقاف
-                </TimerButton>
+                <>
+                  <TimerButton tone="ember" onClick={() => setStatus('stopped')}>
+                    <PauseIcon size={13} /> إيقاف
+                  </TimerButton>
+                  <TimerButton tone="sprout" onClick={() => setStatus('done')}>
+                    انتهيت
+                  </TimerButton>
+                </>
               )}
-              {(status === 'stopped' || status === 'done') && (
+              {(status === 'stopped') && (
+                <>
+                  <TimerButton
+                    tone="ink"
+                    onClick={() => {
+                      setRemaining(DURATION);
+                      setStatus('idle');
+                    }}
+                  >
+                    <PlayIcon size={13} /> إعادة ضبط المؤقّت
+                  </TimerButton>
+                  <TimerButton tone="sprout" onClick={() => setStatus('done')}>
+                    انتهيت
+                  </TimerButton>
+                </>
+              )}
+              {status === 'done' && (
                 <TimerButton
                   tone="ink"
                   onClick={() => {
@@ -121,10 +142,12 @@ function TimerButton({
 }: {
   children: React.ReactNode;
   onClick: () => void;
-  tone: 'ink' | 'ember';
+  tone: 'ink' | 'ember' | 'sprout';
 }) {
   const toneClass =
-    tone === 'ink' ? 'bg-[hsl(var(--ink-solid))] hover:bg-[hsl(var(--ink-solid))]/90' : 'bg-[hsl(var(--ember))] hover:bg-[hsl(var(--ember))]/90';
+    tone === 'ink' ? 'bg-[hsl(var(--ink-solid))] hover:bg-[hsl(var(--ink-solid))]/90'
+    : tone === 'ember' ? 'bg-[hsl(var(--ember))] hover:bg-[hsl(var(--ember))]/90'
+    : 'bg-[hsl(var(--sprout))] hover:bg-[hsl(var(--sprout))]/90';
   return (
     <button
       onClick={onClick}
