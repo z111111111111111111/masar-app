@@ -2,8 +2,10 @@ import { action, query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { api } from "./_generated/api";
 
-const GEMINI_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+const API_URL = "https://openrouter.ai/api/v1/chat/completions";
+const MODEL = "google/gemini-2.0-flash:free";
+const SITE_URL = "https://masar-app.vercel.app";
+const SITE_NAME = "Masar";
 
 // --- Conversations ---
 
@@ -85,8 +87,8 @@ export const chat = action({
     if (!identity) throw new Error("Not authenticated");
     const userId = identity.subject;
 
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) throw new Error("GEMINI_API_KEY not configured");
+    const apiKey = process.env.OPENROUTER_API_KEY;
+    if (!apiKey) throw new Error("OPENROUTER_API_KEY not configured");
 
     // Save user message
     await ctx.runMutation(api.corrector.saveMessage, {
@@ -101,42 +103,41 @@ export const chat = action({
       conversationId: args.conversationId,
     });
 
-    // Call Gemini Flash
-    const contents = history.map((m) => ({
-      role: m.role === "assistant" ? "model" as const : "user" as const,
-      parts: [{ text: m.content }],
-    }));
-
-    const body = {
-      system_instruction: {
-        parts: [{
-          text: "أنت مصحح ذكي لموقع مسار — منصة تعليمية لطلبة البكالوريا الجزائرية. أنت تجيب بالعربية الفصحى. مهمتك: مراجعة حلول الطالب، تصحيح الأخطاء خطوة بخطوة، شرح المفاهيم التي أخطأ فيها، وتقديم توجيهات دقيقة ومفيدة. أسلوبك ودود ومشجع."
-        }],
-      },
-      contents,
-      generationConfig: {
-        maxOutputTokens: 2000,
-        temperature: 0.7,
-      },
+    // Call OpenRouter (OpenAI-compatible format)
+    const systemPrompt = {
+      role: "system" as const,
+      content: "أنت مصحح ذكي لموقع مسار — منصة تعليمية لطلبة البكالوريا الجزائرية. أنت تجيب بالعربية الفصحى. مهمتك: مراجعة حلول الطالب، تصحيح الأخطاء خطوة بخطوة، شرح المفاهيم التي أخطأ فيها، وتقديم توجيهات دقيقة ومفيدة. أسلوبك ودود ومشجع."
     };
 
-    const response = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
+    const body = {
+      model: MODEL,
+      messages: [systemPrompt, ...history.map((m) => ({ role: m.role as "user" | "assistant", content: m.content }))],
+      max_tokens: 2000,
+      temperature: 0.7,
+    };
+
+    const response = await fetch(API_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+        "HTTP-Referer": SITE_URL,
+        "X-Title": SITE_NAME,
+      },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(30000),
     });
 
     if (!response.ok) {
       const err = await response.text();
-      throw new Error(`Gemini API error: ${response.status} ${err}`);
+      throw new Error(`OpenRouter API error: ${response.status} ${err}`);
     }
 
     const data = (await response.json()) as {
-      candidates?: Array<{ content: { parts: Array<{ text: string }> } }>;
+      choices: Array<{ message: { content: string } }>;
     };
-    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!reply) throw new Error("Empty response from Gemini");
+    const reply = data.choices?.[0]?.message?.content;
+    if (!reply) throw new Error("Empty response from OpenRouter");
 
     // Save assistant reply
     await ctx.runMutation(api.corrector.saveMessage, {
@@ -166,30 +167,30 @@ export const chat = action({
 async function generateTitle(userMessage: string, apiKey: string): Promise<string> {
   try {
     const body = {
-      contents: [{
-        role: "user" as const,
-        parts: [{ text: userMessage }],
-      }],
-      system_instruction: {
-        parts: [{
-          text: "لخص رسالة المستخدم التالية في عنوان قصير جداً (3-5 كلمات). أعد فقط العنوان بدون علامات اقتباس."
-        }],
-      },
-      generationConfig: { maxOutputTokens: 20, temperature: 0.3 },
+      model: MODEL,
+      messages: [
+        { role: "system" as const, content: "لخص رسالة المستخدم التالية في عنوان قصير جداً (3-5 كلمات). أعد فقط العنوان بدون علامات اقتباس." },
+        { role: "user" as const, content: userMessage },
+      ],
+      max_tokens: 20,
+      temperature: 0.3,
     };
 
-    const response = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
+    const response = await fetch(API_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+        "HTTP-Referer": SITE_URL,
+        "X-Title": SITE_NAME,
+      },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(10000),
     });
 
     if (!response.ok) return "محادثة";
-    const data = (await response.json()) as {
-      candidates?: Array<{ content: { parts: Array<{ text: string }> } }>;
-    };
-    return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim().slice(0, 40) || "محادثة";
+    const data = (await response.json()) as { choices: Array<{ message: { content: string } }> };
+    return data.choices?.[0]?.message?.content?.trim().slice(0, 40) || "محادثة";
   } catch {
     return "محادثة";
   }
