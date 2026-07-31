@@ -5,20 +5,24 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-all duration-75 ease-out focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 select-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 active:translate-y-[3px]",
   {
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground shadow hover:bg-primary/90",
+          "bg-primary text-primary-foreground shadow-[0_4px_0_hsl(var(--ink-dark))] hover:bg-primary/90 active:shadow-[0_1px_0_hsl(var(--ink-dark))]",
         destructive:
-          "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
+          "bg-destructive text-destructive-foreground shadow-[0_4px_0_hsl(var(--coral-dark))] hover:bg-destructive/90 active:shadow-[0_1px_0_hsl(var(--coral-dark))]",
         outline:
           "border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground",
         secondary:
           "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
+        sprout:
+          "bg-[hsl(var(--sprout))] text-white shadow-[0_4px_0_hsl(var(--sprout-dark))] hover:bg-[hsl(var(--sprout))/0.9] active:shadow-[0_1px_0_hsl(var(--sprout-dark))]",
+        ember:
+          "bg-[hsl(var(--ember))] text-white shadow-[0_4px_0_hsl(var(--ember-dark))] hover:bg-[hsl(var(--ember))/0.9] active:shadow-[0_1px_0_hsl(var(--ember-dark))]",
       },
       size: {
         default: "h-9 px-4 py-2",

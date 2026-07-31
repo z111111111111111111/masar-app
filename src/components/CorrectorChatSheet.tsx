@@ -3,6 +3,7 @@ import { useAction, useQuery, useMutation } from 'convex/react';
 import { api } from 'convex/_generated/api';
 import type { Id } from 'convex/_generated/dataModel';
 import { Dialog, DialogContent, DialogHeader } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { ChatIcon, SendIcon, TrashIcon } from './icons';
 import { MarkdownText } from './MarkdownText';
 
@@ -195,13 +196,15 @@ export function CorrectorChatSheet({ open, onOpenChange, userName }: { open: boo
                 disabled={sending || creating}
                 className="flex-1 h-10 rounded-full border border-border bg-card px-4 text-sm text-[hsl(var(--ink))] placeholder:text-muted-foreground outline-none focus:border-[hsl(var(--sprout))] transition-colors disabled:opacity-50"
               />
-              <button
+              <Button
+                variant="sprout"
+                size="icon"
+                className="h-10 w-10 rounded-full"
                 onClick={send}
                 disabled={!input.trim() || sending || creating}
-                className="h-10 w-10 rounded-full bg-[hsl(var(--sprout))] text-white flex items-center justify-center hover:bg-[hsl(var(--sprout))]/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <SendIcon size={16} />
-              </button>
+              </Button>
             </div>
           </>
         )}

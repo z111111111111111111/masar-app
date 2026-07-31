@@ -4,6 +4,7 @@ import { currentWeekFromStart, pickTopicForSubject } from '@/lib/curriculum';
 import { formatClock } from '@/lib/dates';
 import { SubjectIcon } from './SubjectIcon';
 import { ShuffleIcon, PlayIcon, PauseIcon } from './icons';
+import { Button } from '@/components/ui/button';
 
 const DURATION = 30 * 60; // fixed 30-minute countdown, independent from the daily subject timers
 
@@ -124,13 +125,14 @@ export function RandomExerciseCard({ dayIndexToday }: { dayIndexToday: number })
         </div>
       )}
 
-      <button
+      <Button
+        variant="outline"
+        className="w-full h-10 rounded-xl"
         onClick={generate}
-        className="w-full h-10 rounded-xl border border-border text-sm font-semibold text-[hsl(var(--ink))] flex items-center justify-center gap-2 hover:bg-muted/50 transition-colors"
       >
         <ShuffleIcon size={15} />
         {suggestion ? 'اقترح تمريناً آخر' : 'اقترح تمريناً عشوائياً'}
-      </button>
+      </Button>
     </div>
   );
 }
@@ -144,16 +146,14 @@ function TimerButton({
   onClick: () => void;
   tone: 'ink' | 'ember' | 'sprout';
 }) {
-  const toneClass =
-    tone === 'ink' ? 'bg-[hsl(var(--ink-solid))] hover:bg-[hsl(var(--ink-solid))]/90'
-    : tone === 'ember' ? 'bg-[hsl(var(--ember))] hover:bg-[hsl(var(--ember))]/90'
-    : 'bg-[hsl(var(--sprout))] hover:bg-[hsl(var(--sprout))]/90';
+  const variant = tone === 'ink' ? 'default' : tone;
   return (
-    <button
+    <Button
+      variant={variant}
+      className="h-9 px-4 rounded-full text-xs"
       onClick={onClick}
-      className={`h-9 px-4 rounded-full text-white text-xs font-semibold flex items-center gap-1.5 transition-colors ${toneClass}`}
     >
       {children}
-    </button>
+    </Button>
   );
 }

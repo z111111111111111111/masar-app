@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { ChevronIcon } from '../icons';
+import { Button } from '@/components/ui/button';
 
 interface Exercise {
   question: string;
@@ -253,12 +254,13 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
               </a>
             </div>
 
-            <button
+            <Button
               onClick={handleStart}
-              className="w-full h-12 rounded-xl bg-[hsl(var(--ink-solid))] hover:bg-[hsl(var(--ink-solid))]/90 text-white font-bold text-sm transition-all active:scale-[0.98] shadow-md"
+              variant="default"
+              className="w-full h-12 rounded-xl"
             >
               فهمت لننطلق
-            </button>
+            </Button>
           </div>
         )}
 
@@ -313,12 +315,13 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
             </div>
 
             {selected !== null && !answered && (
-              <button
+              <Button
                 onClick={handleVerify}
-                className="w-full h-11 rounded-xl bg-[hsl(var(--ink-solid))] hover:bg-[hsl(var(--ink-solid))]/90 text-white font-bold text-sm transition-all active:scale-[0.98] animate-[pop-in_0.2s_ease-out]"
+                variant="default"
+                className="w-full h-11 rounded-xl animate-[pop-in_0.2s_ease-out]"
               >
                 تحقق
-              </button>
+              </Button>
             )}
 
             {answered && verified && (
@@ -331,12 +334,13 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
                     <span className="font-bold text-[hsl(var(--sprout))]">{shuffledExercises[currentQ].options[shuffledExercises[currentQ].correct]}</span>
                   </p>
                 )}
-                <button
+                <Button
                   onClick={handleNext}
-                  className="w-full h-11 rounded-xl bg-[hsl(var(--ink-solid))] hover:bg-[hsl(var(--ink-solid))]/90 text-white font-bold text-sm transition-all active:scale-[0.98]"
+                  variant="default"
+                  className="w-full h-11 rounded-xl"
                 >
                   متابعة
-                </button>
+                </Button>
               </div>
             )}
           </div>

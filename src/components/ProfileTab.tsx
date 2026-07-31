@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation } from 'convex/react';
 import { api } from 'convex/_generated/api';
 import { SUBJECTS, subjectColor } from '@/lib/subjects';
+import { Button } from '@/components/ui/button';
 import {
   currentLeague,
   dayAverageScore,
@@ -159,16 +160,17 @@ export function ProfileTab({
             </p>
           </div>
           <DialogFooter className="px-4 pb-4 flex-row gap-3 !justify-center">
-            <button
+            <Button
+              variant="sprout"
+              className="flex-1 h-10 rounded-full"
               onClick={async () => {
                 await setAllowSharing({ allow: true });
                 setConfirmOpen(false);
                 setShareOpen(true);
               }}
-              className="flex-1 h-10 rounded-full bg-[hsl(var(--sprout))] hover:bg-[hsl(var(--sprout))]/90 text-white text-sm font-semibold transition-colors"
             >
               نعم، شارك
-            </button>
+            </Button>
             <button
               onClick={async () => {
                 await setAllowSharing({ allow: false });
