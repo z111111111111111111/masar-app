@@ -1,7 +1,5 @@
-import type { ReactNode } from 'react';
+import { KaTeXBlock } from '@/components/landing/MathText';
 
-export function M({ children }: { children: ReactNode }) {
-  return (
-    <span dir="ltr" className="font-mono font-bold">{children}</span>
-  );
+export function K({ tex, className }: { tex: string; className?: string }) {
+  return <KaTeXBlock tex={tex} className={className} />;
 }

@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { MathText, KaTeXBlock } from '@/components/landing/MathText';
 import { SystemFrame, FeedbackBlock } from './SystemFrame';
 import { shuffle } from './utils';
 
@@ -47,26 +48,29 @@ export function OrderBuilder({ badge, instruction, hint, pool, correctOrder, ans
   const chip = (label: string, extra = '') => (
     <span
       dir={mathStyle ? 'ltr' : undefined}
-      className={`inline-flex items-center justify-center px-3 py-1.5 rounded-lg font-bold text-sm ${mathStyle ? 'font-mono' : ''} ${extra}`}
+      className={`inline-flex items-center justify-center px-3 py-1.5 rounded-lg font-bold ${extra}`}
     >
-      {label}
+      {mathStyle ? <KaTeXBlock tex={label} className="text-base" /> : label}
     </span>
   );
 
   return (
     <SystemFrame badge={badge} index={index} total={total}>
       <div className="rounded-2xl border border-border bg-card p-6 space-y-5">
-        <p className="text-lg font-bold text-[hsl(var(--ink))] leading-relaxed text-center">
-          {instruction}
-        </p>
+        <MathText
+          tex={instruction}
+          className="text-lg font-bold text-[hsl(var(--ink))] leading-relaxed text-center"
+        />
         {hint && <p className="text-xs text-muted-foreground text-center">{hint}</p>}
 
         {/* Answer slots */}
         <div className="space-y-1">
           <div className="flex items-center justify-center gap-2">
-            <span className="text-xs text-muted-foreground font-semibold">{answerLabel ?? 'الترتيب الصحيح:'}</span>
+            {mathStyle
+              ? <KaTeXBlock tex={answerLabel ?? "f'(x)="} className="text-sm text-muted-foreground" />
+              : <span className="text-xs text-muted-foreground font-semibold">{answerLabel ?? 'الترتيب الصحيح:'}</span>}
           </div>
-          <div dir={mathStyle ? 'ltr' : 'rtl'} className="flex items-center justify-center gap-2 flex-wrap min-h-[52px] p-3 rounded-xl bg-muted/40 border border-dashed border-border">
+          <div dir={mathStyle ? 'ltr' : 'rtl'} className="flex items-center justify-center gap-2 flex-wrap min-h-[56px] p-3 rounded-xl bg-muted/40 border border-dashed border-border">
             {correctOrder.map((_, i) =>
               order[i]
                 ? (
@@ -75,7 +79,7 @@ export function OrderBuilder({ badge, instruction, hint, pool, correctOrder, ans
                   </button>
                 )
                 : (
-                  <span key={i} className="w-10 h-8 rounded-lg border border-dashed border-muted-foreground/30" />
+                  <span key={i} className="w-10 h-9 rounded-lg border border-dashed border-muted-foreground/30" />
                 )
             )}
           </div>
@@ -115,7 +119,9 @@ export function OrderBuilder({ badge, instruction, hint, pool, correctOrder, ans
                   الترتيب الصحيح:{' '}
                   <span dir={mathStyle ? 'ltr' : 'rtl'} className="inline-flex gap-1.5 font-bold">
                     {correctOrder.map((p, i) => (
-                      <span key={i} className="px-2 py-0.5 rounded-md bg-card border border-border font-mono text-sm">{p}</span>
+                      <span key={i} className="px-2 py-0.5 rounded-md bg-card border border-border">
+                        {mathStyle ? <KaTeXBlock tex={p} className="text-sm" /> : p}
+                      </span>
                     ))}
                   </span>
                 </span>

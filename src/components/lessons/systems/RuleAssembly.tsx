@@ -14,7 +14,7 @@ export function RuleAssembly({ data, index, total, onSubmit, onNext }: {
       instruction={data.instruction}
       pool={data.pieces}
       correctOrder={data.correctOrder}
-      answerLabel={data.answerLabel ?? "f'(x) ="}
+      answerLabel={data.answerLabel ?? "f'(x)="}
       mathStyle
       index={index}
       total={total}

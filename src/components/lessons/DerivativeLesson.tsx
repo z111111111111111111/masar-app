@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { ChevronIcon } from '../icons';
 import { Button } from '@/components/ui/button';
+import { KaTeXBlock } from '@/components/landing/MathText';
 import { DERIVATIVE_FLOW } from './DerivativeFlow';
 import { MultipleChoice } from './systems/MultipleChoice';
 import { RuleAssembly } from './systems/RuleAssembly';
@@ -161,17 +162,17 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
                 <div className="rounded-xl border border-[hsl(var(--chart-1))]/20 bg-[hsl(var(--chart-1))]/5 p-4 animate-[pop-in_0.3s_ease-out]">
                   <DerivativeGraph ready={graphReady} />
                   <p className="text-[11px] text-muted-foreground text-center mt-3">
-                     الدالة <span className="font-mono font-bold text-[hsl(var(--ink))]">f(x) = x³</span> مع خط المماس
+                     الدالة <KaTeXBlock tex="f(x)=x^{3}" className="font-bold text-[hsl(var(--ink))]" /> مع خط المماس
                   </p>
                 </div>
               )}
 
               <div className="rounded-xl bg-muted/50 p-4">
                 <p className="text-xs text-muted-foreground mb-2 font-medium">القاعدة الأساسية</p>
-                <div className="flex items-center gap-2 text-base font-bold font-mono" dir="ltr">
-                  <span className="text-[hsl(var(--ink))]">f(x) = xⁿ</span>
+                <div className="flex items-center justify-center gap-3 text-base font-bold" dir="ltr">
+                  <KaTeXBlock tex="f(x)=x^{n}" className="text-[hsl(var(--ink))]" />
                   <span className="text-muted-foreground text-sm">→</span>
-                  <span className="text-[hsl(var(--sprout))]">f'(x) = n · xⁿ⁻¹</span>
+                  <KaTeXBlock tex="f'(x)=n\cdot x^{n-1}" className="text-[hsl(var(--sprout))]" />
                 </div>
               </div>
             </div>

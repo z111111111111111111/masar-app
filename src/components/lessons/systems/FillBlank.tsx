@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { MathText, KaTeXBlock } from '@/components/landing/MathText';
 import { SystemFrame, FeedbackBlock } from './SystemFrame';
 import type { FillData } from './types';
 
@@ -27,13 +28,13 @@ export function FillBlank({ data, index, total, onSubmit, onNext }: {
           {data.before}
           <span
             dir="ltr"
-            className={`inline-flex items-center justify-center min-w-[84px] px-3 py-1.5 rounded-lg border-2 font-mono font-bold text-sm transition-colors ${
+            className={`inline-flex items-center justify-center min-w-[84px] px-3 py-1 rounded-lg border-2 transition-colors ${
               selected
                 ? 'border-[hsl(var(--sprout))] bg-[hsl(var(--sprout-soft))] text-[hsl(var(--ink))]'
                 : 'border-dashed border-muted-foreground/40 text-muted-foreground'
             }`}
           >
-            {selected ?? '؟'}
+            {selected ? <KaTeXBlock tex={selected} className="text-base" /> : <span className="text-sm font-bold">؟</span>}
           </span>
           {data.after}
         </p>
@@ -56,10 +57,10 @@ export function FillBlank({ data, index, total, onSubmit, onNext }: {
                 key={c}
                 onClick={() => { if (!answered) setSelected(c); }}
                 disabled={answered}
-                className={`h-12 rounded-xl border ${ring} ${bg} transition-all font-mono font-bold text-sm text-[hsl(var(--ink))] disabled:cursor-default`}
+                className={`h-14 rounded-xl border ${ring} ${bg} transition-all text-[hsl(var(--ink))] disabled:cursor-default`}
                 dir="ltr"
               >
-                {c}
+                <KaTeXBlock tex={c} className="text-base font-bold" />
               </button>
             );
           })}
@@ -75,7 +76,7 @@ export function FillBlank({ data, index, total, onSubmit, onNext }: {
       {answered && (
         <FeedbackBlock
           correct={correct}
-          explanation={data.explanation}
+          explanation={<MathText tex={data.explanation} className="text-xs leading-relaxed text-[hsl(var(--ink))]" />}
           actions={<Button onClick={onNext} variant="default" className="w-full h-11 rounded-xl">متابعة</Button>}
         />
       )}

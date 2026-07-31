@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { MathText } from '@/components/landing/MathText';
 import { SystemFrame, FeedbackBlock } from './SystemFrame';
 import type { TrueFalseData } from './types';
 
@@ -51,7 +52,7 @@ export function TrueFalse({ data, index, total, onSubmit, onNext }: {
       {answered && (
         <FeedbackBlock
           correct={correct}
-          explanation={data.explanation}
+          explanation={<MathText tex={data.explanation} className="text-xs leading-relaxed text-[hsl(var(--ink))]" />}
           actions={<Button onClick={onNext} variant="default" className="w-full h-11 rounded-xl">متابعة</Button>}
         />
       )}
