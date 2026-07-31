@@ -291,3 +291,10 @@
 /* KaTeX math rendering comfort */
 .katex { font-size: 1em !important; }
 .katex-display { margin: 0.4em 0 !important; }
+
+/* KaTeX must always render as LTR even inside RTL (Arabic) layouts.
+   Without this, the browser's bidi algorithm reverses expressions and
+   puts superscripts on the wrong side. unicode-bidi: isolate keeps each
+   expression an atomic unit so surrounding Arabic text cannot reorder it. */
+.katex { direction: ltr; unicode-bidi: isolate; }
+.katex-display > .katex { direction: ltr; unicode-bidi: isolate; }
