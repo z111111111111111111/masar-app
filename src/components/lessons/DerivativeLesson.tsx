@@ -1,40 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { ChevronIcon } from '../icons';
 import { Button } from '@/components/ui/button';
-
-interface Exercise {
-  question: string;
-  options: string[];
-  correct: number;
-}
-
-const EXERCISES: Exercise[] = [
-  {
-    question: 'ما هي مشتقة الدالة f(x) = x⁷؟',
-    options: ['7x⁶', 'x⁶', '7x⁷', '6x⁶'],
-    correct: 0,
-  },
-  {
-    question: 'ما هي مشتقة الدالة f(x) = x³؟',
-    options: ['3x²', 'x²', '3x³', '2x²'],
-    correct: 0,
-  },
-  {
-    question: 'ما هي مشتقة الدالة f(x) = x؟ (تذكر أن x = x¹)',
-    options: ['0', '1', 'x', 'x²'],
-    correct: 1,
-  },
-  {
-    question: 'ما هي مشتقة الدالة الثابتة f(x) = 7؟ (تذكر أن 7 = 7·x⁰)',
-    options: ['7', '0', '7x', '1'],
-    correct: 1,
-  },
-  {
-    question: 'ما هي مشتقة f(x) = 4x³؟',
-    options: ['4x²', '12x²', '12x³', '3x²'],
-    correct: 1,
-  },
-];
+import { DERIVATIVE_FLOW } from './DerivativeFlow';
+import { MultipleChoice } from './systems/MultipleChoice';
+import { RuleAssembly } from './systems/RuleAssembly';
+import { FillBlank } from './systems/FillBlank';
+import { TrueFalse } from './systems/TrueFalse';
+import { CardSort } from './systems/CardSort';
 
 const COMPLETED_KEY = 'masar-completed-subjects';
 const SUBJECT_LABELS: Record<string, string> = {
@@ -64,23 +36,20 @@ function formatTime(seconds: number): string {
 }
 
 export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => void; onStageComplete?: (passed: boolean) => void }) {
-  const [phase, setPhase] = useState<'intro' | 'lesson' | 'exercises' | 'done'>('intro');
-  const [progress, setProgress] = useState(0);
+  const [phase, setPhase] = useState<'intro' | 'exercises' | 'done'>('intro');
   const [showGraph, setShowGraph] = useState(false);
   const [graphReady, setGraphReady] = useState(false);
 
-  const [currentQ, setCurrentQ] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
   const [wrongCount, setWrongCount] = useState(0);
-  const [selected, setSelected] = useState<number | null>(null);
-  const [answered, setAnswered] = useState(false);
-  const [verified, setVerified] = useState(false);
 
   const [elapsed, setElapsed] = useState(0);
   const [completedSubjects, setCompletedSubjects] = useState<string[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const total = EXERCISES.length;
+  const total = DERIVATIVE_FLOW.length;
+  const current = DERIVATIVE_FLOW[currentIndex];
   const pct = Math.round((correctCount + wrongCount) / total * 100);
 
   const startTimer = useCallback(() => {
@@ -101,21 +70,6 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
     }
   }, [phase]);
 
-  const shuffledExercises = useRef(
-    EXERCISES.map((ex) => {
-      const pairs = ex.options.map((o, i) => ({ o, isCorrect: i === ex.correct }));
-      for (let i = pairs.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [pairs[i], pairs[j]] = [pairs[j], pairs[i]];
-      }
-      return {
-        question: ex.question,
-        options: pairs.map((p) => p.o),
-        correct: pairs.findIndex((p) => p.isCorrect),
-      };
-    })
-  ).current;
-
   useEffect(() => {
     if (showGraph) {
       const t = setTimeout(() => setGraphReady(true), 100);
@@ -125,34 +79,31 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
 
   const handleStart = () => {
     setPhase('exercises');
-    setProgress(30);
     startTimer();
   };
 
-  const handleAnswer = (idx: number) => {
-    if (answered) return;
-    setSelected(idx);
-  };
-
-  const handleVerify = () => {
-    if (selected === null || answered) return;
-    setAnswered(true);
-    setVerified(true);
-    if (selected === shuffledExercises[currentQ].correct) setCorrectCount((c) => c + 1);
+  const handleSubmit = useCallback((correct: boolean) => {
+    if (correct) setCorrectCount((c) => c + 1);
     else setWrongCount((w) => w + 1);
-  };
+  }, []);
 
-  const handleNext = () => {
-    if (currentQ + 1 >= total) {
+  const handleNext = useCallback(() => {
+    if (currentIndex + 1 >= total) {
       stopTimer();
-      setProgress(100);
       setPhase('done');
     } else {
-      setCurrentQ((q) => q + 1);
-      setSelected(null);
-      setAnswered(false);
-      setVerified(false);
-      setProgress(30 + Math.round(((currentQ + 1) / total) * 70));
+      setCurrentIndex((i) => i + 1);
+    }
+  }, [currentIndex, total, stopTimer]);
+
+  const renderExercise = () => {
+    const common = { index: currentIndex, total, onSubmit: handleSubmit, onNext: handleNext };
+    switch (current.kind) {
+      case 'mcq': return <MultipleChoice data={current.data} {...common} />;
+      case 'rule': return <RuleAssembly data={current.data} {...common} />;
+      case 'fill': return <FillBlank data={current.data} {...common} />;
+      case 'truefalse': return <TrueFalse data={current.data} {...common} />;
+      case 'sort': return <CardSort data={current.data} {...common} />;
     }
   };
 
@@ -178,7 +129,7 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
         <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
           <div
             className="h-full bg-gradient-to-l from-[hsl(var(--sprout))] to-[hsl(var(--sprout))]/70 rounded-full transition-all duration-700 ease-out"
-            style={{ width: `${phase === 'lesson' ? progress : pct}%` }}
+            style={{ width: `${phase === 'done' ? 100 : pct}%` }}
           />
         </div>
       </div>
@@ -265,84 +216,8 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
         )}
 
         {phase === 'exercises' && (
-          <div key={currentQ} className="space-y-5 animate-[pop-in_0.3s_ease-out]">
-            <p className="text-sm font-bold text-muted-foreground text-right">اختر الاجابة الصحيحة</p>
-            <div className="rounded-2xl border border-border bg-card p-6">
-              <p className="text-lg font-bold text-[hsl(var(--ink))] leading-relaxed mb-6 text-center">
-                {shuffledExercises[currentQ].question}
-              </p>
-
-              <div className="space-y-3">
-                {shuffledExercises[currentQ].options.map((opt, i) => {
-                  const isCorrect = i === shuffledExercises[currentQ].correct;
-                  const isSelected = i === selected;
-                  let ring = 'border-border hover:border-[hsl(var(--sprout))]/50';
-                  let bg = 'bg-card';
-                  if (answered) {
-                    if (isCorrect) { ring = 'border-[hsl(var(--sprout))]'; bg = 'bg-[hsl(var(--sprout))]/10'; }
-                    else if (isSelected && !isCorrect) { ring = 'border-[hsl(var(--coral))]'; bg = 'bg-[hsl(var(--coral))]/10'; }
-                    else { ring = 'border-border opacity-40'; }
-                  } else if (isSelected) {
-                    ring = 'border-[hsl(var(--sprout))]'; bg = 'bg-[hsl(var(--sprout))]/5';
-                  }
-                  return (
-                    <button
-                      key={i}
-                      onClick={() => handleAnswer(i)}
-                      disabled={answered}
-                      className={`w-full p-4 rounded-xl border ${ring} ${bg} transition-all text-base font-bold text-[hsl(var(--ink))] disabled:cursor-default text-center`}
-                    >
-                      <span className="inline-flex items-center gap-2.5">
-                        <span className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${
-                          answered && isCorrect ? 'bg-[hsl(var(--sprout))] text-white' :
-                          answered && isSelected && !isCorrect ? 'bg-[hsl(var(--coral))] text-white' :
-                          'bg-muted text-muted-foreground'
-                        }`}>
-                          {answered && isCorrect ? (
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="square" strokeLinejoin="miter"><polyline points="4 12 10 18 20 6"/></svg>
-                          ) : answered && isSelected && !isCorrect ? (
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="square"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
-                          ) : (
-                            <span className="text-xs font-bold">{String.fromCharCode(1571 + i)}</span>
-                          )}
-                        </span>
-                        {opt}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {selected !== null && !answered && (
-              <Button
-                onClick={handleVerify}
-                variant="default"
-                className="w-full h-11 rounded-xl animate-[pop-in_0.2s_ease-out]"
-              >
-                تحقق
-              </Button>
-            )}
-
-            {answered && verified && (
-              <div className="space-y-3 animate-[pop-in_0.2s_ease-out]">
-                {selected === shuffledExercises[currentQ].correct ? (
-                  <p className="text-sm font-bold text-[hsl(var(--sprout))] text-center">إجابة صحيحة</p>
-                ) : (
-                  <p className="text-sm text-muted-foreground text-center">
-                    الإجابة الصحيحة هي{' '}
-                    <span className="font-bold text-[hsl(var(--sprout))]">{shuffledExercises[currentQ].options[shuffledExercises[currentQ].correct]}</span>
-                  </p>
-                )}
-                <Button
-                  onClick={handleNext}
-                  variant="default"
-                  className="w-full h-11 rounded-xl"
-                >
-                  متابعة
-                </Button>
-              </div>
-            )}
+          <div key={currentIndex}>
+            {renderExercise()}
           </div>
         )}
 
