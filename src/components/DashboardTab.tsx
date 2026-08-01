@@ -8,7 +8,7 @@ import { CountdownCard } from './CountdownCard';
 import { TodayTimerCard } from './TodayTimerCard';
 import { CorrectorChatSheet } from './CorrectorChatSheet';
 import { RandomExerciseCard } from './RandomExerciseCard';
-import { ChatIcon, ChevronIcon, CheckCircleIcon, PathIcon } from './icons';
+import { ChatIcon, ChevronIcon, CheckCircleIcon } from './icons';
 
 const QUOTES = [
   'الانتظام يوماً بعد يوم يصنع الفارق يوم الامتحان.',
@@ -103,18 +103,12 @@ export function DashboardTab({
       {/* Path entry point */}
       <button
         onClick={onNavigateRoadmap}
-        className="w-full flex items-center gap-3 rounded-2xl border border-[hsl(var(--sprout))/25] bg-[hsl(var(--sprout-soft))]/50 p-4 text-right hover:bg-[hsl(var(--sprout-soft))] transition-colors"
+        className="w-full rounded-2xl p-3 text-center hover:bg-[hsl(var(--sprout-soft))]/60 transition-colors"
       >
-        <span className="w-11 h-11 shrink-0 rounded-full bg-[hsl(var(--sprout))] text-white flex items-center justify-center">
-          <PathIcon size={20} />
+        <span className="block text-sm font-bold text-[hsl(var(--sprout))]">هنا المسار</span>
+        <span className="block text-xs text-muted-foreground mt-0.5">
+          حيث تتعلم درساً كاملاً وتفهمه في 4 دقائق أو أقل
         </span>
-        <span className="flex-1">
-          <span className="block text-sm font-semibold text-[hsl(var(--ink))]">تعلّم من المسار</span>
-          <span className="block text-xs text-muted-foreground mt-0.5">
-            دروس مشروحة وتمارين مرتبة خطوة بخطوة
-          </span>
-        </span>
-        <ChevronIcon className="text-[hsl(var(--sprout))] rotate-180 shrink-0" size={16} />
       </button>
 
       {/* AI corrector entry point */}
