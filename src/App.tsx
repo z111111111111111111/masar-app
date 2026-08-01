@@ -174,6 +174,7 @@ function App() {
           streak={streak}
           xp={xp}
           records={records}
+          onNavigateRoadmap={() => setTab('roadmap')}
         />
       )}
       {tab === 'tracking' && (
