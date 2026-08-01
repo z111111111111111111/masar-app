@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
 import { ChevronIcon } from '../icons';
 import { Button } from '@/components/ui/button';
 import { KaTeXBlock } from '@/components/landing/MathText';
@@ -166,45 +166,13 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
                   </p>
                 </div>
               )}
-
-              <div className="rounded-xl bg-muted/50 p-4">
-                <p className="text-xs text-muted-foreground mb-2 font-medium">القاعدة الأساسية</p>
-                <div className="flex items-center justify-center gap-3 text-base font-bold" dir="ltr">
-                  <KaTeXBlock tex="f(x)=x^{n}" className="text-[hsl(var(--ink))]" />
-                  <span className="text-muted-foreground text-sm">→</span>
-                  <KaTeXBlock tex="f'(x)=n\cdot x^{n-1}" className="text-[hsl(var(--sprout))]" />
-                </div>
-              </div>
             </div>
 
-            {/* YouTube Video */}
-            <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
-              <p className="text-sm font-semibold text-[hsl(var(--ink))]">
-                في حال لم تفهم، نقترح عليك هذا الشرح:
-              </p>
-              <a
-                href="https://www.youtube.com/watch?v=kNRqWehvOtE"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block group"
-              >
-                <div className="relative rounded-xl overflow-hidden border border-border bg-muted aspect-video">
-                  <img
-                    src="https://img.youtube.com/vi/kNRqWehvOtE/maxresdefault.jpg"
-                    alt="شرح الاشتقاقية"
-                    className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
-                    loading="lazy"
-                  />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-14 h-14 rounded-full bg-[hsl(var(--coral))] text-white flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-                        <polygon points="5 3 19 12 5 21 5 3" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-              </a>
-            </div>
+            <VideoRuleSwap
+              videoUrl="https://www.youtube-nocookie.com/embed/kNRqWehvOtE"
+              videoPoster="https://img.youtube.com/vi/kNRqWehvOtE/maxresdefault.jpg"
+              videoTitle="شرح الاشتقاقية"
+            />
 
             <Button
               onClick={handleStart}
@@ -309,6 +277,117 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
             </div>
           );
         })()}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Inline video ↔ basic rule swap ─── */
+function VideoRuleSwap({
+  videoUrl,
+  videoPoster,
+  videoTitle,
+}: {
+  videoUrl: string;
+  videoPoster: string;
+  videoTitle: string;
+}) {
+  const ruleRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLDivElement>(null);
+  const [ruleH, setRuleH] = useState(0);
+  const [videoH, setVideoH] = useState(0);
+  const [watching, setWatching] = useState(false);
+  const GAP = 12;
+
+  useLayoutEffect(() => {
+    const rule = ruleRef.current;
+    const video = videoRef.current;
+    const measure = () => {
+      setRuleH(rule?.offsetHeight ?? 0);
+      setVideoH(video?.offsetHeight ?? 0);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    if (rule) ro.observe(rule);
+    if (video) ro.observe(video);
+    return () => ro.disconnect();
+  }, []);
+
+  const EASE = 'transform 650ms cubic-bezier(0.4, 0, 0.2, 1)';
+
+  return (
+    <div className="relative space-y-3">
+      {/* Video box — rises above the basic rule when watching */}
+      <div
+        ref={videoRef}
+        className="relative rounded-2xl border border-border bg-card p-5 space-y-3"
+        style={{
+          transform: watching ? 'translateY(0)' : `translateY(${ruleH + GAP}px)`,
+          transition: EASE,
+          zIndex: 20,
+        }}
+      >
+        <p className="text-sm font-semibold text-[hsl(var(--ink))]">
+          في حال لم تفهم، نقترح عليك هذا الشرح:
+        </p>
+        {watching ? (
+          <div className="relative">
+            <div className="relative rounded-xl overflow-hidden border border-border bg-muted">
+              <iframe
+                src={`${videoUrl}?autoplay=1&rel=0`}
+                title={videoTitle}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                className="w-full aspect-video"
+              />
+            </div>
+            <button
+              onClick={() => setWatching(false)}
+              aria-label="إغلاق الفيديو"
+              className="absolute top-2 left-2 z-10 w-7 h-7 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+                <path d="M6 6l12 12M18 6L6 18" />
+              </svg>
+            </button>
+          </div>
+        ) : (
+          <button onClick={() => setWatching(true)} className="relative block w-full group">
+            <div className="relative aspect-video rounded-xl overflow-hidden border border-border bg-muted">
+              <img
+                src={videoPoster}
+                alt={videoTitle}
+                className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
+                loading="lazy"
+              />
+            </div>
+            <span className="absolute inset-0 flex items-center justify-center">
+              <span className="w-14 h-14 rounded-full bg-[hsl(var(--coral))] text-white flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                  <polygon points="5 3 19 12 5 21 5 3" />
+                </svg>
+              </span>
+            </span>
+          </button>
+        )}
+      </div>
+
+      {/* Basic rule box — slides down under the video when watching */}
+      <div
+        ref={ruleRef}
+        className="rounded-xl bg-muted/50 p-4"
+        style={{
+          transform: watching ? 'translateY(0)' : `translateY(${-videoH - GAP}px)`,
+          transition: EASE,
+          zIndex: 10,
+        }}
+      >
+        <p className="text-xs text-muted-foreground mb-2 font-medium">القاعدة الأساسية</p>
+        <div className="flex items-center justify-center gap-3 text-base font-bold" dir="ltr">
+          <KaTeXBlock tex="f(x)=x^{n}" className="text-[hsl(var(--ink))]" />
+          <span className="text-muted-foreground text-sm">→</span>
+          <KaTeXBlock tex="f'(x)=n\cdot x^{n-1}" className="text-[hsl(var(--sprout))]" />
+        </div>
       </div>
     </div>
   );
