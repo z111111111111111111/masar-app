@@ -19,6 +19,13 @@ const SUBJECT_COLORS: Record<string, string> = {
   philo: 'chart-4', social: 'chart-5',
 };
 const ALL_SUBJECTS = ['math', 'physics', 'nature', 'philo', 'social'];
+const SYSTEM_LABELS: Record<string, string> = {
+  mcq: 'اختيار من متعدد',
+  rule: 'تركيب القاعدة',
+  fill: 'ملء الفراغ',
+  truefalse: 'صحيح أو خطأ',
+  sort: 'الترتيب الهرمي',
+};
 
 function getCompletedSubjects(): string[] {
   try { return JSON.parse(localStorage.getItem(COMPLETED_KEY) || '[]'); }
@@ -133,6 +140,13 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
             style={{ width: `${phase === 'done' ? 100 : pct}%` }}
           />
         </div>
+        {phase === 'exercises' && (
+          <div className="mt-2.5 flex items-center justify-center">
+            <span className="text-[11px] font-bold text-[hsl(var(--sprout))] bg-[hsl(var(--sprout-soft))] px-3 py-1 rounded-full">
+              {SYSTEM_LABELS[current.kind]}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Content */}
@@ -164,7 +178,7 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
         )}
 
         {phase === 'exercises' && (
-          <div key={currentIndex} className="flex-1 flex flex-col pb-44 md:pb-0">
+          <div key={currentIndex} className="flex-1 flex flex-col pb-64 md:pb-0">
             <div className="my-auto w-full">
               {renderExercise()}
             </div>

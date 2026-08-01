@@ -10,12 +10,12 @@ export function CardSort({ data, index, total, onSubmit, onNext }: {
 }) {
   return (
     <OrderBuilder
-      badge="الترتيب الهرمي"
       instruction={data.instruction}
       hint={data.hint}
       pool={data.cards}
       correctOrder={data.correctOrder}
       answerLabel={`الترتيب الصحيح (${data.relation}):`}
+      vertical
       index={index}
       total={total}
       onSubmit={onSubmit}

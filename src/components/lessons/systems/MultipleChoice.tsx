@@ -22,7 +22,7 @@ export function MultipleChoice({ data, index, total, onSubmit, onNext }: {
 
   return (
     <>
-      <SystemFrame badge="اختيار من متعدد" index={index} total={total}>
+      <SystemFrame index={index} total={total}>
         <div className="rounded-2xl border border-border bg-card p-4 md:p-6">
           <p className="text-base md:text-lg font-bold text-[hsl(var(--ink))] leading-relaxed mb-4 md:mb-6 text-center">
             {data.question}
@@ -45,8 +45,8 @@ export function MultipleChoice({ data, index, total, onSubmit, onNext }: {
                           ? 'border-[hsl(var(--coral))] bg-[hsl(var(--coral))] text-white shadow-[0_3px_0_hsl(var(--coral-dark))]'
                           : 'border-border bg-card text-muted-foreground opacity-40 shadow-none'
                       : isSelected
-                        ? 'border-[hsl(var(--sprout))] bg-[hsl(var(--sprout))] text-white shadow-[0_3px_0_hsl(var(--sprout-dark))]'
-                        : 'border-border bg-card text-[hsl(var(--ink))] hover:border-[hsl(var(--sprout))]/60 shadow-[0_3px_0_hsl(var(--border))]'
+                        ? 'border-[hsl(var(--sprout))] bg-[hsl(var(--sprout))] text-white shadow-[0_3px_0_hsl(var(--sprout-dark))] active:translate-y-[2px] active:shadow-[0_1px_0_hsl(var(--sprout-dark))]'
+                        : 'border-border bg-card text-[hsl(var(--ink))] hover:border-[hsl(var(--sprout))]/60 shadow-[0_3px_0_hsl(var(--border))] active:translate-y-[2px] active:shadow-[0_1px_0_hsl(var(--border))]'
                   }`}
                 >
                   <span className="inline-flex items-center gap-2.5 justify-center">
@@ -67,16 +67,20 @@ export function MultipleChoice({ data, index, total, onSubmit, onNext }: {
             })}
           </div>
         </div>
+      </SystemFrame>
 
-        {answered && (
+      <ExerciseActionBar
+        canCheck={selected !== null}
+        answered={answered}
+        onCheck={verify}
+        onNext={onNext}
+        feedback={answered ? (
           <FeedbackBlock
             correct={correct}
             explanation={<MathText tex={data.explanation} className="text-xs leading-relaxed text-[hsl(var(--ink))]" />}
           />
-        )}
-      </SystemFrame>
-
-      <ExerciseActionBar canCheck={selected !== null} answered={answered} onCheck={verify} onNext={onNext} />
+        ) : undefined}
+      />
     </>
   );
 }

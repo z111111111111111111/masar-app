@@ -22,7 +22,7 @@ export function FillBlank({ data, index, total, onSubmit, onNext }: {
 
   return (
     <>
-      <SystemFrame badge="ملء الفراغ" index={index} total={total}>
+      <SystemFrame index={index} total={total}>
         <div className="rounded-2xl border border-border bg-card p-4 md:p-6 space-y-4 md:space-y-5">
           <p className="text-sm md:text-base font-bold text-[hsl(var(--ink))] leading-relaxed text-center flex items-center justify-center gap-2 flex-wrap">
             {data.before}
@@ -60,8 +60,8 @@ export function FillBlank({ data, index, total, onSubmit, onNext }: {
                           ? 'border-[hsl(var(--coral))] bg-[hsl(var(--coral))] text-white shadow-[0_3px_0_hsl(var(--coral-dark))]'
                           : 'border-border bg-card text-muted-foreground opacity-40 shadow-none'
                       : isSelected
-                        ? 'border-[hsl(var(--sprout))] bg-[hsl(var(--sprout))] text-white shadow-[0_3px_0_hsl(var(--sprout-dark))]'
-                        : 'border-border bg-card text-[hsl(var(--ink))] hover:border-[hsl(var(--sprout))]/60 shadow-[0_3px_0_hsl(var(--border))]'
+                        ? 'border-[hsl(var(--sprout))] bg-[hsl(var(--sprout))] text-white shadow-[0_3px_0_hsl(var(--sprout-dark))] active:translate-y-[2px] active:shadow-[0_1px_0_hsl(var(--sprout-dark))]'
+                        : 'border-border bg-card text-[hsl(var(--ink))] hover:border-[hsl(var(--sprout))]/60 shadow-[0_3px_0_hsl(var(--border))] active:translate-y-[2px] active:shadow-[0_1px_0_hsl(var(--border))]'
                   }`}
                   dir="ltr"
                 >
@@ -71,16 +71,20 @@ export function FillBlank({ data, index, total, onSubmit, onNext }: {
             })}
           </div>
         </div>
+      </SystemFrame>
 
-        {answered && (
+      <ExerciseActionBar
+        canCheck={selected !== null}
+        answered={answered}
+        onCheck={verify}
+        onNext={onNext}
+        feedback={answered ? (
           <FeedbackBlock
             correct={correct}
             explanation={<MathText tex={data.explanation} className="text-xs leading-relaxed text-[hsl(var(--ink))]" />}
           />
-        )}
-      </SystemFrame>
-
-      <ExerciseActionBar canCheck={selected !== null} answered={answered} onCheck={verify} onNext={onNext} />
+        ) : undefined}
+      />
     </>
   );
 }

@@ -10,7 +10,6 @@ export function RuleAssembly({ data, index, total, onSubmit, onNext }: {
 }) {
   return (
     <OrderBuilder
-      badge="تركيب القاعدة"
       instruction={data.instruction}
       pool={data.pieces}
       correctOrder={data.correctOrder}
