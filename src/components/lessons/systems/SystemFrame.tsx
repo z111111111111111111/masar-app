@@ -19,8 +19,8 @@ export function FeedbackBlock({ correct, explanation }: {
     <div className="space-y-2">
       <div className={`rounded-2xl border p-3 ${
         correct
-          ? 'border-[hsl(var(--sprout))]/30 bg-[hsl(var(--sprout))]/5'
-          : 'border-[hsl(var(--coral))]/30 bg-[hsl(var(--coral))]/5'
+          ? 'border-[hsl(var(--sprout))]/40 bg-[hsl(var(--sprout-soft))]'
+          : 'border-[hsl(var(--coral))]/40 bg-[hsl(var(--coral-soft))]'
       }`}>
         <p className={`text-sm font-bold mb-1 ${correct ? 'text-[hsl(var(--sprout))]' : 'text-[hsl(var(--coral))]'}`}>
           {correct ? '✓ إجابة صحيحة' : '✗ إجابة خاطئة'}

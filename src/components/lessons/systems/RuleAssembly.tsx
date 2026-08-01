@@ -12,6 +12,7 @@ export function RuleAssembly({ data, onSubmit, onNext }: {
       pool={data.pieces}
       correctOrder={data.correctOrder}
       answerLabel={data.answerLabel ?? "f'(x)="}
+      note={data.note}
       mathStyle
       onSubmit={onSubmit}
       onNext={onNext}

@@ -3,9 +3,10 @@ import { MathText, KaTeXBlock } from '@/components/landing/MathText';
 import { SystemFrame, FeedbackBlock, ExerciseActionBar } from './SystemFrame';
 import { shuffle } from './utils';
 
-export function OrderBuilder({ instruction, hint, pool, correctOrder, answerLabel, mathStyle, vertical, onSubmit, onNext }: {
+export function OrderBuilder({ instruction, hint, note, pool, correctOrder, answerLabel, mathStyle, vertical, onSubmit, onNext }: {
   instruction: string;
   hint?: string;
+  note?: string;
   pool: string[];
   correctOrder: string[];
   answerLabel?: string;
@@ -38,14 +39,13 @@ export function OrderBuilder({ instruction, hint, pool, correctOrder, answerLabe
     onSubmit(correct);
   };
 
-  const chip = (label: string, extra = '') => (
-    <span
-      dir={mathStyle ? 'ltr' : undefined}
-      className={`inline-flex items-center justify-center px-2.5 md:px-3 py-1 md:py-1.5 rounded-lg font-bold ${extra}`}
-    >
-      {mathStyle ? <KaTeXBlock tex={label} className="text-sm md:text-base" /> : label}
-    </span>
-  );
+  /* Duolingo-style 3D press button — same look for pool and placed chips */
+  const chipBtn = 'inline-flex items-center justify-center gap-1.5 rounded-xl border-2 border-border bg-card text-[hsl(var(--ink))] shadow-[0_3px_0_hsl(var(--border))] font-bold transition-all duration-100 hover:border-[hsl(var(--sprout))]/60 active:translate-y-[2px] active:shadow-[0_1px_0_hsl(var(--border))] disabled:cursor-default';
+
+  const chipContent = (label: string) =>
+    mathStyle
+      ? <KaTeXBlock tex={label} className="text-sm md:text-base" />
+      : <span className="text-sm md:text-base">{label}</span>;
 
   return (
     <>
@@ -72,35 +72,41 @@ export function OrderBuilder({ instruction, hint, pool, correctOrder, answerLabe
             >
               {correctOrder.map((_, i) =>
                 order[i]
-                  ? (
-                    <button
-                      key={i}
-                      onClick={() => unpick(i)}
-                      title="إزالة"
-                      className={vertical
-                        ? 'flex items-center gap-2 w-full rounded-lg bg-[hsl(var(--sprout))] text-white px-2.5 py-1 md:py-1.5 transition-transform hover:scale-[1.01] active:scale-[0.98]'
-                        : 'cursor-pointer transition-transform hover:scale-105'}
-                    >
-                      {vertical && (
-                        <span className="flex items-center justify-center w-6 h-6 rounded-full bg-white/25 text-white text-xs font-bold shrink-0">
-                          {i + 1}
-                        </span>
-                      )}
-                      {vertical
-                        ? (mathStyle
-                            ? <span className="flex-1 text-center"><KaTeXBlock tex={order[i]} className="text-sm md:text-base" /></span>
-                            : <span className="flex-1 text-center font-bold text-sm md:text-base">{order[i]}</span>)
-                        : chip(order[i], 'bg-[hsl(var(--sprout))] text-white')}
-                    </button>
-                  )
-                  : (
-                    <span
-                      key={i}
-                      className={vertical
-                        ? 'w-full h-9 rounded-lg border border-dashed border-muted-foreground/30'
-                        : 'w-9 h-8 md:w-10 md:h-9 rounded-lg border border-dashed border-muted-foreground/30'}
-                    />
-                  )
+                  ? vertical
+                    ? (
+                      <div key={i} className="flex items-center justify-center gap-2">
+                        <span className="w-6 shrink-0 text-center text-[11px] font-bold text-[hsl(var(--sprout))]">{i + 1}</span>
+                        <button
+                          onClick={() => unpick(i)}
+                          title="إزالة"
+                          disabled={answered}
+                          className={`${chipBtn} flex-1 px-3 py-2.5`}
+                        >
+                          {chipContent(order[i])}
+                        </button>
+                      </div>
+                    )
+                    : (
+                      <button
+                        key={i}
+                        onClick={() => unpick(i)}
+                        title="إزالة"
+                        disabled={answered}
+                        className={`${chipBtn} px-3 py-2`}
+                      >
+                        {chipContent(order[i])}
+                      </button>
+                    )
+                  : vertical
+                    ? (
+                      <div key={i} className="flex items-center justify-center gap-2">
+                        <span className="w-6 shrink-0 text-center text-[11px] font-bold text-muted-foreground/60">{i + 1}</span>
+                        <span className="flex-1 h-11 rounded-xl border-2 border-dashed border-muted-foreground/30" />
+                      </div>
+                    )
+                    : (
+                      <span key={i} className="w-9 h-10 md:w-10 md:h-11 rounded-xl border-2 border-dashed border-muted-foreground/30" />
+                    )
               )}
             </div>
           </div>
@@ -108,18 +114,19 @@ export function OrderBuilder({ instruction, hint, pool, correctOrder, answerLabe
           {/* Pool */}
           <div dir={mathStyle ? 'ltr' : 'rtl'} className="flex items-center justify-center gap-2 flex-wrap">
             {remaining.map((p) => (
-              <button
-                key={p}
-                onClick={() => pick(p)}
-                className="transition-transform hover:scale-105 active:scale-95"
-              >
-                {chip(p, 'bg-card border border-border shadow-sm hover:border-[hsl(var(--sprout))] text-[hsl(var(--ink))]')}
+              <button key={p} onClick={() => pick(p)} disabled={answered} className={`${chipBtn} px-3 py-2`}>
+                {chipContent(p)}
               </button>
             ))}
             {remaining.length === 0 && (
               <span className="text-xs text-muted-foreground">اكتمل الترتيب</span>
             )}
           </div>
+
+          {/* Footnote — e.g. the dot (·) means multiplication (×) */}
+          {note && (
+            <MathText tex={note} className="block text-center text-[11px] text-muted-foreground" />
+          )}
         </div>
       </SystemFrame>
 

@@ -21,6 +21,7 @@
     --ember-dark: 32 68% 44%;
     --sprout-dark: 152 34% 24%;
     --coral-dark: 6 63% 48%;
+    --coral-soft: 6 55% 94%;
     --ink-dark: 204 20% 18%;
 
     /* Dedicated 5-color qualitative palette for multi-subject charts — chosen to
@@ -73,6 +74,7 @@
     --ember-dark: 32 70% 52%;
     --sprout-dark: 152 38% 42%;
     --coral-dark: 6 60% 54%;
+    --coral-soft: 6 50% 20%;
     --ink-dark: 210 25% 80%;
 
     --chart-1: 225 42% 68%;
@@ -105,6 +107,7 @@
     --ember-dark: 345 56% 52%;
     --sprout-dark: 340 48% 42%;
     --coral-dark: 350 52% 46%;
+    --coral-soft: 350 45% 94%;
     --ink-dark: 340 28% 18%;
 
     --chart-1: 330 45% 55%;
@@ -140,6 +143,7 @@
     --ember-dark: 345 58% 58%;
     --sprout-dark: 340 52% 52%;
     --coral-dark: 350 55% 54%;
+    --coral-soft: 350 45% 20%;
     --ink-dark: 340 20% 80%;
 
     --chart-1: 330 50% 65%;
@@ -172,6 +176,7 @@
     --ember-dark: 270 48% 48%;
     --sprout-dark: 260 42% 40%;
     --coral-dark: 280 44% 44%;
+    --coral-soft: 280 40% 94%;
     --ink-dark: 260 20% 18%;
 
     --chart-1: 255 42% 55%;
@@ -207,6 +212,7 @@
     --ember-dark: 270 50% 56%;
     --sprout-dark: 260 48% 52%;
     --coral-dark: 280 48% 52%;
+    --coral-soft: 280 40% 20%;
     --ink-dark: 260 18% 80%;
 
     --chart-1: 255 48% 65%;

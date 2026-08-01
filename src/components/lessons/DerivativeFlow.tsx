@@ -39,15 +39,17 @@ export const DERIVATIVE_FLOW: ExerciseData[] = [
       pieces: ['n', '\\cdot', 'x^{n-1}'],
       correctOrder: ['n', '\\cdot', 'x^{n-1}'],
       answerLabel: "f'(x)=",
+      note: 'النقطة ($\\cdot$) تدل على عملية الضرب ($\\times$)',
     },
   },
   {
     kind: 'rule',
     data: {
-      instruction: 'رتّب المكوّنات لتكوين قاعدة مشتقة الدالة $a\\times x^{n}$',
-      pieces: ['a', '\\times', 'n', '\\times', 'x^{n-1}'],
-      correctOrder: ['a', '\\times', 'n', '\\times', 'x^{n-1}'],
+      instruction: 'رتّب المكوّنات لتكوين قاعدة مشتقة الدالة $a\\cdot x^{n}$',
+      pieces: ['a', '\\cdot', 'n', '\\cdot', 'x^{n-1}'],
+      correctOrder: ['a', '\\cdot', 'n', '\\cdot', 'x^{n-1}'],
       answerLabel: "f'(x)=",
+      note: 'النقطة ($\\cdot$) تدل على عملية الضرب ($\\times$)',
     },
   },
 

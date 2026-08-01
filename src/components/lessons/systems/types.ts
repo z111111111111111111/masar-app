@@ -14,6 +14,7 @@ export interface RuleData {
   pieces: string[];
   correctOrder: string[];
   answerLabel?: string;
+  note?: string;
 }
 
 /* ── النظام 3: ملء الفراغ ────────────────────────────────────── */
