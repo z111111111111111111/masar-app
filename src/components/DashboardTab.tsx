@@ -103,12 +103,15 @@ export function DashboardTab({
       {/* Path entry point */}
       <button
         onClick={onNavigateRoadmap}
-        className="w-full rounded-2xl p-3 text-center hover:bg-[hsl(var(--sprout-soft))]/60 transition-colors"
+        className="w-full flex items-center gap-3 rounded-2xl border border-border bg-card p-4 text-right hover:border-[hsl(var(--ink))]/30 transition-colors"
       >
-        <span className="block text-sm font-bold text-[hsl(var(--sprout))]">هنا المسار</span>
-        <span className="block text-xs text-muted-foreground mt-0.5">
-          حيث تتعلم درساً كاملاً وتفهمه في 4 دقائق أو أقل
+        <span className="flex-1">
+          <span className="block text-sm font-semibold text-[hsl(var(--ink))]">هنا المسار</span>
+          <span className="block text-xs text-muted-foreground mt-0.5">
+            حيث تتعلم درساً كاملاً وتفهمه في 4 دقائق أو أقل
+          </span>
         </span>
+        <ChevronIcon className="text-muted-foreground rotate-180 shrink-0" size={16} />
       </button>
 
       {/* AI corrector entry point */}
