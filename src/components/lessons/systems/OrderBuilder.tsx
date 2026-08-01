@@ -50,7 +50,7 @@ export function OrderBuilder({ instruction, hint, pool, correctOrder, answerLabe
   return (
     <>
       <SystemFrame>
-        <div className="rounded-2xl border border-border bg-card p-4 md:p-6 space-y-4 md:space-y-5">
+        <div className="rounded-2xl border border-border bg-card p-3 md:p-5 space-y-3 md:space-y-4">
           <MathText
             tex={instruction}
             className="text-base md:text-lg font-bold text-[hsl(var(--ink))] leading-relaxed text-center"
@@ -78,7 +78,7 @@ export function OrderBuilder({ instruction, hint, pool, correctOrder, answerLabe
                       onClick={() => unpick(i)}
                       title="إزالة"
                       className={vertical
-                        ? 'flex items-center gap-2 w-full rounded-lg bg-[hsl(var(--sprout))] text-white px-2.5 py-1.5 md:py-2 transition-transform hover:scale-[1.01] active:scale-[0.98]'
+                        ? 'flex items-center gap-2 w-full rounded-lg bg-[hsl(var(--sprout))] text-white px-2.5 py-1 md:py-1.5 transition-transform hover:scale-[1.01] active:scale-[0.98]'
                         : 'cursor-pointer transition-transform hover:scale-105'}
                     >
                       {vertical && (
@@ -97,7 +97,7 @@ export function OrderBuilder({ instruction, hint, pool, correctOrder, answerLabe
                     <span
                       key={i}
                       className={vertical
-                        ? 'w-full h-10 rounded-lg border border-dashed border-muted-foreground/30'
+                        ? 'w-full h-9 rounded-lg border border-dashed border-muted-foreground/30'
                         : 'w-9 h-8 md:w-10 md:h-9 rounded-lg border border-dashed border-muted-foreground/30'}
                     />
                   )

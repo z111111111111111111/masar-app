@@ -109,7 +109,7 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
   };
 
   return (
-    <div className="space-y-0 min-h-[80vh] flex flex-col">
+    <div className={`space-y-0 flex flex-col ${phase === 'exercises' ? 'h-full' : 'min-h-[80vh]'}`}>
       {/* Progress Bar */}
       <div className="sticky top-0 md:top-16 z-10 bg-background/95 backdrop-blur border-b border-border -mx-4 px-4 py-3 md:-mx-8 md:px-8">
         <div className="flex items-center justify-between mb-2">
@@ -136,7 +136,7 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
       </div>
 
       {/* Content */}
-      <div className="flex-1 pt-6 flex flex-col">
+      <div className="flex-1 pt-6 flex flex-col min-h-0 overflow-hidden">
         {phase === 'intro' && (
           <div className="space-y-6 animate-[fade-in_0.4s_ease-out]">
             <div>
@@ -164,7 +164,7 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
         )}
 
         {phase === 'exercises' && (
-          <div key={currentIndex} className="flex-1 flex flex-col pb-64 md:pb-0">
+          <div key={currentIndex} className="flex-1 flex flex-col min-h-0 overflow-hidden pb-40 md:pb-0">
             <div className="my-auto w-full">
               {renderExercise()}
             </div>

@@ -17,7 +17,7 @@ export function FeedbackBlock({ correct, explanation }: {
 }) {
   return (
     <div className="space-y-2">
-      <div className={`rounded-2xl border p-4 ${
+      <div className={`rounded-2xl border p-3 ${
         correct
           ? 'border-[hsl(var(--sprout))]/30 bg-[hsl(var(--sprout))]/5'
           : 'border-[hsl(var(--coral))]/30 bg-[hsl(var(--coral))]/5'
