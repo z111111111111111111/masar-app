@@ -136,31 +136,47 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
       </div>
 
       {/* Content */}
-      <div className="flex-1 pt-6 flex flex-col min-h-0 overflow-hidden">
+      <div className={`flex-1 pt-6 flex flex-col min-h-0 ${phase === 'exercises' ? 'overflow-hidden' : ''}`}>
         {phase === 'intro' && (
-          <div className="space-y-6 animate-[fade-in_0.4s_ease-out]">
-            <div>
-              <h1 className="text-xl font-bold text-[hsl(var(--ink))] mb-1">الاشتقاقية</h1>
-              <p className="text-sm text-muted-foreground">الدرس الأول — الرياضيات</p>
+          <>
+            <div className="space-y-6 animate-[fade-in_0.4s_ease-out] pb-32 md:pb-6">
+              <div>
+                <h1 className="text-xl font-bold text-[hsl(var(--ink))] mb-1">الاشتقاقية</h1>
+                <p className="text-sm text-muted-foreground">الدرس الأول — الرياضيات</p>
+              </div>
+
+              <VideoIntroSwap
+                videoUrl="https://www.youtube-nocookie.com/embed/kNRqWehvOtE"
+                videoPoster="https://img.youtube.com/vi/kNRqWehvOtE/maxresdefault.jpg"
+                videoTitle="شرح الاشتقاقية"
+                showGraph={showGraph}
+                graphReady={graphReady}
+                onToggleGraph={() => setShowGraph((g) => !g)}
+              />
             </div>
 
-            <VideoIntroSwap
-              videoUrl="https://www.youtube-nocookie.com/embed/kNRqWehvOtE"
-              videoPoster="https://img.youtube.com/vi/kNRqWehvOtE/maxresdefault.jpg"
-              videoTitle="شرح الاشتقاقية"
-              showGraph={showGraph}
-              graphReady={graphReady}
-              onToggleGraph={() => setShowGraph((g) => !g)}
-            />
-
-            <Button
-              onClick={handleStart}
-              variant="default"
-              className="w-full h-12 rounded-xl"
-            >
-              فهمت لننطلق
-            </Button>
-          </div>
+            {/* Start button — fixed above the bottom navigation */}
+            <div className="fixed bottom-24 left-0 right-0 z-30 px-4 md:hidden">
+              <div className="max-w-2xl mx-auto">
+                <Button
+                  onClick={handleStart}
+                  variant="default"
+                  className="w-full h-12 rounded-xl"
+                >
+                  فهمت لننطلق
+                </Button>
+              </div>
+            </div>
+            <div className="hidden md:block pt-5">
+              <Button
+                onClick={handleStart}
+                variant="default"
+                className="w-full h-12 rounded-xl"
+              >
+                فهمت لننطلق
+              </Button>
+            </div>
+          </>
         )}
 
         {phase === 'exercises' && (
