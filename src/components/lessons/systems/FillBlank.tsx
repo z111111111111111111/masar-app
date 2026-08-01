@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
 import { MathText, KaTeXBlock } from '@/components/landing/MathText';
-import { SystemFrame, FeedbackBlock } from './SystemFrame';
+import { SystemFrame, FeedbackBlock, ExerciseActionBar } from './SystemFrame';
 import type { FillData } from './types';
 
 export function FillBlank({ data, index, total, onSubmit, onNext }: {
@@ -22,64 +21,66 @@ export function FillBlank({ data, index, total, onSubmit, onNext }: {
   };
 
   return (
-    <SystemFrame badge="ملء الفراغ" index={index} total={total}>
-      <div className="rounded-2xl border border-border bg-card p-4 md:p-6 space-y-4 md:space-y-5">
-        <p className="text-sm md:text-base font-bold text-[hsl(var(--ink))] leading-relaxed text-center flex items-center justify-center gap-2 flex-wrap">
-          {data.before}
-          <span
-            dir="ltr"
-            className={`inline-flex items-center justify-center min-w-[72px] md:min-w-[84px] px-2.5 md:px-3 py-0.5 md:py-1 rounded-lg border-2 transition-colors ${
-              selected
-                ? 'border-[hsl(var(--sprout))] bg-[hsl(var(--sprout-soft))] text-[hsl(var(--ink))]'
-                : 'border-dashed border-muted-foreground/40 text-muted-foreground'
-            }`}
-          >
-            {selected ? <KaTeXBlock tex={selected} className="text-sm md:text-base" /> : <span className="text-sm font-bold">؟</span>}
-          </span>
-          {data.after}
-        </p>
+    <>
+      <SystemFrame badge="ملء الفراغ" index={index} total={total}>
+        <div className="rounded-2xl border border-border bg-card p-4 md:p-6 space-y-4 md:space-y-5">
+          <p className="text-sm md:text-base font-bold text-[hsl(var(--ink))] leading-relaxed text-center flex items-center justify-center gap-2 flex-wrap">
+            {data.before}
+            <span
+              dir="ltr"
+              className={`inline-flex items-center justify-center min-w-[72px] md:min-w-[84px] px-2.5 md:px-3 py-0.5 md:py-1 rounded-lg border-2 transition-colors ${
+                answered && correct
+                  ? 'border-[hsl(var(--sprout))] bg-[hsl(var(--sprout))] text-white'
+                  : answered
+                    ? 'border-[hsl(var(--coral))] bg-[hsl(var(--coral))] text-white'
+                    : selected
+                      ? 'border-[hsl(var(--sprout))] bg-[hsl(var(--sprout))] text-white'
+                      : 'border-dashed border-muted-foreground/40 text-muted-foreground'
+              }`}
+            >
+              {selected ? <KaTeXBlock tex={selected} className="text-sm md:text-base" /> : <span className="text-sm font-bold">؟</span>}
+            </span>
+            {data.after}
+          </p>
 
-        <div className="grid grid-cols-2 gap-2 md:gap-2.5">
-          {data.choices.map((c) => {
-            const isSelected = c === selected;
-            const isCorrect = c === data.correct;
-            let ring = 'border-border hover:border-[hsl(var(--sprout))]/50';
-            let bg = 'bg-card';
-            if (answered) {
-              if (isCorrect) { ring = 'border-[hsl(var(--sprout))]'; bg = 'bg-[hsl(var(--sprout))]/10'; }
-              else if (isSelected) { ring = 'border-[hsl(var(--coral))]'; bg = 'bg-[hsl(var(--coral))]/10'; }
-              else { ring = 'border-border opacity-40'; }
-            } else if (isSelected) {
-              ring = 'border-[hsl(var(--sprout))]'; bg = 'bg-[hsl(var(--sprout))]/5';
-            }
-            return (
-              <button
-                key={c}
-                onClick={() => { if (!answered) setSelected(c); }}
-                disabled={answered}
-                className={`h-11 md:h-14 rounded-xl border ${ring} ${bg} transition-all text-[hsl(var(--ink))] disabled:cursor-default`}
-                dir="ltr"
-              >
-                <KaTeXBlock tex={c} className="text-sm md:text-base font-bold" />
-              </button>
-            );
-          })}
+          <div className="grid grid-cols-2 gap-2 md:gap-2.5">
+            {data.choices.map((c) => {
+              const isSelected = c === selected;
+              const isCorrect = c === data.correct;
+              return (
+                <button
+                  key={c}
+                  onClick={() => { if (!answered) setSelected(c); }}
+                  disabled={answered}
+                  className={`h-11 md:h-14 rounded-xl border-2 transition-all duration-100 disabled:cursor-default ${
+                    answered
+                      ? isCorrect
+                        ? 'border-[hsl(var(--sprout))] bg-[hsl(var(--sprout))] text-white shadow-[0_3px_0_hsl(var(--sprout-dark))]'
+                        : isSelected
+                          ? 'border-[hsl(var(--coral))] bg-[hsl(var(--coral))] text-white shadow-[0_3px_0_hsl(var(--coral-dark))]'
+                          : 'border-border bg-card text-muted-foreground opacity-40 shadow-none'
+                      : isSelected
+                        ? 'border-[hsl(var(--sprout))] bg-[hsl(var(--sprout))] text-white shadow-[0_3px_0_hsl(var(--sprout-dark))]'
+                        : 'border-border bg-card text-[hsl(var(--ink))] hover:border-[hsl(var(--sprout))]/60 shadow-[0_3px_0_hsl(var(--border))]'
+                  }`}
+                  dir="ltr"
+                >
+                  <KaTeXBlock tex={c} className="text-sm md:text-base font-bold" />
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
 
-      {selected !== null && !answered && (
-        <Button onClick={verify} variant="default" className="w-full h-11 rounded-xl animate-[pop-in_0.2s_ease-out]">
-          تحقق
-        </Button>
-      )}
+        {answered && (
+          <FeedbackBlock
+            correct={correct}
+            explanation={<MathText tex={data.explanation} className="text-xs leading-relaxed text-[hsl(var(--ink))]" />}
+          />
+        )}
+      </SystemFrame>
 
-      {answered && (
-        <FeedbackBlock
-          correct={correct}
-          explanation={<MathText tex={data.explanation} className="text-xs leading-relaxed text-[hsl(var(--ink))]" />}
-          actions={<Button onClick={onNext} variant="default" className="w-full h-11 rounded-xl">متابعة</Button>}
-        />
-      )}
-    </SystemFrame>
+      <ExerciseActionBar canCheck={selected !== null} answered={answered} onCheck={verify} onNext={onNext} />
+    </>
   );
 }

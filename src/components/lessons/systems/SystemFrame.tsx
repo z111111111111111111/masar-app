@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Button } from '@/components/ui/button';
 
 export function SystemFrame({ badge, index, total, children }: {
   badge: string;
@@ -21,25 +22,61 @@ export function SystemFrame({ badge, index, total, children }: {
   );
 }
 
-export function FeedbackBlock({ correct, explanation, actions }: {
+export function FeedbackBlock({ correct, explanation, retry }: {
   correct: boolean;
   explanation?: ReactNode;
-  actions: ReactNode;
+  retry?: ReactNode;
 }) {
   return (
-    <div className={`rounded-2xl border p-3 space-y-2 md:p-4 md:space-y-3 animate-[pop-in_0.2s_ease-out] ${
-      correct
-        ? 'border-[hsl(var(--sprout))]/30 bg-[hsl(var(--sprout))]/5'
-        : 'border-[hsl(var(--coral))]/30 bg-[hsl(var(--coral))]/5'
-    }`}>
-      <p className={`text-sm font-bold ${correct ? 'text-[hsl(var(--sprout))]' : 'text-[hsl(var(--coral))]'}`}>
-        {correct ? '✓ إجابة صحيحة' : '✗ إجابة خاطئة'}
-      </p>
-      {explanation && (
-        <p className="text-xs leading-relaxed text-[hsl(var(--ink))]">{explanation}</p>
-      )}
-      <div className="space-y-2">{actions}</div>
+    <div className="animate-rise-fade space-y-2">
+      <div className={`rounded-2xl border p-4 ${
+        correct
+          ? 'border-[hsl(var(--sprout))]/30 bg-[hsl(var(--sprout))]/5'
+          : 'border-[hsl(var(--coral))]/30 bg-[hsl(var(--coral))]/5'
+      }`}>
+        <p className={`text-sm font-bold mb-1 ${correct ? 'text-[hsl(var(--sprout))]' : 'text-[hsl(var(--coral))]'}`}>
+          {correct ? '✓ إجابة صحيحة' : '✗ إجابة خاطئة'}
+        </p>
+        {explanation && (
+          <p className="text-xs leading-relaxed text-[hsl(var(--ink))]">{explanation}</p>
+        )}
+      </div>
+      {retry && <div className="pt-1">{retry}</div>}
     </div>
+  );
+}
+
+export function ExerciseActionBar({ canCheck, answered, onCheck, onNext }: {
+  canCheck: boolean;
+  answered: boolean;
+  onCheck: () => void;
+  onNext: () => void;
+}) {
+  const button = !answered ? (
+    <Button
+      onClick={onCheck}
+      disabled={!canCheck}
+      className={`w-full h-12 rounded-xl text-base disabled:opacity-100 ${
+        canCheck ? '' : 'bg-muted text-muted-foreground shadow-none'
+      }`}
+    >
+      تحقق
+    </Button>
+  ) : (
+    <Button onClick={onNext} className="w-full h-12 rounded-xl text-base">
+      متابعة
+    </Button>
+  );
+
+  return (
+    <>
+      {/* Mobile: permanently fixed above the bottom navigation */}
+      <div className="fixed bottom-24 left-0 right-0 z-30 px-4 md:hidden">
+        <div className="max-w-2xl mx-auto">{button}</div>
+      </div>
+      {/* Desktop: in flow */}
+      <div className="hidden md:block pt-5">{button}</div>
+    </>
   );
 }
 

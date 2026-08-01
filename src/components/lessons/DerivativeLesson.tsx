@@ -136,7 +136,7 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
       </div>
 
       {/* Content */}
-      <div className="flex-1 pt-6">
+      <div className="flex-1 pt-6 flex flex-col">
         {phase === 'intro' && (
           <div className="space-y-6 animate-[fade-in_0.4s_ease-out]">
             <div>
@@ -164,8 +164,10 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
         )}
 
         {phase === 'exercises' && (
-          <div key={currentIndex}>
-            {renderExercise()}
+          <div key={currentIndex} className="flex-1 flex flex-col pb-44 md:pb-0">
+            <div className="my-auto w-full">
+              {renderExercise()}
+            </div>
           </div>
         )}
 

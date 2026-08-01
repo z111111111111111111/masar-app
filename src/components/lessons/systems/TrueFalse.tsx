@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
 import { MathText } from '@/components/landing/MathText';
-import { SystemFrame, FeedbackBlock } from './SystemFrame';
+import { SystemFrame, FeedbackBlock, ExerciseActionBar } from './SystemFrame';
 import type { TrueFalseData } from './types';
 
 export function TrueFalse({ data, index, total, onSubmit, onNext }: {
@@ -15,47 +14,59 @@ export function TrueFalse({ data, index, total, onSubmit, onNext }: {
   const [answered, setAnswered] = useState(false);
   const correct = selected === data.isTrue;
 
-  const choose = (val: boolean) => {
-    if (answered) return;
-    setSelected(val);
+  const verify = () => {
+    if (selected === null || answered) return;
     setAnswered(true);
-    onSubmit(val === data.isTrue);
+    onSubmit(correct);
+  };
+
+  const optClass = (val: boolean): string => {
+    const isSelected = selected === val;
+    if (answered) {
+      const isCorrect = val === data.isTrue;
+      if (isCorrect) return 'border-[hsl(var(--sprout))] bg-[hsl(var(--sprout))] text-white shadow-[0_3px_0_hsl(var(--sprout-dark))]';
+      if (isSelected) return 'border-[hsl(var(--coral))] bg-[hsl(var(--coral))] text-white shadow-[0_3px_0_hsl(var(--coral-dark))]';
+      return 'border-border bg-card text-muted-foreground opacity-40 shadow-none';
+    }
+    if (isSelected) return 'border-[hsl(var(--sprout))] bg-[hsl(var(--sprout))] text-white shadow-[0_3px_0_hsl(var(--sprout-dark))]';
+    return 'border-border bg-card text-[hsl(var(--ink))] hover:border-[hsl(var(--sprout))]/60 shadow-[0_3px_0_hsl(var(--border))]';
   };
 
   return (
-    <SystemFrame badge="صحيح أو خطأ" index={index} total={total}>
-      <div className="rounded-2xl border border-border bg-card p-4 md:p-6">
-        <p className="text-base md:text-lg font-bold text-[hsl(var(--ink))] leading-relaxed text-center mb-4 md:mb-6">
-          {data.statement}
-        </p>
+    <>
+      <SystemFrame badge="صحيح أو خطأ" index={index} total={total}>
+        <div className="rounded-2xl border border-border bg-card p-4 md:p-6">
+          <p className="text-base md:text-lg font-bold text-[hsl(var(--ink))] leading-relaxed text-center mb-4 md:mb-6">
+            {data.statement}
+          </p>
 
-        <div className="grid grid-cols-2 gap-2 md:gap-3">
-          <Button
-            variant={selected === true ? (correct ? 'sprout' : 'destructive') : 'outline'}
-            className={`h-12 md:h-16 rounded-xl text-sm md:text-base ${answered && selected === true ? '' : 'hover:scale-[1.02]'}`}
-            onClick={() => choose(true)}
-            disabled={answered && selected !== true}
-          >
-            صحيح
-          </Button>
-          <Button
-            variant={selected === false ? (correct ? 'sprout' : 'destructive') : 'outline'}
-            className={`h-12 md:h-16 rounded-xl text-sm md:text-base ${answered && selected === false ? '' : 'hover:scale-[1.02]'}`}
-            onClick={() => choose(false)}
-            disabled={answered && selected !== false}
-          >
-            خطأ
-          </Button>
+          <div className="grid grid-cols-2 gap-2 md:gap-3">
+            <button
+              onClick={() => { if (!answered) setSelected(true); }}
+              disabled={answered}
+              className={`h-12 md:h-16 rounded-xl border-2 font-bold text-sm md:text-base transition-all duration-100 disabled:cursor-default ${optClass(true)}`}
+            >
+              صحيح
+            </button>
+            <button
+              onClick={() => { if (!answered) setSelected(false); }}
+              disabled={answered}
+              className={`h-12 md:h-16 rounded-xl border-2 font-bold text-sm md:text-base transition-all duration-100 disabled:cursor-default ${optClass(false)}`}
+            >
+              خطأ
+            </button>
+          </div>
         </div>
-      </div>
 
-      {answered && (
-        <FeedbackBlock
-          correct={correct}
-          explanation={<MathText tex={data.explanation} className="text-xs leading-relaxed text-[hsl(var(--ink))]" />}
-          actions={<Button onClick={onNext} variant="default" className="w-full h-11 rounded-xl">متابعة</Button>}
-        />
-      )}
-    </SystemFrame>
+        {answered && (
+          <FeedbackBlock
+            correct={correct}
+            explanation={<MathText tex={data.explanation} className="text-xs leading-relaxed text-[hsl(var(--ink))]" />}
+          />
+        )}
+      </SystemFrame>
+
+      <ExerciseActionBar canCheck={selected !== null} answered={answered} onCheck={verify} onNext={onNext} />
+    </>
   );
 }

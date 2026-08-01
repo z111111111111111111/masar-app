@@ -277,6 +277,12 @@
   100% { transform: translateY(0); opacity: 1; }
 }
 
+@keyframes rise-fade {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-rise-fade { animation: rise-fade 0.45s ease-out both; }
+
 /* KaTeX overrides for dark mode */
 .dark .katex { color: hsl(var(--ink)); }
 .dark .katex .mord,

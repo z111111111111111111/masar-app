@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { MathText, KaTeXBlock } from '@/components/landing/MathText';
-import { SystemFrame, FeedbackBlock } from './SystemFrame';
+import { SystemFrame, FeedbackBlock, ExerciseActionBar } from './SystemFrame';
 import { shuffle } from './utils';
 
 export function OrderBuilder({ badge, instruction, hint, pool, correctOrder, answerLabel, mathStyle, index, total, onSubmit, onNext }: {
@@ -18,11 +18,13 @@ export function OrderBuilder({ badge, instruction, hint, pool, correctOrder, ans
   onNext: () => void;
 }) {
   const shuffledPool = useRef(shuffle(pool)).current;
+  const submittedRef = useRef(false);
   const [order, setOrder] = useState<string[]>([]);
   const [answered, setAnswered] = useState(false);
 
   const remaining = shuffledPool.filter((p) => !order.includes(p));
   const correct = order.length === correctOrder.length && order.every((p, i) => p === correctOrder[i]);
+  const canCheck = order.length === correctOrder.length;
 
   const pick = (p: string) => {
     if (answered) return;
@@ -35,9 +37,12 @@ export function OrderBuilder({ badge, instruction, hint, pool, correctOrder, ans
   };
 
   const verify = () => {
-    if (answered || order.length !== correctOrder.length) return;
+    if (answered || !canCheck) return;
     setAnswered(true);
-    onSubmit(correct);
+    if (!submittedRef.current) {
+      submittedRef.current = true;
+      onSubmit(correct);
+    }
   };
 
   const reset = () => {
@@ -55,92 +60,83 @@ export function OrderBuilder({ badge, instruction, hint, pool, correctOrder, ans
   );
 
   return (
-    <SystemFrame badge={badge} index={index} total={total}>
-      <div className="rounded-2xl border border-border bg-card p-4 md:p-6 space-y-4 md:space-y-5">
-        <MathText
-          tex={instruction}
-          className="text-base md:text-lg font-bold text-[hsl(var(--ink))] leading-relaxed text-center"
-        />
-        {hint && <p className="text-xs text-muted-foreground text-center">{hint}</p>}
+    <>
+      <SystemFrame badge={badge} index={index} total={total}>
+        <div className="rounded-2xl border border-border bg-card p-4 md:p-6 space-y-4 md:space-y-5">
+          <MathText
+            tex={instruction}
+            className="text-base md:text-lg font-bold text-[hsl(var(--ink))] leading-relaxed text-center"
+          />
+          {hint && <p className="text-xs text-muted-foreground text-center">{hint}</p>}
 
-        {/* Answer slots */}
-        <div className="space-y-1">
-          <div className="flex items-center justify-center gap-2">
-            {mathStyle
-              ? <KaTeXBlock tex={answerLabel ?? "f'(x)="} className="text-sm text-muted-foreground" />
-              : <span className="text-xs text-muted-foreground font-semibold">{answerLabel ?? 'الترتيب الصحيح:'}</span>}
+          {/* Answer slots */}
+          <div className="space-y-1">
+            <div className="flex items-center justify-center gap-2">
+              {mathStyle
+                ? <KaTeXBlock tex={answerLabel ?? "f'(x)="} className="text-sm text-muted-foreground" />
+                : <span className="text-xs text-muted-foreground font-semibold">{answerLabel ?? 'الترتيب الصحيح:'}</span>}
+            </div>
+            <div dir={mathStyle ? 'ltr' : 'rtl'} className="flex items-center justify-center gap-2 flex-wrap min-h-[48px] md:min-h-[56px] p-3 rounded-xl bg-muted/40 border border-dashed border-border">
+              {correctOrder.map((_, i) =>
+                order[i]
+                  ? (
+                    <button key={i} onClick={() => unpick(i)} className="cursor-pointer transition-transform hover:scale-105" title="إزالة">
+                      {chip(order[i], 'bg-[hsl(var(--sprout))] text-white')}
+                    </button>
+                  )
+                  : (
+                    <span key={i} className="w-9 h-8 md:w-10 md:h-9 rounded-lg border border-dashed border-muted-foreground/30" />
+                  )
+              )}
+            </div>
           </div>
-          <div dir={mathStyle ? 'ltr' : 'rtl'} className="flex items-center justify-center gap-2 flex-wrap min-h-[48px] md:min-h-[56px] p-3 rounded-xl bg-muted/40 border border-dashed border-border">
-            {correctOrder.map((_, i) =>
-              order[i]
-                ? (
-                  <button key={i} onClick={() => unpick(i)} className="cursor-pointer transition-transform hover:scale-105" title="إزالة">
-                    {chip(order[i], 'bg-[hsl(var(--sprout))] text-white')}
-                  </button>
-                )
-                : (
-                  <span key={i} className="w-9 h-8 md:w-10 md:h-9 rounded-lg border border-dashed border-muted-foreground/30" />
-                )
+
+          {/* Pool */}
+          <div dir={mathStyle ? 'ltr' : 'rtl'} className="flex items-center justify-center gap-2 flex-wrap">
+            {remaining.map((p) => (
+              <button
+                key={p}
+                onClick={() => pick(p)}
+                className="transition-transform hover:scale-105 active:scale-95"
+              >
+                {chip(p, 'bg-card border border-border shadow-sm hover:border-[hsl(var(--sprout))] text-[hsl(var(--ink))]')}
+              </button>
+            ))}
+            {remaining.length === 0 && (
+              <span className="text-xs text-muted-foreground">اكتمل الترتيب</span>
             )}
           </div>
         </div>
 
-        {/* Pool */}
-        <div dir={mathStyle ? 'ltr' : 'rtl'} className="flex items-center justify-center gap-2 flex-wrap">
-          {remaining.map((p) => (
-            <button
-              key={p}
-              onClick={() => pick(p)}
-              className="transition-transform hover:scale-105 active:scale-95"
-            >
-              {chip(p, 'bg-card border border-border shadow-sm hover:border-[hsl(var(--sprout))] text-[hsl(var(--ink))]')}
-            </button>
-          ))}
-          {remaining.length === 0 && (
-            <span className="text-xs text-muted-foreground">اكتمل الترتيب</span>
-          )}
-        </div>
-      </div>
-
-      {order.length === correctOrder.length && !answered && (
-        <Button onClick={verify} variant="default" className="w-full h-11 rounded-xl animate-[pop-in_0.2s_ease-out]">
-          تحقق
-        </Button>
-      )}
-
-      {answered && (
-        <FeedbackBlock
-          correct={correct}
-          explanation={
-            correct
-              ? undefined
-              : (
-                <span className="block">
-                  الترتيب الصحيح:{' '}
-                  <span dir={mathStyle ? 'ltr' : 'rtl'} className="inline-flex gap-1.5 font-bold">
-                    {correctOrder.map((p, i) => (
-                      <span key={i} className="px-2 py-0.5 rounded-md bg-card border border-border">
-                        {mathStyle ? <KaTeXBlock tex={p} className="text-sm" /> : p}
-                      </span>
-                    ))}
+        {answered && (
+          <FeedbackBlock
+            correct={correct}
+            explanation={
+              correct
+                ? undefined
+                : (
+                  <span className="block">
+                    الترتيب الصحيح:{' '}
+                    <span dir={mathStyle ? 'ltr' : 'rtl'} className="inline-flex gap-1.5 font-bold">
+                      {correctOrder.map((p, i) => (
+                        <span key={i} className="px-2 py-0.5 rounded-md bg-card border border-border">
+                          {mathStyle ? <KaTeXBlock tex={p} className="text-sm" /> : p}
+                        </span>
+                      ))}
+                    </span>
                   </span>
-                </span>
-              )
-          }
-          actions={
-            <>
-              {!correct && (
-                <Button onClick={reset} variant="secondary" className="w-full h-10 rounded-xl">
-                  إعادة المحاولة
-                </Button>
-              )}
-              <Button onClick={onNext} variant="default" className="w-full h-10 rounded-xl">
-                متابعة
+                )
+            }
+            retry={!correct ? (
+              <Button onClick={reset} variant="secondary" className="w-full h-11 rounded-xl">
+                إعادة المحاولة
               </Button>
-            </>
-          }
-        />
-      )}
-    </SystemFrame>
+            ) : undefined}
+          />
+        )}
+      </SystemFrame>
+
+      <ExerciseActionBar canCheck={canCheck} answered={answered} onCheck={verify} onNext={onNext} />
+    </>
   );
 }
