@@ -1,10 +1,8 @@
 import { OrderBuilder } from './OrderBuilder';
 import type { RuleData } from './types';
 
-export function RuleAssembly({ data, index, total, onSubmit, onNext }: {
+export function RuleAssembly({ data, onSubmit, onNext }: {
   data: RuleData;
-  index: number;
-  total: number;
   onSubmit: (correct: boolean) => void;
   onNext: () => void;
 }) {
@@ -15,8 +13,6 @@ export function RuleAssembly({ data, index, total, onSubmit, onNext }: {
       correctOrder={data.correctOrder}
       answerLabel={data.answerLabel ?? "f'(x)="}
       mathStyle
-      index={index}
-      total={total}
       onSubmit={onSubmit}
       onNext={onNext}
     />

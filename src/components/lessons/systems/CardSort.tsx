@@ -1,10 +1,8 @@
 import { OrderBuilder } from './OrderBuilder';
 import type { SortData } from './types';
 
-export function CardSort({ data, index, total, onSubmit, onNext }: {
+export function CardSort({ data, onSubmit, onNext }: {
   data: SortData;
-  index: number;
-  total: number;
   onSubmit: (correct: boolean) => void;
   onNext: () => void;
 }) {
@@ -16,8 +14,6 @@ export function CardSort({ data, index, total, onSubmit, onNext }: {
       correctOrder={data.correctOrder}
       answerLabel={`الترتيب الصحيح (${data.relation}):`}
       vertical
-      index={index}
-      total={total}
       onSubmit={onSubmit}
       onNext={onNext}
     />

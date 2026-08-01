@@ -3,10 +3,8 @@ import { MathText, KaTeXBlock } from '@/components/landing/MathText';
 import { SystemFrame, FeedbackBlock, ExerciseActionBar, CheckMark, XMark } from './SystemFrame';
 import type { MCQData } from './types';
 
-export function MultipleChoice({ data, index, total, onSubmit, onNext }: {
+export function MultipleChoice({ data, onSubmit, onNext }: {
   data: MCQData;
-  index: number;
-  total: number;
   onSubmit: (correct: boolean) => void;
   onNext: () => void;
 }) {
@@ -22,7 +20,7 @@ export function MultipleChoice({ data, index, total, onSubmit, onNext }: {
 
   return (
     <>
-      <SystemFrame index={index} total={total}>
+      <SystemFrame>
         <div className="rounded-2xl border border-border bg-card p-4 md:p-6">
           <p className="text-base md:text-lg font-bold text-[hsl(var(--ink))] leading-relaxed mb-4 md:mb-6 text-center">
             {data.question}

@@ -1,18 +1,11 @@
 import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 
-export function SystemFrame({ index, total, children }: {
-  index: number;
-  total: number;
+export function SystemFrame({ children }: {
   children: ReactNode;
 }) {
   return (
     <div className="space-y-4 md:space-y-5 animate-[pop-in_0.3s_ease-out]">
-      <div className="flex items-center justify-center">
-        <span className="text-[11px] text-muted-foreground font-semibold">
-          تمرين {index + 1} / {total}
-        </span>
-      </div>
       {children}
     </div>
   );

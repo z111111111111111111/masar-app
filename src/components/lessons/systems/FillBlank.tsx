@@ -3,10 +3,8 @@ import { MathText, KaTeXBlock } from '@/components/landing/MathText';
 import { SystemFrame, FeedbackBlock, ExerciseActionBar } from './SystemFrame';
 import type { FillData } from './types';
 
-export function FillBlank({ data, index, total, onSubmit, onNext }: {
+export function FillBlank({ data, onSubmit, onNext }: {
   data: FillData;
-  index: number;
-  total: number;
   onSubmit: (correct: boolean) => void;
   onNext: () => void;
 }) {
@@ -22,7 +20,7 @@ export function FillBlank({ data, index, total, onSubmit, onNext }: {
 
   return (
     <>
-      <SystemFrame index={index} total={total}>
+      <SystemFrame>
         <div className="rounded-2xl border border-border bg-card p-4 md:p-6 space-y-4 md:space-y-5">
           <p className="text-sm md:text-base font-bold text-[hsl(var(--ink))] leading-relaxed text-center flex items-center justify-center gap-2 flex-wrap">
             {data.before}

@@ -3,10 +3,8 @@ import { MathText } from '@/components/landing/MathText';
 import { SystemFrame, FeedbackBlock, ExerciseActionBar } from './SystemFrame';
 import type { TrueFalseData } from './types';
 
-export function TrueFalse({ data, index, total, onSubmit, onNext }: {
+export function TrueFalse({ data, onSubmit, onNext }: {
   data: TrueFalseData;
-  index: number;
-  total: number;
   onSubmit: (correct: boolean) => void;
   onNext: () => void;
 }) {
@@ -34,7 +32,7 @@ export function TrueFalse({ data, index, total, onSubmit, onNext }: {
 
   return (
     <>
-      <SystemFrame index={index} total={total}>
+      <SystemFrame>
         <div className="rounded-2xl border border-border bg-card p-4 md:p-6">
           <p className="text-base md:text-lg font-bold text-[hsl(var(--ink))] leading-relaxed text-center mb-4 md:mb-6">
             {data.statement}

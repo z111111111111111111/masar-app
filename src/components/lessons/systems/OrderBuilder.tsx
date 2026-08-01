@@ -3,7 +3,7 @@ import { MathText, KaTeXBlock } from '@/components/landing/MathText';
 import { SystemFrame, FeedbackBlock, ExerciseActionBar } from './SystemFrame';
 import { shuffle } from './utils';
 
-export function OrderBuilder({ instruction, hint, pool, correctOrder, answerLabel, mathStyle, vertical, index, total, onSubmit, onNext }: {
+export function OrderBuilder({ instruction, hint, pool, correctOrder, answerLabel, mathStyle, vertical, onSubmit, onNext }: {
   instruction: string;
   hint?: string;
   pool: string[];
@@ -11,8 +11,6 @@ export function OrderBuilder({ instruction, hint, pool, correctOrder, answerLabe
   answerLabel?: string;
   mathStyle?: boolean;
   vertical?: boolean;
-  index: number;
-  total: number;
   onSubmit: (correct: boolean) => void;
   onNext: () => void;
 }) {
@@ -51,7 +49,7 @@ export function OrderBuilder({ instruction, hint, pool, correctOrder, answerLabe
 
   return (
     <>
-      <SystemFrame index={index} total={total}>
+      <SystemFrame>
         <div className="rounded-2xl border border-border bg-card p-4 md:p-6 space-y-4 md:space-y-5">
           <MathText
             tex={instruction}
