@@ -48,18 +48,18 @@ export function OrderBuilder({ badge, instruction, hint, pool, correctOrder, ans
   const chip = (label: string, extra = '') => (
     <span
       dir={mathStyle ? 'ltr' : undefined}
-      className={`inline-flex items-center justify-center px-3 py-1.5 rounded-lg font-bold ${extra}`}
+      className={`inline-flex items-center justify-center px-2.5 md:px-3 py-1 md:py-1.5 rounded-lg font-bold ${extra}`}
     >
-      {mathStyle ? <KaTeXBlock tex={label} className="text-base" /> : label}
+      {mathStyle ? <KaTeXBlock tex={label} className="text-sm md:text-base" /> : label}
     </span>
   );
 
   return (
     <SystemFrame badge={badge} index={index} total={total}>
-      <div className="rounded-2xl border border-border bg-card p-6 space-y-5">
+      <div className="rounded-2xl border border-border bg-card p-4 md:p-6 space-y-4 md:space-y-5">
         <MathText
           tex={instruction}
-          className="text-lg font-bold text-[hsl(var(--ink))] leading-relaxed text-center"
+          className="text-base md:text-lg font-bold text-[hsl(var(--ink))] leading-relaxed text-center"
         />
         {hint && <p className="text-xs text-muted-foreground text-center">{hint}</p>}
 
@@ -70,7 +70,7 @@ export function OrderBuilder({ badge, instruction, hint, pool, correctOrder, ans
               ? <KaTeXBlock tex={answerLabel ?? "f'(x)="} className="text-sm text-muted-foreground" />
               : <span className="text-xs text-muted-foreground font-semibold">{answerLabel ?? 'الترتيب الصحيح:'}</span>}
           </div>
-          <div dir={mathStyle ? 'ltr' : 'rtl'} className="flex items-center justify-center gap-2 flex-wrap min-h-[56px] p-3 rounded-xl bg-muted/40 border border-dashed border-border">
+          <div dir={mathStyle ? 'ltr' : 'rtl'} className="flex items-center justify-center gap-2 flex-wrap min-h-[48px] md:min-h-[56px] p-3 rounded-xl bg-muted/40 border border-dashed border-border">
             {correctOrder.map((_, i) =>
               order[i]
                 ? (
@@ -79,7 +79,7 @@ export function OrderBuilder({ badge, instruction, hint, pool, correctOrder, ans
                   </button>
                 )
                 : (
-                  <span key={i} className="w-10 h-9 rounded-lg border border-dashed border-muted-foreground/30" />
+                  <span key={i} className="w-9 h-8 md:w-10 md:h-9 rounded-lg border border-dashed border-muted-foreground/30" />
                 )
             )}
           </div>

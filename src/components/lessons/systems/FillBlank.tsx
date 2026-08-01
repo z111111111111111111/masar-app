@@ -23,23 +23,23 @@ export function FillBlank({ data, index, total, onSubmit, onNext }: {
 
   return (
     <SystemFrame badge="ملء الفراغ" index={index} total={total}>
-      <div className="rounded-2xl border border-border bg-card p-6 space-y-5">
-        <p className="text-base font-bold text-[hsl(var(--ink))] leading-relaxed text-center flex items-center justify-center gap-2 flex-wrap">
+      <div className="rounded-2xl border border-border bg-card p-4 md:p-6 space-y-4 md:space-y-5">
+        <p className="text-sm md:text-base font-bold text-[hsl(var(--ink))] leading-relaxed text-center flex items-center justify-center gap-2 flex-wrap">
           {data.before}
           <span
             dir="ltr"
-            className={`inline-flex items-center justify-center min-w-[84px] px-3 py-1 rounded-lg border-2 transition-colors ${
+            className={`inline-flex items-center justify-center min-w-[72px] md:min-w-[84px] px-2.5 md:px-3 py-0.5 md:py-1 rounded-lg border-2 transition-colors ${
               selected
                 ? 'border-[hsl(var(--sprout))] bg-[hsl(var(--sprout-soft))] text-[hsl(var(--ink))]'
                 : 'border-dashed border-muted-foreground/40 text-muted-foreground'
             }`}
           >
-            {selected ? <KaTeXBlock tex={selected} className="text-base" /> : <span className="text-sm font-bold">؟</span>}
+            {selected ? <KaTeXBlock tex={selected} className="text-sm md:text-base" /> : <span className="text-sm font-bold">؟</span>}
           </span>
           {data.after}
         </p>
 
-        <div className="grid grid-cols-2 gap-2.5">
+        <div className="grid grid-cols-2 gap-2 md:gap-2.5">
           {data.choices.map((c) => {
             const isSelected = c === selected;
             const isCorrect = c === data.correct;
@@ -57,10 +57,10 @@ export function FillBlank({ data, index, total, onSubmit, onNext }: {
                 key={c}
                 onClick={() => { if (!answered) setSelected(c); }}
                 disabled={answered}
-                className={`h-14 rounded-xl border ${ring} ${bg} transition-all text-[hsl(var(--ink))] disabled:cursor-default`}
+                className={`h-11 md:h-14 rounded-xl border ${ring} ${bg} transition-all text-[hsl(var(--ink))] disabled:cursor-default`}
                 dir="ltr"
               >
-                <KaTeXBlock tex={c} className="text-base font-bold" />
+                <KaTeXBlock tex={c} className="text-sm md:text-base font-bold" />
               </button>
             );
           })}

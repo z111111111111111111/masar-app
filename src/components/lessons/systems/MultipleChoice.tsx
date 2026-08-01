@@ -23,12 +23,12 @@ export function MultipleChoice({ data, index, total, onSubmit, onNext }: {
 
   return (
     <SystemFrame badge="اختيار من متعدد" index={index} total={total}>
-      <div className="rounded-2xl border border-border bg-card p-6">
-        <p className="text-lg font-bold text-[hsl(var(--ink))] leading-relaxed mb-6 text-center">
+      <div className="rounded-2xl border border-border bg-card p-4 md:p-6">
+        <p className="text-base md:text-lg font-bold text-[hsl(var(--ink))] leading-relaxed mb-4 md:mb-6 text-center">
           {data.question}
         </p>
 
-        <div className="space-y-3">
+        <div className="space-y-2.5 md:space-y-3">
           {data.options.map((opt, i) => {
             const isCorrect = i === data.correct;
             const isSelected = i === selected;
@@ -46,10 +46,10 @@ export function MultipleChoice({ data, index, total, onSubmit, onNext }: {
                 key={i}
                 onClick={() => { if (!answered) setSelected(i); }}
                 disabled={answered}
-                className={`w-full p-4 rounded-xl border ${ring} ${bg} transition-all text-base font-bold text-[hsl(var(--ink))] disabled:cursor-default text-center`}
+                className={`w-full p-3 md:p-4 rounded-xl border ${ring} ${bg} transition-all text-sm md:text-base font-bold text-[hsl(var(--ink))] disabled:cursor-default text-center`}
               >
-                <span className="inline-flex items-center gap-2.5">
-                  <span className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${
+                <span className="inline-flex items-center gap-2 md:gap-2.5">
+                  <span className={`w-6 h-6 md:w-7 md:h-7 rounded-full flex items-center justify-center shrink-0 ${
                     answered && isCorrect ? 'bg-[hsl(var(--sprout))] text-white' :
                     answered && isSelected ? 'bg-[hsl(var(--coral))] text-white' :
                     'bg-muted text-muted-foreground'
@@ -58,7 +58,7 @@ export function MultipleChoice({ data, index, total, onSubmit, onNext }: {
                       <span className="text-xs font-bold">{String.fromCharCode(1571 + i)}</span>
                     )}
                   </span>
-                  <span dir="ltr"><KaTeXBlock tex={opt} className="text-lg" /></span>
+                  <span dir="ltr"><KaTeXBlock tex={opt} className="text-base md:text-lg" /></span>
                 </span>
               </button>
             );

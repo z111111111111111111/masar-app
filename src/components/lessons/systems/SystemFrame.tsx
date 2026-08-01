@@ -7,7 +7,7 @@ export function SystemFrame({ badge, index, total, children }: {
   children: ReactNode;
 }) {
   return (
-    <div className="space-y-5 animate-[pop-in_0.3s_ease-out]">
+    <div className="space-y-4 md:space-y-5 animate-[pop-in_0.3s_ease-out]">
       <div className="flex items-center justify-between gap-3">
         <span className="text-xs font-bold text-[hsl(var(--sprout))] bg-[hsl(var(--sprout-soft))] px-3 py-1 rounded-full">
           {badge}
@@ -27,7 +27,7 @@ export function FeedbackBlock({ correct, explanation, actions }: {
   actions: ReactNode;
 }) {
   return (
-    <div className={`rounded-2xl border p-4 space-y-3 animate-[pop-in_0.2s_ease-out] ${
+    <div className={`rounded-2xl border p-3 space-y-2 md:p-4 md:space-y-3 animate-[pop-in_0.2s_ease-out] ${
       correct
         ? 'border-[hsl(var(--sprout))]/30 bg-[hsl(var(--sprout))]/5'
         : 'border-[hsl(var(--coral))]/30 bg-[hsl(var(--coral))]/5'

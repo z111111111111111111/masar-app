@@ -24,15 +24,15 @@ export function TrueFalse({ data, index, total, onSubmit, onNext }: {
 
   return (
     <SystemFrame badge="صحيح أو خطأ" index={index} total={total}>
-      <div className="rounded-2xl border border-border bg-card p-6">
-        <p className="text-lg font-bold text-[hsl(var(--ink))] leading-relaxed text-center mb-6">
+      <div className="rounded-2xl border border-border bg-card p-4 md:p-6">
+        <p className="text-base md:text-lg font-bold text-[hsl(var(--ink))] leading-relaxed text-center mb-4 md:mb-6">
           {data.statement}
         </p>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2 md:gap-3">
           <Button
             variant={selected === true ? (correct ? 'sprout' : 'destructive') : 'outline'}
-            className={`h-16 rounded-xl text-base ${answered && selected === true ? '' : 'hover:scale-[1.02]'}`}
+            className={`h-12 md:h-16 rounded-xl text-sm md:text-base ${answered && selected === true ? '' : 'hover:scale-[1.02]'}`}
             onClick={() => choose(true)}
             disabled={answered && selected !== true}
           >
@@ -40,7 +40,7 @@ export function TrueFalse({ data, index, total, onSubmit, onNext }: {
           </Button>
           <Button
             variant={selected === false ? (correct ? 'sprout' : 'destructive') : 'outline'}
-            className={`h-16 rounded-xl text-base ${answered && selected === false ? '' : 'hover:scale-[1.02]'}`}
+            className={`h-12 md:h-16 rounded-xl text-sm md:text-base ${answered && selected === false ? '' : 'hover:scale-[1.02]'}`}
             onClick={() => choose(false)}
             disabled={answered && selected !== false}
           >
