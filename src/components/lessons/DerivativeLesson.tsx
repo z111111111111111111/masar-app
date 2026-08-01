@@ -144,34 +144,13 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
               <p className="text-sm text-muted-foreground">الدرس الأول — الرياضيات</p>
             </div>
 
-            <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
-              <h2 className="text-base font-bold text-[hsl(var(--ink))]">التعريف الأساسي</h2>
-              <p className="text-sm leading-relaxed text-[hsl(var(--ink))]">
-                <span
-                  className="font-bold border-b-2 border-dashed border-[hsl(var(--chart-1))]/60 cursor-pointer"
-                  onClick={() => setShowGraph(!showGraph)}
-                >
-                  المشتقة
-                </span>
-                {' '}هي أداة رياضية تخبرنا بمقدار سرعة تغير الدالة عند نقطة معينة، أو بعبارة أخرى{' '}
-                <span className="font-semibold">ميل المماس للمنحنى</span>{' '}
-                عند تلك النقطة.
-              </p>
-
-              {showGraph && (
-                <div className="rounded-xl border border-[hsl(var(--chart-1))]/20 bg-[hsl(var(--chart-1))]/5 p-4 animate-[pop-in_0.3s_ease-out]">
-                  <DerivativeGraph ready={graphReady} />
-                  <p className="text-[11px] text-muted-foreground text-center mt-3">
-                     الدالة <KaTeXBlock tex="f(x)=x^{3}" className="font-bold text-[hsl(var(--ink))]" /> مع خط المماس
-                  </p>
-                </div>
-              )}
-            </div>
-
-            <VideoRuleSwap
+            <VideoIntroSwap
               videoUrl="https://www.youtube-nocookie.com/embed/kNRqWehvOtE"
               videoPoster="https://img.youtube.com/vi/kNRqWehvOtE/maxresdefault.jpg"
               videoTitle="شرح الاشتقاقية"
+              showGraph={showGraph}
+              graphReady={graphReady}
+              onToggleGraph={() => setShowGraph((g) => !g)}
             />
 
             <Button
@@ -282,33 +261,39 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
   );
 }
 
-/* ─── Inline video ↔ basic rule swap ─── */
-function VideoRuleSwap({
+/* ─── Inline video ↔ definition card swap ─── */
+function VideoIntroSwap({
   videoUrl,
   videoPoster,
   videoTitle,
+  showGraph,
+  graphReady,
+  onToggleGraph,
 }: {
   videoUrl: string;
   videoPoster: string;
   videoTitle: string;
+  showGraph: boolean;
+  graphReady: boolean;
+  onToggleGraph: () => void;
 }) {
-  const ruleRef = useRef<HTMLDivElement>(null);
+  const defRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLDivElement>(null);
-  const [ruleH, setRuleH] = useState(0);
+  const [defH, setDefH] = useState(0);
   const [videoH, setVideoH] = useState(0);
   const [watching, setWatching] = useState(false);
   const GAP = 12;
 
   useLayoutEffect(() => {
-    const rule = ruleRef.current;
+    const def = defRef.current;
     const video = videoRef.current;
     const measure = () => {
-      setRuleH(rule?.offsetHeight ?? 0);
+      setDefH(def?.offsetHeight ?? 0);
       setVideoH(video?.offsetHeight ?? 0);
     };
     measure();
     const ro = new ResizeObserver(measure);
-    if (rule) ro.observe(rule);
+    if (def) ro.observe(def);
     if (video) ro.observe(video);
     return () => ro.disconnect();
   }, []);
@@ -317,12 +302,12 @@ function VideoRuleSwap({
 
   return (
     <div className="relative space-y-3">
-      {/* Video box — rises above the basic rule when watching */}
+      {/* Video box — rises above the definition card when watching */}
       <div
         ref={videoRef}
         className="relative rounded-2xl border border-border bg-card p-5 space-y-3"
         style={{
-          transform: watching ? 'translateY(0)' : `translateY(${ruleH + GAP}px)`,
+          transform: watching ? 'translateY(0)' : `translateY(${defH + GAP}px)`,
           transition: EASE,
           zIndex: 20,
         }}
@@ -372,21 +357,45 @@ function VideoRuleSwap({
         )}
       </div>
 
-      {/* Basic rule box — slides down under the video when watching */}
+      {/* Definition card (includes the basic rule) — slides down under the video when watching */}
       <div
-        ref={ruleRef}
-        className="rounded-xl bg-muted/50 p-4"
+        ref={defRef}
+        className="rounded-2xl border border-border bg-card p-5 space-y-4"
         style={{
           transform: watching ? 'translateY(0)' : `translateY(${-videoH - GAP}px)`,
           transition: EASE,
           zIndex: 10,
         }}
       >
-        <p className="text-xs text-muted-foreground mb-2 font-medium">القاعدة الأساسية</p>
-        <div className="flex items-center justify-center gap-3 text-base font-bold" dir="ltr">
-          <KaTeXBlock tex="f(x)=x^{n}" className="text-[hsl(var(--ink))]" />
-          <span className="text-muted-foreground text-sm">→</span>
-          <KaTeXBlock tex="f'(x)=n\cdot x^{n-1}" className="text-[hsl(var(--sprout))]" />
+        <h2 className="text-base font-bold text-[hsl(var(--ink))]">التعريف الأساسي</h2>
+        <p className="text-sm leading-relaxed text-[hsl(var(--ink))]">
+          <span
+            className="font-bold border-b-2 border-dashed border-[hsl(var(--chart-1))]/60 cursor-pointer"
+            onClick={onToggleGraph}
+          >
+            المشتقة
+          </span>
+          {' '}هي أداة رياضية تخبرنا بمقدار سرعة تغير الدالة عند نقطة معينة، أو بعبارة أخرى{' '}
+          <span className="font-semibold">ميل المماس للمنحنى</span>{' '}
+          عند تلك النقطة.
+        </p>
+
+        {showGraph && (
+          <div className="rounded-xl border border-[hsl(var(--chart-1))]/20 bg-[hsl(var(--chart-1))]/5 p-4 animate-[pop-in_0.3s_ease-out]">
+            <DerivativeGraph ready={graphReady} />
+            <p className="text-[11px] text-muted-foreground text-center mt-3">
+               الدالة <KaTeXBlock tex="f(x)=x^{3}" className="font-bold text-[hsl(var(--ink))]" /> مع خط المماس
+            </p>
+          </div>
+        )}
+
+        <div className="rounded-xl bg-muted/50 p-4">
+          <p className="text-xs text-muted-foreground mb-2 font-medium">القاعدة الأساسية</p>
+          <div className="flex items-center justify-center gap-3 text-base font-bold" dir="ltr">
+            <KaTeXBlock tex="f(x)=x^{n}" className="text-[hsl(var(--ink))]" />
+            <span className="text-muted-foreground text-sm">→</span>
+            <KaTeXBlock tex="f'(x)=n\cdot x^{n-1}" className="text-[hsl(var(--sprout))]" />
+          </div>
         </div>
       </div>
     </div>
