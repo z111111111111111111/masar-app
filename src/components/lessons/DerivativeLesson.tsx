@@ -53,6 +53,7 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
   const [retryQueue, setRetryQueue] = useState<{ flowIndex: number; kind: string; correctAnswer: string }[]>([]);
   const [retryIndex, setRetryIndex] = useState(0);
   const [retryRound, setRetryRound] = useState(0);
+  const [retryTotal, setRetryTotal] = useState(0);
   const [lastRetryCorrect, setLastRetryCorrect] = useState<boolean | null>(null);
   const pendingRef = useRef<Array<Promise<unknown>>>([]);
 
@@ -77,7 +78,9 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
   const retryItem = phase === 'retry' ? retryQueue[retryIndex] : undefined;
   const activeExercise = retryItem ? (DERIVATIVE_FLOW[retryItem.flowIndex] ?? current) : current;
   const pct = phase === 'retry'
-    ? Math.round(((total - retryQueue.length) / total) * 100)
+    // During correction the bar advances against the wrong-exercise queue size,
+    // so each fixed mistake moves it by a meaningful step up to 100%.
+    ? retryTotal > 0 ? Math.round(((retryTotal - retryQueue.length) / retryTotal) * 100) : 0
     : phase === 'done' || phase === 'results'
       ? 100
       : Math.min(100, Math.round(((correctCount + wrongCount) / total) * 100));
@@ -115,6 +118,7 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
     // correcting only those exercises; otherwise start the full set fresh.
     const pending = unresolved ?? [];
     if (pending.length > 0) {
+      setRetryTotal(pending.length);
       setRetryQueue(pending.map((m) => ({ flowIndex: m.flowIndex, kind: m.kind, correctAnswer: m.correctAnswer })));
       setRetryIndex(0);
       setRetryRound(0);
@@ -174,7 +178,9 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
         const ex = DERIVATIVE_FLOW[i];
         return { flowIndex: i, kind: ex.kind, correctAnswer: serializeCorrectAnswer(ex) };
       });
-    setRetryQueue([...dbSeed, ...localSeed]);
+    const queue = [...dbSeed, ...localSeed];
+    setRetryTotal(queue.length);
+    setRetryQueue(queue);
     setRetryIndex(0);
     setRetryRound(0);
     setLastRetryCorrect(null);
