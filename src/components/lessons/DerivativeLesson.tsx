@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
-import { useMutation, useQuery } from 'convex/react';
+import { useMutation, useQuery_experimental as useQuerySafe } from 'convex/react';
 import { api } from 'convex/_generated/api';
 import { ChevronIcon } from '../icons';
 import { Button } from '@/components/ui/button';
@@ -59,7 +59,14 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
   const recordMistake = useMutation(api.mistakes.recordMistake);
   const resolveMistake = useMutation(api.mistakes.resolveMistake);
   const resetSession = useMutation(api.mistakes.resetSession);
-  const unresolved = useQuery(api.mistakes.getUnresolved, { flow: DERIVATIVE_FLOW_ID });
+  // Non-throwing query: if the backend function/table is unavailable the result is
+  // simply `undefined` (the retry queue falls back to local wrong answers) instead
+  // of crashing the lesson with a white page.
+  const unresolvedQuery = useQuerySafe({
+    query: api.mistakes.getUnresolved,
+    args: { flow: DERIVATIVE_FLOW_ID },
+  });
+  const unresolved = unresolvedQuery.status === 'success' ? unresolvedQuery.data : undefined;
 
   const [elapsed, setElapsed] = useState(0);
   const [completedSubjects, setCompletedSubjects] = useState<string[]>([]);

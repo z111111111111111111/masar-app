@@ -5,6 +5,7 @@ import App from './App.tsx'
 import { ConvexReactClient } from 'convex/react'
 import { ConvexBetterAuthProvider } from '@convex-dev/better-auth/react'
 import { authClient } from '@/lib/auth-client'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 
 const fontLink = document.createElement('link')
 fontLink.rel = 'stylesheet'
@@ -15,8 +16,10 @@ const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL);
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ConvexBetterAuthProvider client={convex} authClient={authClient}>
-      <App />
-    </ConvexBetterAuthProvider>
+    <ErrorBoundary>
+      <ConvexBetterAuthProvider client={convex} authClient={authClient}>
+        <App />
+      </ConvexBetterAuthProvider>
+    </ErrorBoundary>
   </StrictMode>,
 )
