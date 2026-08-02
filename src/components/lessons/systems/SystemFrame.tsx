@@ -11,8 +11,9 @@ export function SystemFrame({ children }: {
   );
 }
 
-export function FeedbackBlock({ correct, explanation }: {
+export function FeedbackBlock({ correct, correctAnswer, explanation }: {
   correct: boolean;
+  correctAnswer?: ReactNode;
   explanation?: ReactNode;
 }) {
   return (
@@ -25,6 +26,12 @@ export function FeedbackBlock({ correct, explanation }: {
         <p className={`text-sm font-bold mb-1 ${correct ? 'text-[hsl(var(--sprout))]' : 'text-[hsl(var(--coral))]'}`}>
           {correct ? '✓ إجابة صحيحة' : '✗ إجابة خاطئة'}
         </p>
+        {!correct && correctAnswer && (
+          <div className="text-xs leading-relaxed mb-1 text-[hsl(var(--ink))]">
+            <span className="font-bold">الإجابة الصحيحة: </span>
+            <span className="font-bold text-[hsl(var(--sprout))]">{correctAnswer}</span>
+          </div>
+        )}
         {explanation && (
           <p className="text-xs leading-relaxed text-[hsl(var(--ink))]">{explanation}</p>
         )}

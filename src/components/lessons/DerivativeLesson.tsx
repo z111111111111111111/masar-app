@@ -95,9 +95,11 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
     if (phase === 'done') {
       stopTimer();
       setCompletedSubjects(markSubjectComplete('math'));
+      // Clear any leftover unresolved mistakes once everything is corrected.
+      resetSession({ flow: DERIVATIVE_FLOW_ID }).catch(() => {});
       onStageComplete?.(true);
     }
-  }, [phase, stopTimer, onStageComplete]);
+  }, [phase, stopTimer, onStageComplete, resetSession]);
 
   useEffect(() => {
     if (showGraph) {
@@ -106,10 +108,19 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
     }
   }, [showGraph]);
 
-  const handleStart = async () => {
-    // Each entry starts a full fresh exercise set (no carry-over of old mistakes).
-    await resetSession({ flow: DERIVATIVE_FLOW_ID }).catch(() => {});
-    setPhase('exercises');
+  const handleStart = () => {
+    // Re-entry: if the student left with unresolved mistakes, jump straight to
+    // correcting only those exercises; otherwise start the full set fresh.
+    const pending = unresolved ?? [];
+    if (pending.length > 0) {
+      setRetryQueue(pending.map((m) => ({ flowIndex: m.flowIndex, kind: m.kind, correctAnswer: m.correctAnswer })));
+      setRetryIndex(0);
+      setRetryRound(0);
+      setLastRetryCorrect(null);
+      setPhase('retry');
+    } else {
+      setPhase('exercises');
+    }
     startTimer();
   };
 
@@ -250,7 +261,7 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
                 <h1 className="text-xl font-bold text-[hsl(var(--ink))] mb-1">الاشتقاقية</h1>
                 <p className="text-sm text-muted-foreground">الدرس الأول — الرياضيات</p>
                 <p className="text-[11px] text-muted-foreground mt-1">
-                  أجب عن جميع التمارين إجابة صحيحة للمرور إلى المرحلة التالية — إن أخطأت في أي تمرين فسيُعاد عرض التمارين الخاطئة فقط.
+                  أجب عن جميع التمارين إجابة صحيحة للمرور إلى المرحلة التالية — إن أخطأت في أي تمرين فستُعرض لك إجابتك الصحيحة، وإذا خرجت قبل تصحيحها فستجد أخطاءك فقط عند عودتك حتى تُصحّحها كلها.
                 </p>
               </div>
 

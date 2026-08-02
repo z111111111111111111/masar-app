@@ -65,6 +65,7 @@ export function TrueFalse({ data, onSubmit, onNext }: {
         feedback={answered ? (
           <FeedbackBlock
             correct={correct}
+            correctAnswer={<span className="font-bold">{data.isTrue ? 'صحيح' : 'خطأ'}</span>}
             explanation={<MathText tex={data.explanation} className="text-xs leading-relaxed text-[hsl(var(--ink))]" />}
           />
         ) : undefined}

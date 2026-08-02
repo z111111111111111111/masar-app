@@ -75,6 +75,7 @@ export function MultipleChoice({ data, onSubmit, onNext }: {
         feedback={answered ? (
           <FeedbackBlock
             correct={correct}
+            correctAnswer={<span dir="ltr"><KaTeXBlock tex={data.options[data.correct]} className="text-sm" /></span>}
             explanation={<MathText tex={data.explanation} className="text-xs leading-relaxed text-[hsl(var(--ink))]" />}
           />
         ) : undefined}
