@@ -1,6 +1,18 @@
 import type { ExerciseData } from './systems/types';
 import { K } from './systems/math';
 
+export const DERIVATIVE_FLOW_ID = 'derivative';
+
+export function serializeCorrectAnswer(ex: ExerciseData): string {
+  switch (ex.kind) {
+    case 'mcq': return String(ex.data.correct);
+    case 'rule': return JSON.stringify(ex.data.correctOrder);
+    case 'fill': return ex.data.correct;
+    case 'truefalse': return String(ex.data.isTrue);
+    case 'sort': return JSON.stringify(ex.data.correctOrder);
+  }
+}
+
 export const DERIVATIVE_FLOW: ExerciseData[] = [
   /* ── النظام 1: الاختيار من متعدد ────────────────────────────── */
   {

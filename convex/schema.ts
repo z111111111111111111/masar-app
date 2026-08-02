@@ -76,4 +76,20 @@ export default defineSchema({
     createdAt: v.number(),
   }).index("by_conversation", ["conversationId"])
     .index("by_userId", ["userId"]),
+
+  // --- Per-student lesson exercise mistakes (wrong materials + correct answers) ---
+  // Each record is owned by the authenticated student; `correctAnswer` is written
+  // once at creation and never modified afterwards (server-side only).
+  exerciseMistakes: defineTable({
+    userId: v.string(),
+    flow: v.string(),
+    flowIndex: v.number(),
+    kind: v.string(),
+    correctAnswer: v.string(),
+    attemptCount: v.number(),
+    resolved: v.boolean(),
+    resolvedAt: v.optional(v.number()),
+  }).index("by_user_flow", ["userId", "flow"])
+    .index("by_user_flow_index", ["userId", "flow", "flowIndex"])
+    .index("by_user_flow_resolved", ["userId", "flow", "resolved"]),
 });

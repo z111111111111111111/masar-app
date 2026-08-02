@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
+import { useMutation, useQuery } from 'convex/react';
+import { api } from 'convex/_generated/api';
 import { ChevronIcon } from '../icons';
 import { Button } from '@/components/ui/button';
 import { KaTeXBlock } from '@/components/landing/MathText';
-import { DERIVATIVE_FLOW } from './DerivativeFlow';
+import { DERIVATIVE_FLOW, DERIVATIVE_FLOW_ID, serializeCorrectAnswer } from './DerivativeFlow';
 import { MultipleChoice } from './systems/MultipleChoice';
 import { RuleAssembly } from './systems/RuleAssembly';
 import { FillBlank } from './systems/FillBlank';
@@ -37,7 +39,7 @@ function formatTime(seconds: number): string {
 }
 
 export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => void; onStageComplete?: (passed: boolean) => void }) {
-  const [phase, setPhase] = useState<'intro' | 'exercises' | 'done'>('intro');
+  const [phase, setPhase] = useState<'intro' | 'exercises' | 'retry' | 'done'>('intro');
   const [showGraph, setShowGraph] = useState(false);
   const [graphReady, setGraphReady] = useState(false);
 
@@ -45,13 +47,31 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
   const [correctCount, setCorrectCount] = useState(0);
   const [wrongCount, setWrongCount] = useState(0);
 
+  // Correction state: exercises answered wrong in the first pass, seeded from the
+  // database, and the position within that queue.
+  const [wrongSet, setWrongSet] = useState<number[]>([]);
+  const [retryQueue, setRetryQueue] = useState<{ flowIndex: number; kind: string; correctAnswer: string }[]>([]);
+  const [retryIndex, setRetryIndex] = useState(0);
+  const [retryRound, setRetryRound] = useState(0);
+  const [lastRetryCorrect, setLastRetryCorrect] = useState<boolean | null>(null);
+  const pendingRef = useRef<Array<Promise<unknown>>>([]);
+
+  const recordMistake = useMutation(api.mistakes.recordMistake);
+  const resolveMistake = useMutation(api.mistakes.resolveMistake);
+  const resetSession = useMutation(api.mistakes.resetSession);
+  const unresolved = useQuery(api.mistakes.getUnresolved, { flow: DERIVATIVE_FLOW_ID });
+
   const [elapsed, setElapsed] = useState(0);
   const [completedSubjects, setCompletedSubjects] = useState<string[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const total = DERIVATIVE_FLOW.length;
   const current = DERIVATIVE_FLOW[currentIndex];
-  const pct = Math.round((correctCount + wrongCount) / total * 100);
+  const retryItem = phase === 'retry' ? retryQueue[retryIndex] : undefined;
+  const activeExercise = retryItem ? (DERIVATIVE_FLOW[retryItem.flowIndex] ?? current) : current;
+  const pct = phase === 'retry'
+    ? Math.round(((total - retryQueue.length) / total) * 100)
+    : Math.min(100, Math.round(((correctCount + wrongCount) / total) * 100));
 
   const startTimer = useCallback(() => {
     if (timerRef.current) return;
@@ -66,10 +86,11 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
 
   useEffect(() => {
     if (phase === 'done') {
+      stopTimer();
       setCompletedSubjects(markSubjectComplete('math'));
-      onStageComplete?.(correctCount === total);
+      onStageComplete?.(true);
     }
-  }, [phase]);
+  }, [phase, stopTimer, onStageComplete]);
 
   useEffect(() => {
     if (showGraph) {
@@ -78,33 +99,111 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
     }
   }, [showGraph]);
 
-  const handleStart = () => {
+  const handleStart = async () => {
+    // Each entry starts a full fresh exercise set (no carry-over of old mistakes).
+    await resetSession({ flow: DERIVATIVE_FLOW_ID }).catch(() => {});
     setPhase('exercises');
     startTimer();
   };
 
-  const handleSubmit = useCallback((correct: boolean) => {
-    if (correct) setCorrectCount((c) => c + 1);
-    else setWrongCount((w) => w + 1);
-  }, []);
+  const handleSubmitFirstPass = useCallback((correct: boolean) => {
+    if (correct) {
+      setCorrectCount((c) => c + 1);
+      return;
+    }
+    setWrongCount((w) => w + 1);
+    const idx = currentIndex;
+    setWrongSet((prev) => (prev.includes(idx) ? prev : [...prev, idx]));
+    const ex = DERIVATIVE_FLOW[idx];
+    pendingRef.current.push(
+      recordMistake({
+        flow: DERIVATIVE_FLOW_ID,
+        flowIndex: idx,
+        kind: ex.kind,
+        correctAnswer: serializeCorrectAnswer(ex),
+      }).catch(() => {})
+    );
+  }, [currentIndex, recordMistake]);
 
-  const handleNext = useCallback(() => {
+  const handleSubmitRetry = useCallback((correct: boolean) => {
+    const item = retryQueue[retryIndex];
+    if (!item) return;
+    if (correct) {
+      setCorrectCount((c) => c + 1);
+      setLastRetryCorrect(true);
+      resolveMistake({ flow: DERIVATIVE_FLOW_ID, flowIndex: item.flowIndex }).catch(() => {});
+    } else {
+      setWrongCount((w) => w + 1);
+      setLastRetryCorrect(false);
+      recordMistake({
+        flow: DERIVATIVE_FLOW_ID,
+        flowIndex: item.flowIndex,
+        kind: item.kind,
+        correctAnswer: item.correctAnswer,
+      }).catch(() => {});
+    }
+  }, [retryQueue, retryIndex, resolveMistake, recordMistake]);
+
+  const handleNextFirstPass = useCallback(async () => {
     if (currentIndex + 1 >= total) {
-      stopTimer();
-      setPhase('done');
+      await Promise.allSettled(pendingRef.current);
+      pendingRef.current = [];
+      if (wrongSet.length === 0) {
+        stopTimer();
+        setPhase('done');
+        return;
+      }
+      // Seed the correction queue from the database (unresolved mistakes), with a
+      // local fallback so no wrong exercise is ever skipped if a write failed.
+      const dbSeed = unresolved ?? [];
+      const localSeed = wrongSet
+        .filter((i) => !dbSeed.some((m) => m.flowIndex === i))
+        .map((i) => {
+          const ex = DERIVATIVE_FLOW[i];
+          return { flowIndex: i, kind: ex.kind, correctAnswer: serializeCorrectAnswer(ex) };
+        });
+      setRetryQueue([...dbSeed, ...localSeed]);
+      setRetryIndex(0);
+      setRetryRound(0);
+      setLastRetryCorrect(null);
+      setPhase('retry');
     } else {
       setCurrentIndex((i) => i + 1);
     }
-  }, [currentIndex, total, stopTimer]);
+  }, [currentIndex, total, wrongSet, unresolved, stopTimer]);
+
+  const handleNextRetry = useCallback(() => {
+    if (lastRetryCorrect === true) {
+      // Correctly answered → remove from the queue; pass once the queue is empty.
+      const next = retryQueue.filter((_, i) => i !== retryIndex);
+      setRetryQueue(next);
+      if (next.length === 0) {
+        stopTimer();
+        setPhase('done');
+      } else if (retryIndex >= next.length) {
+        setRetryIndex(0);
+      }
+    } else {
+      // Wrong / not answered → the item stays; loop the queue until correct.
+      const nextIndex = (retryIndex + 1) % Math.max(retryQueue.length, 1);
+      if (nextIndex === 0 && retryQueue.length > 0) setRetryRound((r) => r + 1);
+      setRetryIndex(nextIndex);
+    }
+    setLastRetryCorrect(null);
+  }, [lastRetryCorrect, retryQueue, retryIndex, stopTimer]);
 
   const renderExercise = () => {
-    const common = { onSubmit: handleSubmit, onNext: handleNext };
-    switch (current.kind) {
-      case 'mcq': return <MultipleChoice data={current.data} {...common} />;
-      case 'rule': return <RuleAssembly data={current.data} {...common} />;
-      case 'fill': return <FillBlank data={current.data} {...common} />;
-      case 'truefalse': return <TrueFalse data={current.data} {...common} />;
-      case 'sort': return <CardSort data={current.data} {...common} />;
+    if (phase === 'retry' && !retryItem) return null;
+    const onSubmit = phase === 'retry' ? handleSubmitRetry : handleSubmitFirstPass;
+    const onNext = phase === 'retry' ? handleNextRetry : handleNextFirstPass;
+    const ex = activeExercise;
+    const common = { onSubmit, onNext };
+    switch (ex.kind) {
+      case 'mcq': return <MultipleChoice data={ex.data} {...common} />;
+      case 'rule': return <RuleAssembly data={ex.data} {...common} />;
+      case 'fill': return <FillBlank data={ex.data} {...common} />;
+      case 'truefalse': return <TrueFalse data={ex.data} {...common} />;
+      case 'sort': return <CardSort data={ex.data} {...common} />;
     }
   };
 
@@ -143,6 +242,9 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
               <div>
                 <h1 className="text-xl font-bold text-[hsl(var(--ink))] mb-1">الاشتقاقية</h1>
                 <p className="text-sm text-muted-foreground">الدرس الأول — الرياضيات</p>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  أجب عن جميع التمارين إجابة صحيحة للمرور إلى المرحلة التالية — إن أخطأت في أي تمرين فسيُعاد عرض التمارين الخاطئة فقط.
+                </p>
               </div>
 
               <VideoIntroSwap
@@ -179,9 +281,17 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
           </>
         )}
 
-        {phase === 'exercises' && (
-          <div key={currentIndex} className="flex-1 flex flex-col min-h-0 overflow-hidden pb-40 md:pb-0">
+        {(phase === 'exercises' || phase === 'retry') && (
+          <div
+            key={phase === 'retry' ? `${retryItem?.flowIndex}-${retryRound}` : currentIndex}
+            className="flex-1 flex flex-col min-h-0 overflow-hidden pb-40 md:pb-0"
+          >
             <div className="my-auto w-full">
+              {phase === 'retry' && (
+                <p className="text-center text-xs font-bold text-[hsl(var(--ember))] mb-3">
+                  صحّح أخطاءك في التمارين التالية ({retryQueue.length} تمرين)
+                </p>
+              )}
               {renderExercise()}
             </div>
           </div>
