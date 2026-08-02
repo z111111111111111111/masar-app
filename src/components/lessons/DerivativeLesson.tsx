@@ -78,7 +78,9 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
   const activeExercise = retryItem ? (DERIVATIVE_FLOW[retryItem.flowIndex] ?? current) : current;
   const pct = phase === 'retry'
     ? Math.round(((total - retryQueue.length) / total) * 100)
-    : Math.min(100, Math.round(((correctCount + wrongCount) / total) * 100));
+    : phase === 'done' || phase === 'results'
+      ? 100
+      : Math.min(100, Math.round(((correctCount + wrongCount) / total) * 100));
 
   const startTimer = useCallback(() => {
     if (timerRef.current) return;
@@ -162,33 +164,40 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
     }
   }, [retryQueue, retryIndex, resolveMistake, recordMistake]);
 
+  // Start the correction round from the results page: wrong exercises from the
+  // database (unresolved) plus a local fallback so none is ever skipped.
+  const startRetry = useCallback(() => {
+    const dbSeed = unresolved ?? [];
+    const localSeed = wrongSet
+      .filter((i) => !dbSeed.some((m) => m.flowIndex === i))
+      .map((i) => {
+        const ex = DERIVATIVE_FLOW[i];
+        return { flowIndex: i, kind: ex.kind, correctAnswer: serializeCorrectAnswer(ex) };
+      });
+    setRetryQueue([...dbSeed, ...localSeed]);
+    setRetryIndex(0);
+    setRetryRound(0);
+    setLastRetryCorrect(null);
+    setPhase('retry');
+    startTimer();
+  }, [unresolved, wrongSet, startTimer]);
+
   const handleNextFirstPass = useCallback(async () => {
     if (currentIndex + 1 >= total) {
       await Promise.allSettled(pendingRef.current);
       pendingRef.current = [];
+      stopTimer();
       if (wrongSet.length === 0) {
-        stopTimer();
         setPhase('done');
-        return;
+      } else {
+        // Always show the results page after the exercises; correction happens
+        // from there so the student sees time / correct / wrong counts first.
+        setPhase('results');
       }
-      // Seed the correction queue from the database (unresolved mistakes), with a
-      // local fallback so no wrong exercise is ever skipped if a write failed.
-      const dbSeed = unresolved ?? [];
-      const localSeed = wrongSet
-        .filter((i) => !dbSeed.some((m) => m.flowIndex === i))
-        .map((i) => {
-          const ex = DERIVATIVE_FLOW[i];
-          return { flowIndex: i, kind: ex.kind, correctAnswer: serializeCorrectAnswer(ex) };
-        });
-      setRetryQueue([...dbSeed, ...localSeed]);
-      setRetryIndex(0);
-      setRetryRound(0);
-      setLastRetryCorrect(null);
-      setPhase('retry');
     } else {
       setCurrentIndex((i) => i + 1);
     }
-  }, [currentIndex, total, wrongSet, unresolved, stopTimer]);
+  }, [currentIndex, total, wrongSet, stopTimer]);
 
   const handleNextRetry = useCallback(() => {
     if (lastRetryCorrect === true) {
@@ -225,6 +234,129 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
     }
   };
 
+  // Results page: `complete=false` shows it right after the first pass (even with
+  // mistakes) with a "correct your mistakes" action; `complete=true` is the final
+  // page that unlocks the next stage.
+  const renderResults = (complete: boolean) => {
+    const streakCount = completedSubjects.length;
+    const ratio = correctCount / total;
+    const isExcellent = ratio >= 1;
+    const isGood = ratio >= 0.6 && ratio < 1;
+    const toFix = wrongSet.length;
+
+    return (
+      <div className="space-y-5 animate-[pop-in_0.4s_ease-out]">
+        <div className={`rounded-2xl border p-6 text-center ${
+          complete
+            ? isExcellent ? 'border-[hsl(var(--sprout))]/30 bg-[hsl(var(--sprout))]/5'
+            : isGood ? 'border-[hsl(var(--ember))]/30 bg-[hsl(var(--ember))]/5'
+            : 'border-[hsl(var(--coral))]/30 bg-[hsl(var(--coral))]/5'
+            : 'border-[hsl(var(--ember))]/30 bg-[hsl(var(--ember))]/5'
+        }`}>
+          <div className={`w-16 h-16 rounded-full text-white flex items-center justify-center mx-auto mb-4 ${
+            complete
+              ? isExcellent ? 'bg-[hsl(var(--sprout))]'
+              : isGood ? 'bg-[hsl(var(--ember))]'
+              : 'bg-[hsl(var(--coral))]'
+              : 'bg-[hsl(var(--ember))]'
+          }`}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="square" strokeLinejoin="miter"><polyline points="4 12 10 18 20 6"/></svg>
+          </div>
+          <h2 className="text-xl font-bold text-[hsl(var(--ink))] mb-1">
+            {complete ? 'أحسنت!' : 'انتهت التمارين'}
+          </h2>
+          <p className={`text-sm font-bold mb-1 ${
+            complete
+              ? isExcellent ? 'text-[hsl(var(--sprout))]'
+              : isGood ? 'text-[hsl(var(--ember))]'
+              : 'text-[hsl(var(--coral))]'
+              : 'text-[hsl(var(--ember))]'
+          }`}>
+            {complete
+              ? isExcellent ? 'ممتاز' : isGood ? 'جيد' : 'تحتاج للمراجعة'
+              : `لديك ${toFix} خطأ، صحّحها للمرور إلى المرحلة التالية`}
+          </p>
+          <p className="text-xs text-muted-foreground mb-4">
+            {complete
+              ? isExcellent ? 'أداء رائع! أنت على الطريق الصحيح'
+              : isGood ? 'استمر في التقدم، أنت تتطور'
+              : 'لا تستسلم، أعد مراجعة الدرس وحاول مرة أخرى'
+              : 'أجب عن جميع التمارين إجابة صحيحة للانتقال إلى المرحلة التالية'}
+          </p>
+
+          <div className="grid grid-cols-3 gap-3 mb-5">
+            <div className="rounded-xl bg-card border border-border p-3">
+              <p className="text-lg font-bold text-[hsl(var(--sprout))]">{correctCount}</p>
+              <p className="text-[10px] text-muted-foreground">صحيحة</p>
+            </div>
+            <div className="rounded-xl bg-card border border-border p-3">
+              <p className="text-lg font-bold text-[hsl(var(--coral))]">{wrongCount}</p>
+              <p className="text-[10px] text-muted-foreground">خطأ</p>
+            </div>
+            <div className="rounded-xl bg-card border border-border p-3">
+              <p className="text-lg font-bold text-[hsl(var(--ink))]">{formatTime(elapsed)}</p>
+              <p className="text-[10px] text-muted-foreground">المدة</p>
+            </div>
+          </div>
+        </div>
+
+        {complete && (
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <p className="text-xs text-muted-foreground mb-3 font-medium">الستريك</p>
+            <div className="flex items-center gap-1.5 mb-3">
+              {ALL_SUBJECTS.map((sid) => (
+                <div key={sid} className="flex-1 h-2 rounded-full transition-all" style={{
+                  background: completedSubjects.includes(sid)
+                    ? `hsl(var(--${SUBJECT_COLORS[sid]}))`
+                    : 'hsl(var(--muted))',
+                }} />
+              ))}
+            </div>
+            <p className="text-sm font-bold text-[hsl(var(--ink))]">
+              {streakCount === 1
+                ? 'لقد بدأت الستريك'
+                : `الستريك ${streakCount} من 5`}
+            </p>
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {ALL_SUBJECTS.map((sid) => {
+                const done = completedSubjects.includes(sid);
+                return (
+                  <span key={sid} className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${done ? 'bg-[hsl(var(--sprout-soft))] text-[hsl(var(--sprout))]' : 'bg-muted text-muted-foreground'}`}>
+                    {done ? '✓ ' : ''}{SUBJECT_LABELS[sid]}
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {!complete ? (
+          <button
+            onClick={startRetry}
+            className="w-full h-12 rounded-xl bg-[hsl(var(--sprout))] text-white font-bold text-sm shadow-[0_4px_0_hsl(var(--sprout-dark))] transition-all active:translate-y-[2px] active:shadow-none"
+          >
+            صحّح أخطاءك ({toFix} تمرين)
+          </button>
+        ) : (
+          <button
+            onClick={onBack}
+            className="w-full h-11 rounded-xl border border-border bg-card hover:bg-muted/50 text-[hsl(var(--ink))] font-bold text-sm transition-all"
+          >
+            العودة للمسار
+          </button>
+        )}
+        {!complete && (
+          <button
+            onClick={onBack}
+            className="w-full h-11 rounded-xl border border-border bg-card hover:bg-muted/50 text-[hsl(var(--ink))] font-bold text-sm transition-all"
+          >
+            العودة للمسار
+          </button>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className={`space-y-0 flex flex-col ${phase === 'exercises' ? 'h-full' : 'min-h-[80vh]'}`}>
       {/* Progress Bar */}
@@ -235,7 +367,7 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
             العودة
           </button>
           <div className="flex items-center gap-3 text-[11px] text-muted-foreground font-medium">
-            {phase === 'done' ? (
+            {phase === 'done' || phase === 'results' ? (
               <>
                 <span className="text-[hsl(var(--sprout))]">✓ {correctCount}</span>
                 <span className="text-[hsl(var(--coral))]">✗ {wrongCount}</span>
@@ -247,7 +379,7 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
         <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
           <div
             className="h-full bg-gradient-to-l from-[hsl(var(--sprout))] to-[hsl(var(--sprout))]/70 rounded-full transition-all duration-700 ease-out"
-            style={{ width: `${phase === 'done' ? 100 : pct}%` }}
+            style={{ width: `${phase === 'done' || phase === 'results' ? 100 : pct}%` }}
           />
         </div>
       </div>
@@ -261,7 +393,7 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
                 <h1 className="text-xl font-bold text-[hsl(var(--ink))] mb-1">الاشتقاقية</h1>
                 <p className="text-sm text-muted-foreground">الدرس الأول — الرياضيات</p>
                 <p className="text-[11px] text-muted-foreground mt-1">
-                  أجب عن جميع التمارين إجابة صحيحة للمرور إلى المرحلة التالية — إن أخطأت في أي تمرين فستُعرض لك إجابتك الصحيحة، وإذا خرجت قبل تصحيحها فستجد أخطاءك فقط عند عودتك حتى تُصحّحها كلها.
+                  أجب عن جميع التمارين للمرور إلى المرحلة التالية — بعد انتهاء التمارين ستظهر لك صفحة النتائج (المدة، الصحيحة، الخاطئة)، وإن أخطأت في أي تمرين فستُعرض لك إجابتك الصحيحة، وتُعاد الأخطاء فقط حتى تصحّحها كلها.
                 </p>
               </div>
 
@@ -315,93 +447,8 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
           </div>
         )}
 
-        {phase === 'done' && (() => {
-          const streakCount = completedSubjects.length;
-          const ratio = correctCount / total;
-          const isExcellent = ratio >= 1;
-          const isGood = ratio >= 0.6 && ratio < 1;
-
-          return (
-            <div className="space-y-5 animate-[pop-in_0.4s_ease-out]">
-              <div className={`rounded-2xl border p-6 text-center ${
-                isExcellent ? 'border-[hsl(var(--sprout))]/30 bg-[hsl(var(--sprout))]/5' :
-                isGood ? 'border-[hsl(var(--ember))]/30 bg-[hsl(var(--ember))]/5' :
-                'border-[hsl(var(--coral))]/30 bg-[hsl(var(--coral))]/5'
-              }`}>
-                <div className={`w-16 h-16 rounded-full text-white flex items-center justify-center mx-auto mb-4 ${
-                  isExcellent ? 'bg-[hsl(var(--sprout))]' :
-                  isGood ? 'bg-[hsl(var(--ember))]' :
-                  'bg-[hsl(var(--coral))]'
-                }`}>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="square" strokeLinejoin="miter"><polyline points="4 12 10 18 20 6"/></svg>
-                </div>
-                <h2 className="text-xl font-bold text-[hsl(var(--ink))] mb-1">أحسنت!</h2>
-                <p className={`text-sm font-bold mb-1 ${
-                  isExcellent ? 'text-[hsl(var(--sprout))]' :
-                  isGood ? 'text-[hsl(var(--ember))]' :
-                  'text-[hsl(var(--coral))]'
-                }`}>
-                  {isExcellent ? 'ممتاز' : isGood ? 'جيد' : 'تحتاج للمراجعة'}
-                </p>
-                <p className="text-xs text-muted-foreground mb-4">
-                  {isExcellent ? 'أداء رائع! أنت على الطريق الصحيح' :
-                   isGood ? 'استمر في التقدم، أنت تتطور' :
-                   'لا تستسلم، أعد مراجعة الدرس وحاول مرة أخرى'}
-                </p>
-
-                <div className="grid grid-cols-3 gap-3 mb-5">
-                  <div className="rounded-xl bg-card border border-border p-3">
-                    <p className="text-lg font-bold text-[hsl(var(--sprout))]">{correctCount}</p>
-                    <p className="text-[10px] text-muted-foreground">صحيحة</p>
-                  </div>
-                  <div className="rounded-xl bg-card border border-border p-3">
-                    <p className="text-lg font-bold text-[hsl(var(--coral))]">{wrongCount}</p>
-                    <p className="text-[10px] text-muted-foreground">خطأ</p>
-                  </div>
-                  <div className="rounded-xl bg-card border border-border p-3">
-                    <p className="text-lg font-bold text-[hsl(var(--ink))]">{formatTime(elapsed)}</p>
-                    <p className="text-[10px] text-muted-foreground">المدة</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-border bg-card p-5">
-                <p className="text-xs text-muted-foreground mb-3 font-medium">الستريك</p>
-                <div className="flex items-center gap-1.5 mb-3">
-                  {ALL_SUBJECTS.map((sid) => (
-                    <div key={sid} className="flex-1 h-2 rounded-full transition-all" style={{
-                      background: completedSubjects.includes(sid)
-                        ? `hsl(var(--${SUBJECT_COLORS[sid]}))`
-                        : 'hsl(var(--muted))',
-                    }} />
-                  ))}
-                </div>
-                <p className="text-sm font-bold text-[hsl(var(--ink))]">
-                  {streakCount === 1
-                    ? 'لقد بدأت الستريك'
-                    : `الستريك ${streakCount} من 5`}
-                </p>
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  {ALL_SUBJECTS.map((sid) => {
-                    const done = completedSubjects.includes(sid);
-                    return (
-                      <span key={sid} className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${done ? 'bg-[hsl(var(--sprout-soft))] text-[hsl(var(--sprout))]' : 'bg-muted text-muted-foreground'}`}>
-                        {done ? '✓ ' : ''}{SUBJECT_LABELS[sid]}
-                      </span>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <button
-                onClick={onBack}
-                className="w-full h-11 rounded-xl border border-border bg-card hover:bg-muted/50 text-[hsl(var(--ink))] font-bold text-sm transition-all"
-              >
-                العودة للمسار
-              </button>
-            </div>
-          );
-        })()}
+        {phase === 'done' && renderResults(true)}
+        {phase === 'results' && renderResults(false)}
       </div>
     </div>
   );
