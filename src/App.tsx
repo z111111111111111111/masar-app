@@ -14,7 +14,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { AuthScreen } from '@/components/AuthScreen';
 import { PaymentScreen } from '@/components/PaymentScreen';
 import { Landing } from '@/components/landing/Landing';
-import { AppShell, type TabId } from '@/components/AppShell';
+import { AppShell } from '@/components/AppShell';
 import { DashboardTab } from '@/components/DashboardTab';
 import { PathTab } from '@/components/PathTab';
 import { RoadmapTab } from '@/components/RoadmapTab';
@@ -24,6 +24,7 @@ import { BackButton } from '@/components/BackButton';
 import { HeartsProvider } from '@/hooks/useHearts';
 import { signOut } from '@/lib/auth-client';
 import { useTheme } from '@/lib/useTheme';
+import { useAppScreen, activeTab } from '@/lib/navigation';
 
 function flatToRecordsMap(rows: any[]): RecordsMap {
   const map: RecordsMap = {};
@@ -50,12 +51,13 @@ function App() {
   const enforceExpiry = useMutation(api.subscription.enforceExpiry);
   const { theme, dark, themes, setTheme, toggleDark } = useTheme();
 
-  const [tab, setTab] = useState<TabId>('home');
   const [page, setPage] = useState<'landing' | 'auth'>('landing');
   const [authTab, setAuthTab] = useState<'login' | 'signup'>('signup');
   const navHistory = useRef<string[]>([]);
   const [canGoBack, setCanGoBack] = useState(false);
   const expiryEnforced = useRef(false);
+  const { screen: appScreen, navigate: navigateApp } = useAppScreen({ kind: 'tab', tab: 'home' });
+  const active = activeTab(appScreen);
 
   const navigate = (to: 'landing' | 'auth', authT?: 'login' | 'signup') => {
     navHistory.current.push(page);
@@ -167,23 +169,30 @@ function App() {
 
   return (
     <HeartsProvider>
-      <AppShell active={tab} onChange={setTab} streak={streak} xp={xp} dark={dark} onToggleDark={toggleDark}>
-        {tab === 'home' && (
+      <AppShell
+        active={active}
+        onChange={(t) => navigateApp({ kind: 'tab', tab: t })}
+        streak={streak}
+        xp={xp}
+        dark={dark}
+        onToggleDark={toggleDark}
+      >
+        {active === 'home' && (
           <DashboardTab
             name={profile.name}
             startDate={profile.startDate}
             streak={streak}
             xp={xp}
             records={records}
-            onNavigateRoadmap={() => setTab('roadmap')}
+            onNavigateRoadmap={() => navigateApp({ kind: 'tab', tab: 'roadmap' })}
           />
         )}
-        {tab === 'tracking' && (
+        {active === 'tracking' && (
           <PathTab startDate={profile.startDate} records={records} />
         )}
-        {tab === 'roadmap' && <RoadmapTab />}
-        {tab === 'board' && <LeaderboardTab userId={profile.userId} name={profile.name} xp={xp} />}
-        {tab === 'profile' && (
+        {active === 'roadmap' && <RoadmapTab screen={appScreen} navigate={navigateApp} />}
+        {active === 'board' && <LeaderboardTab userId={profile.userId} name={profile.name} xp={xp} />}
+        {active === 'profile' && (
           <ProfileTab
             name={profile.name}
             startDate={profile.startDate}

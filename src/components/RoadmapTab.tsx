@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import type { AppScreen } from '@/lib/navigation';
 import { ChevronIcon, MathIcon, AtomIcon, LeafIcon, BrainIcon, GlobeIcon, ShuffleIcon, BookIcon } from './icons';
 import { DerivativeLesson } from './lessons/DerivativeLesson';
 import { DerivativeLessonStage2 } from './lessons/DerivativeLessonStage2';
@@ -66,14 +67,32 @@ function countCompleted(stages: Stage[], completed: Record<string, boolean>): nu
   return stages.filter((s) => !!completed[s.id]).length;
 }
 
-export function RoadmapTab() {
-  const [selectedSubject, setSelectedSubject] = useState<RoadmapSubject | null>(null);
+export function RoadmapTab({
+  screen,
+  navigate,
+}: {
+  screen: AppScreen;
+  navigate: (s: AppScreen) => void;
+}) {
+  if (screen.kind === 'lesson') {
+    return (
+      <StageLesson
+        stageId={screen.stageId}
+        onBack={() => navigate({ kind: 'subject', subjectId: screen.subjectId })}
+      />
+    );
+  }
 
-  if (selectedSubject) {
+  if (screen.kind === 'subject') {
+    const subject = SUBJECTS.find((s) => s.id === screen.subjectId);
+    if (!subject) return null;
     return (
       <SubjectPage
-        subject={selectedSubject}
-        onBack={() => setSelectedSubject(null)}
+        subject={subject}
+        onBack={() => navigate({ kind: 'tab', tab: 'roadmap' })}
+        onSelectStage={(stage) => {
+          if (stage.lessonId) navigate({ kind: 'lesson', subjectId: subject.id, stageId: stage.lessonId });
+        }}
       />
     );
   }
@@ -94,7 +113,7 @@ export function RoadmapTab() {
               key={subject.id}
               subject={subject}
               index={index}
-              onClick={() => setSelectedSubject(subject)}
+              onClick={() => navigate({ kind: 'subject', subjectId: subject.id })}
             />
           ))}
         </div>
@@ -144,60 +163,19 @@ function SubjectBranch({
 function SubjectPage({
   subject,
   onBack,
+  onSelectStage,
 }: {
   subject: RoadmapSubject;
   onBack: () => void;
+  onSelectStage: (stage: Stage) => void;
 }) {
   const Icon = subject.icon;
   const stages = subject.id === 'math' ? MATH_STAGES : [];
-  const [stageProgress, setStageProgress] = useState<Record<string, boolean>>(getStageProgress);
-  const [openStageId, setOpenStageId] = useState<string | null>(null);
+  const [stageProgress] = useState<Record<string, boolean>>(getStageProgress);
 
   useEffect(() => {
     markSubjectVisited(subject.id);
   }, [subject.id]);
-
-  if (openStageId === 'derivative') {
-    return (
-      <DerivativeLesson
-        onBack={() => setOpenStageId(null)}
-        onStageComplete={(passed) => {
-          if (passed) {
-            markStagePassed('s1');
-            setStageProgress(getStageProgress());
-          }
-        }}
-      />
-    );
-  }
-
-  if (openStageId === 'derivative-2') {
-    return (
-      <DerivativeLessonStage2
-        onBack={() => setOpenStageId(null)}
-        onStageComplete={(passed) => {
-          if (passed) {
-            markStagePassed('s2');
-            setStageProgress(getStageProgress());
-          }
-        }}
-      />
-    );
-  }
-
-  if (openStageId === 'derivative-3') {
-    return (
-      <DerivativeLessonStage3
-        onBack={() => setOpenStageId(null)}
-        onStageComplete={(passed) => {
-          if (passed) {
-            markStagePassed('s3');
-            setStageProgress(getStageProgress());
-          }
-        }}
-      />
-    );
-  }
 
   return (
     <div className="space-y-6">
@@ -224,9 +202,7 @@ function SubjectPage({
           subject={subject}
           stages={stages}
           stageProgress={stageProgress}
-          onSelectStage={(stage) => {
-            if (stage.lessonId) setOpenStageId(stage.lessonId);
-          }}
+          onSelectStage={onSelectStage}
         />
       ) : (
         <div className="rounded-2xl border border-dashed border-border bg-card p-10 flex flex-col items-center text-center gap-3">
@@ -244,6 +220,49 @@ function SubjectPage({
       )}
     </div>
   );
+}
+
+function StageLesson({
+  stageId,
+  onBack,
+}: {
+  stageId: string;
+  onBack: () => void;
+}) {
+  if (stageId === 'derivative') {
+    return (
+      <DerivativeLesson
+        onBack={onBack}
+        onStageComplete={(passed) => {
+          if (passed) markStagePassed('s1');
+        }}
+      />
+    );
+  }
+
+  if (stageId === 'derivative-2') {
+    return (
+      <DerivativeLessonStage2
+        onBack={onBack}
+        onStageComplete={(passed) => {
+          if (passed) markStagePassed('s2');
+        }}
+      />
+    );
+  }
+
+  if (stageId === 'derivative-3') {
+    return (
+      <DerivativeLessonStage3
+        onBack={onBack}
+        onStageComplete={(passed) => {
+          if (passed) markStagePassed('s3');
+        }}
+      />
+    );
+  }
+
+  return null;
 }
 
 function LessonCard({
