@@ -6,15 +6,25 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { cn } from '@/lib/utils';
 import { GiftIcon, UsersIcon, CopyIcon, CheckCircleIcon, XCircleIcon, SparklesIcon } from './icons';
 
-/* ── "ادعُ واربح" tile (profile + desktop sidebar share the same dialog) ── */
-export function ReferralButton({ className }: { className?: string }) {
+/* ── "ادعُ واربح" tile (profile + desktop sidebar share the same dialog).
+      `variant="ember"` matches the sidebar's "اشترك الآن" button style so both
+      actions read as one family — green = paid status, amber = invite reward. ── */
+export function ReferralButton({
+  className,
+  variant = 'neutral',
+}: {
+  className?: string;
+  variant?: 'neutral' | 'ember';
+}) {
   const [open, setOpen] = useState(false);
   return (
     <>
       <button
         onClick={() => setOpen(true)}
         className={cn(
-          'w-full h-11 rounded-2xl border border-border bg-card text-sm font-semibold text-[hsl(var(--ink))] hover:bg-muted/40 transition-colors flex items-center justify-center gap-2',
+          variant === 'ember'
+            ? 'w-full h-10 rounded-xl bg-[hsl(var(--ember))] text-white shadow-[0_4px_0_hsl(var(--ember-dark))] hover:bg-[hsl(var(--ember)/0.9)] active:shadow-[0_1px_0_hsl(var(--ember-dark))] active:translate-y-[3px] transition-all text-sm font-semibold inline-flex items-center justify-center gap-2'
+            : 'w-full h-11 rounded-2xl border border-border bg-card text-sm font-semibold text-[hsl(var(--ink))] hover:bg-muted/40 transition-colors flex items-center justify-center gap-2',
           className
         )}
       >
@@ -48,7 +58,7 @@ export function ReferralDialog({ open, onOpenChange }: { open: boolean; onOpenCh
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[320px] p-0 rounded-2xl overflow-hidden" dir="rtl">
+      <DialogContent className="max-w-[320px] p-0 rounded-2xl max-h-[85dvh] overflow-y-auto" dir="rtl">
         <DialogHeader className="px-4 pt-4 pb-3 border-b border-border">
           <DialogTitle className="text-right flex items-center gap-2">
             <span className="w-8 h-8 rounded-full bg-[hsl(var(--sprout))] text-white flex items-center justify-center shrink-0">
@@ -191,7 +201,7 @@ const COMPARE_ROWS = [
 export function UpgradeCompareDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[340px] p-0 rounded-2xl overflow-hidden" dir="rtl">
+      <DialogContent className="max-w-[340px] p-0 rounded-2xl max-h-[85dvh] overflow-y-auto" dir="rtl">
         <DialogHeader className="px-4 pt-4 pb-3 border-b border-border">
           <DialogTitle className="text-right flex items-center gap-2">
             <span className="w-8 h-8 rounded-full bg-[hsl(var(--sprout))] text-white flex items-center justify-center shrink-0">

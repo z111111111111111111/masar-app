@@ -70,9 +70,9 @@ export function AppShell({
           })}
         </nav>
 
-        <div className="mt-auto pt-6 space-y-2">
+        <div className="mt-auto pt-6 space-y-2.5">
           <AccountStatus isPaid={isPaid} compact />
-          <ReferralButton className="h-10 rounded-xl hover:bg-muted/50" />
+          <ReferralButton variant="ember" />
           <SidebarStat icon={<FlameIcon className="text-[hsl(var(--ember))]" />} label="السلسلة" value={String(streak)} />
           <SidebarStat icon={<GemIcon className="text-[hsl(var(--sprout))]" />} label={`${xp} XP · ${league.name}`} value="" />
           <button
