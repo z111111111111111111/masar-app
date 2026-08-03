@@ -252,6 +252,7 @@ function App() {
             themes={themes}
             currentTheme={theme}
             dark={dark}
+            isPaid={isPaid}
             onSelectTheme={setTheme}
           />
         )}
