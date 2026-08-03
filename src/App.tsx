@@ -21,6 +21,7 @@ import { RoadmapTab } from '@/components/RoadmapTab';
 import { LeaderboardTab } from '@/components/LeaderboardTab';
 import { ProfileTab } from '@/components/ProfileTab';
 import { BackButton } from '@/components/BackButton';
+import { HeartsProvider } from '@/hooks/useHearts';
 import { signOut } from '@/lib/auth-client';
 import { useTheme } from '@/lib/useTheme';
 
@@ -165,40 +166,40 @@ function App() {
   const xp = profile.totalXP;
 
   return (
-    <>
-    <AppShell active={tab} onChange={setTab} streak={streak} xp={xp} dark={dark} onToggleDark={toggleDark}>
-      {tab === 'home' && (
-        <DashboardTab
-          name={profile.name}
-          startDate={profile.startDate}
-          streak={streak}
-          xp={xp}
-          records={records}
-          onNavigateRoadmap={() => setTab('roadmap')}
-        />
-      )}
-      {tab === 'tracking' && (
-        <PathTab startDate={profile.startDate} records={records} />
-      )}
-      {tab === 'roadmap' && <RoadmapTab />}
-      {tab === 'board' && <LeaderboardTab userId={profile.userId} name={profile.name} xp={xp} />}
-      {tab === 'profile' && (
-        <ProfileTab
-          name={profile.name}
-          startDate={profile.startDate}
-          xp={xp}
-          streak={streak}
-          bestStreak={bestStreak}
-          records={records}
-          themes={themes}
-          currentTheme={theme}
-          dark={dark}
-          onSelectTheme={setTheme}
-        />
-      )}
-    </AppShell>
-    <Toaster />
-    </>
+    <HeartsProvider>
+      <AppShell active={tab} onChange={setTab} streak={streak} xp={xp} dark={dark} onToggleDark={toggleDark}>
+        {tab === 'home' && (
+          <DashboardTab
+            name={profile.name}
+            startDate={profile.startDate}
+            streak={streak}
+            xp={xp}
+            records={records}
+            onNavigateRoadmap={() => setTab('roadmap')}
+          />
+        )}
+        {tab === 'tracking' && (
+          <PathTab startDate={profile.startDate} records={records} />
+        )}
+        {tab === 'roadmap' && <RoadmapTab />}
+        {tab === 'board' && <LeaderboardTab userId={profile.userId} name={profile.name} xp={xp} />}
+        {tab === 'profile' && (
+          <ProfileTab
+            name={profile.name}
+            startDate={profile.startDate}
+            xp={xp}
+            streak={streak}
+            bestStreak={bestStreak}
+            records={records}
+            themes={themes}
+            currentTheme={theme}
+            dark={dark}
+            onSelectTheme={setTheme}
+          />
+        )}
+      </AppShell>
+      <Toaster />
+    </HeartsProvider>
   );
 }
 

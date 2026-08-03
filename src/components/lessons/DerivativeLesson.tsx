@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react
 import type { ReactNode } from 'react';
 import { useMutation, useQuery_experimental as useQuerySafe } from 'convex/react';
 import { api } from 'convex/_generated/api';
-import { ChevronIcon } from '../icons';
+import { ChevronIcon, HeartIcon } from '../icons';
 import { Button } from '@/components/ui/button';
 import { KaTeXBlock } from '@/components/landing/MathText';
 import { DERIVATIVE_FLOW, DERIVATIVE_FLOW_ID, serializeCorrectAnswer } from './DerivativeFlow';
@@ -14,6 +14,8 @@ import { FillBlank } from './systems/FillBlank';
 import { TrueFalse } from './systems/TrueFalse';
 import { CardSort } from './systems/CardSort';
 import { ExerciseHelpersProvider } from './systems/ExerciseHelpers';
+import { useHearts } from '@/hooks/useHearts';
+import { HeartsModal } from './HeartsModal';
 
 const COMPLETED_KEY = 'masar-completed-subjects';
 const SUBJECT_LABELS: Record<string, string> = {
@@ -92,6 +94,7 @@ export function DerivativeLesson({
   const recordMistake = useMutation(api.mistakes.recordMistake);
   const resolveMistake = useMutation(api.mistakes.resolveMistake);
   const resetSession = useMutation(api.mistakes.resetSession);
+  const { hearts, maxHearts, loseHeart, awardStage } = useHearts();
   // Non-throwing query: if the backend function/table is unavailable the result is
   // simply `undefined` (the retry queue falls back to local wrong answers) instead
   // of crashing the lesson with a white page.
@@ -135,8 +138,9 @@ export function DerivativeLesson({
       // Clear any leftover unresolved mistakes once everything is corrected.
       resetSession({ flow: flowId }).catch(() => {});
       onStageComplete?.(true);
+      awardStage(flowId);
     }
-  }, [phase, flowId, stopTimer, onStageComplete, resetSession]);
+  }, [phase, flowId, stopTimer, onStageComplete, resetSession, awardStage]);
 
   useEffect(() => {
     if (showGraph) {
@@ -180,7 +184,8 @@ export function DerivativeLesson({
         correctAnswer: serializeCorrectAnswer(ex),
       }).catch(() => {})
     );
-  }, [currentIndex, session, flow, flowId, recordMistake]);
+    loseHeart();
+  }, [currentIndex, session, flow, flowId, recordMistake, loseHeart]);
 
   const handleSubmitRetry = useCallback((correct: boolean) => {
     const item = retryQueue[retryIndex];
@@ -198,8 +203,9 @@ export function DerivativeLesson({
         kind: item.kind,
         correctAnswer: item.correctAnswer,
       }).catch(() => {});
+      loseHeart();
     }
-  }, [retryQueue, retryIndex, resolveMistake, recordMistake, flowId]);
+  }, [retryQueue, retryIndex, resolveMistake, recordMistake, flowId, loseHeart]);
 
   // Start the correction round from the results page: wrong exercises from the
   // database (unresolved) plus a local fallback so none is ever skipped.
@@ -417,6 +423,12 @@ export function DerivativeLesson({
             العودة
           </button>
           <div className="flex items-center gap-3 text-[11px] text-muted-foreground font-medium">
+            {(phase === 'exercises' || phase === 'retry') && (
+              <span className={`flex items-center gap-1 font-bold ${hearts === 0 ? 'text-[hsl(var(--coral))]' : 'text-[hsl(var(--ink))]'}`}>
+                <HeartIcon size={14} />
+                <span className="tabular-nums">{hearts}/{maxHearts}</span>
+              </span>
+            )}
             {phase === 'done' || phase === 'results' ? (
               <>
                 <span className="text-[hsl(var(--sprout))]">✓ {correctCount}</span>
@@ -502,6 +514,10 @@ export function DerivativeLesson({
         {phase === 'done' && renderResults(true)}
         {phase === 'results' && renderResults(false)}
       </div>
+
+      {(phase === 'intro' || phase === 'exercises' || phase === 'retry') && hearts === 0 && (
+        <HeartsModal onBack={onBack} />
+      )}
     </div>
   );
 }

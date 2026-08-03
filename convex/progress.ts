@@ -1,6 +1,134 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 
+// ─── Hearts economy ─────────────────────────────────────────────
+export const MAX_HEARTS = 15;
+export const HEART_REFILL_MS = 10 * 60 * 60 * 1000; // 1 heart every 10 hours
+export const FULL_REFILL_COST = 50; // refilling all 15 hearts costs 50 jewels
+export const STAGE_REWARD = 100; // jewels earned for passing a stage
+const STAGES = new Set(["derivative", "derivative-2", "derivative-3"]);
+
+// Progress up to `now`: hearts regenerate 1 per 10h, capped at MAX_HEARTS.
+function reconcileHearts(
+  storedHearts: number | undefined,
+  lastHeartAt: number | undefined,
+  now: number
+): { hearts: number; lastHeartAt: number } {
+  const stored = typeof storedHearts === "number" && storedHearts >= 0 ? storedHearts : MAX_HEARTS;
+  const base = typeof lastHeartAt === "number" ? lastHeartAt : now;
+  const gained = Math.max(0, Math.floor((now - base) / HEART_REFILL_MS));
+  const hearts = Math.min(MAX_HEARTS, stored + gained);
+  // Advance the countdown base by whole regeneration periods; when full the
+  // countdown starts from "now" so hearts never accumulate past the cap.
+  const advanced = gained > 0 ? base + gained * HEART_REFILL_MS : base;
+  return { hearts, lastHeartAt: hearts >= MAX_HEARTS ? now : advanced };
+}
+
+function heartRefillCost(heartsToAdd: number): number {
+  return Math.ceil((heartsToAdd * FULL_REFILL_COST) / MAX_HEARTS);
+}
+
+// --- Hearts snapshot (time passed in from the client so the query stays fresh) ---
+export const getHearts = query({
+  args: { now: v.number() },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+    const progress = await ctx.db
+      .query("userProgress")
+      .withIndex("by_userId", (q) => q.eq("userId", identity.subject))
+      .unique();
+    if (!progress) return null;
+    const { hearts, lastHeartAt } = reconcileHearts(progress.hearts, progress.lastHeartAt, args.now);
+    const missing = Math.max(0, MAX_HEARTS - hearts);
+    return {
+      hearts,
+      maxHearts: MAX_HEARTS,
+      lastHeartAt,
+      refillMs: HEART_REFILL_MS,
+      nextRefillAt: hearts < MAX_HEARTS ? lastHeartAt + HEART_REFILL_MS : null,
+      fullRefillCost: FULL_REFILL_COST,
+      refillCost: heartRefillCost(missing),
+      jewels: progress.jewels ?? 20,
+    };
+  },
+});
+
+// --- Lose a heart on a wrong answer ---
+export const loseHeart = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const progress = await ctx.db
+      .query("userProgress")
+      .withIndex("by_userId", (q) => q.eq("userId", identity.subject))
+      .unique();
+    if (!progress) throw new Error("Profile not found");
+    const now = Date.now();
+    const { hearts } = reconcileHearts(progress.hearts, progress.lastHeartAt, now);
+    const next = Math.max(0, hearts - 1);
+    await ctx.db.patch(progress._id, { hearts: next, lastHeartAt: now });
+    return { hearts: next };
+  },
+});
+
+// --- Refill hearts with jewels: each heart costs proportionally so the full
+// 15-heart recharge is exactly FULL_REFILL_COST (50) jewels. ---
+export const refillHearts = mutation({
+  args: { hearts: v.number() },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    if (!Number.isInteger(args.hearts) || args.hearts < 1 || args.hearts > MAX_HEARTS) {
+      throw new Error("Invalid hearts");
+    }
+    const progress = await ctx.db
+      .query("userProgress")
+      .withIndex("by_userId", (q) => q.eq("userId", identity.subject))
+      .unique();
+    if (!progress) throw new Error("Profile not found");
+    const now = Date.now();
+    const { hearts } = reconcileHearts(progress.hearts, progress.lastHeartAt, now);
+    const fill = Math.min(args.hearts, Math.max(0, MAX_HEARTS - hearts));
+    const cost = heartRefillCost(fill);
+    const balance = progress.jewels ?? 20;
+    if (balance < cost) throw new Error("Insufficient jewels");
+    await ctx.db.patch(progress._id, {
+      hearts: hearts + fill,
+      lastHeartAt: now,
+      jewels: balance - cost,
+      lastMutationAt: now,
+    });
+    return { hearts: hearts + fill, jewels: balance - cost };
+  },
+});
+
+// --- Award 100 jewels once per passed stage (deduplicated server-side) ---
+export const awardStageCompletion = mutation({
+  args: { stageId: v.string() },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const stageId = args.stageId.trim();
+    if (!STAGES.has(stageId)) throw new Error("Invalid stage");
+    const progress = await ctx.db
+      .query("userProgress")
+      .withIndex("by_userId", (q) => q.eq("userId", identity.subject))
+      .unique();
+    if (!progress) throw new Error("Profile not found");
+    const rewarded = progress.rewardedStages ?? [];
+    if (rewarded.includes(stageId)) return { jewels: progress.jewels ?? 20, awarded: false };
+    const newBalance = (progress.jewels ?? 20) + STAGE_REWARD;
+    await ctx.db.patch(progress._id, {
+      rewardedStages: [...rewarded, stageId],
+      jewels: newBalance,
+      lastMutationAt: Date.now(),
+    });
+    return { jewels: newBalance, awarded: true };
+  },
+});
+
 // --- Get current user's progress ---
 export const get = query({
   args: {},
@@ -115,6 +243,9 @@ export const create = mutation({
       bestStreak: 0,
       totalTimeSeconds: 0,
       jewels: 20,
+      hearts: MAX_HEARTS,
+      lastHeartAt: Date.now(),
+      rewardedStages: [],
       lastMutationAt: Date.now(),
     });
   },

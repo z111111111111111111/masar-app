@@ -29,6 +29,9 @@ export default defineSchema({
     bestStreak: v.number(),
     totalTimeSeconds: v.number(),
     jewels: v.optional(v.number()),
+    hearts: v.optional(v.number()),
+    lastHeartAt: v.optional(v.number()),
+    rewardedStages: v.optional(v.array(v.string())),
     allowSharing: v.optional(v.boolean()),
     lastMutationAt: v.optional(v.number()),
   }).index("by_userId", ["userId"])
