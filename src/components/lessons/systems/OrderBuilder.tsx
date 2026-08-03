@@ -19,18 +19,25 @@ export function OrderBuilder({ instruction, hint, note, pool, correctOrder, answ
   const shuffledPool = useRef(shuffle(pool)).current;
   const [order, setOrder] = useState<string[]>([]);
   const [answered, setAnswered] = useState(false);
-  const { hintUsed } = useExerciseHelpers();
+  const { hintCount } = useExerciseHelpers();
 
-  // Hint: place the first piece/card of the correct order at the start.
+  // Hint: place the next piece/card of the correct order into its slot — one
+  // per use, so the hint can be applied repeatedly as long as jewels allow.
   useEffect(() => {
-    if (hintUsed && correctOrder.length > 0) {
-      setOrder((o) => {
-        if (o[0] === correctOrder[0]) return o;
-        return [correctOrder[0], ...o.filter((p) => p !== correctOrder[0])];
-      });
-    }
+    if (hintCount === 0 || correctOrder.length === 0) return;
+    const k = Math.min(hintCount, correctOrder.length);
+    setOrder((o) => {
+      let next = [...o];
+      for (let i = 0; i < k; i++) {
+        if (next[i] === correctOrder[i]) continue;
+        const filtered = next.filter((p) => p !== correctOrder[i]);
+        filtered.splice(i, 0, correctOrder[i]);
+        next = filtered;
+      }
+      return next;
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hintUsed]);
+  }, [hintCount, correctOrder]);
 
   const remaining = shuffledPool.filter((p) => !order.includes(p));
   const correct = order.length === correctOrder.length && order.every((p, i) => p === correctOrder[i]);
@@ -69,11 +76,6 @@ export function OrderBuilder({ instruction, hint, note, pool, correctOrder, answ
             className="text-base md:text-lg font-bold text-[hsl(var(--ink))] leading-relaxed text-center"
           />
           {hint && <p className="text-xs text-muted-foreground text-center">{hint}</p>}
-          {hintUsed && !answered && (
-            <p className="text-center text-[11px] font-bold text-[hsl(var(--ember))]">
-              💡 استعملتَ التلميح: وُضِع لك العنصر الأول في مكانه
-            </p>
-          )}
 
           {/* Answer slots */}
           <div className="space-y-1">

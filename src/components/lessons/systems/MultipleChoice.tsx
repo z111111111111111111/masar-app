@@ -12,17 +12,17 @@ export function MultipleChoice({ data, onSubmit, onNext }: {
 }) {
   const [selected, setSelected] = useState<number | null>(null);
   const [answered, setAnswered] = useState(false);
-  const { hintUsed } = useExerciseHelpers();
+  const { hintCount } = useExerciseHelpers();
   const correct = selected === data.correct;
 
-  // Hint: keep only the correct option + one random wrong option (2 total).
+  // Hint: remove one wrong option per use, keeping the correct one always.
   const visibleOptions = useMemo(() => {
     const all = data.options.map((text, i) => ({ text, idx: i }));
-    if (!hintUsed) return all;
+    if (hintCount === 0) return all;
     const wrong = all.filter((o) => o.idx !== data.correct);
-    const kept = wrong.length > 0 ? wrong[Math.floor(Math.random() * wrong.length)] : null;
-    return kept ? [all[data.correct], kept].sort((a, b) => a.idx - b.idx) : all;
-  }, [hintUsed, data]);
+    const keepWrong = Math.max(0, wrong.length - hintCount);
+    return [all[data.correct], ...wrong.slice(0, keepWrong)].sort((a, b) => a.idx - b.idx);
+  }, [hintCount, data]);
 
   const verify = () => {
     if (selected === null || answered) return;
@@ -38,9 +38,9 @@ export function MultipleChoice({ data, onSubmit, onNext }: {
             {data.question}
           </p>
 
-          {hintUsed && !answered && (
+          {hintCount > 0 && !answered && (
             <p className="text-center text-[11px] font-bold text-[hsl(var(--ember))] mb-3">
-              💡 استعملتَ التلميح: بقي أمامك خياران فقط
+              💡 استعملتَ التلميح: بقي أمامك {visibleOptions.length === 1 ? 'خيار واحد' : `${visibleOptions.length} خيارات`}
             </p>
           )}
 

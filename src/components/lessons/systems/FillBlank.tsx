@@ -12,16 +12,17 @@ export function FillBlank({ data, onSubmit, onNext }: {
 }) {
   const [selected, setSelected] = useState<string | null>(null);
   const [answered, setAnswered] = useState(false);
-  const { hintUsed } = useExerciseHelpers();
+  const { hintCount } = useExerciseHelpers();
   const correct = selected === data.correct;
 
-  // Hint: remove one wrong choice to make the answer easier to spot.
+  // Hint: remove one wrong choice per use, keeping the correct one always.
+  const removedWrongCount = Math.min(hintCount, data.choices.filter((c) => c !== data.correct).length);
   const visibleChoices = useMemo(() => {
-    if (!hintUsed) return data.choices;
+    if (hintCount === 0) return data.choices;
     const wrong = data.choices.filter((c) => c !== data.correct);
-    const removed = wrong.length > 0 ? wrong[Math.floor(Math.random() * wrong.length)] : null;
-    return removed ? data.choices.filter((c) => c !== removed) : data.choices;
-  }, [hintUsed, data]);
+    const removed = wrong.slice(wrong.length - removedWrongCount);
+    return data.choices.filter((c) => !removed.includes(c));
+  }, [hintCount, removedWrongCount, data]);
 
   const verify = () => {
     if (selected === null || answered) return;
@@ -52,9 +53,9 @@ export function FillBlank({ data, onSubmit, onNext }: {
             {data.after}
           </p>
 
-          {hintUsed && !answered && (
+          {hintCount > 0 && !answered && (
             <p className="text-center text-[11px] font-bold text-[hsl(var(--ember))] -mt-1">
-              💡 استعملتَ التلميح: أُزيل خيار خاطئ واحد
+              💡 استعملتَ التلميح: أُزيل {removedWrongCount === 1 ? 'خيار خاطئ واحد' : `${removedWrongCount} خيارات خاطئة`}
             </p>
           )}
 

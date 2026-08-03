@@ -11,7 +11,7 @@ export function TrueFalse({ data, onSubmit, onNext }: {
 }) {
   const [selected, setSelected] = useState<boolean | null>(null);
   const [answered, setAnswered] = useState(false);
-  const { hintUsed } = useExerciseHelpers();
+  const { hintCount } = useExerciseHelpers();
   const correct = selected === data.isTrue;
 
   const verify = () => {
@@ -40,7 +40,7 @@ export function TrueFalse({ data, onSubmit, onNext }: {
             {data.statement}
           </p>
 
-          {hintUsed && !answered && (
+          {hintCount > 0 && !answered && (
             <div className="rounded-xl border border-[hsl(var(--ember))]/25 bg-[hsl(var(--ember))]/5 p-3 mb-4 animate-rise-up">
               <p className="text-[10px] font-bold text-[hsl(var(--ember))] mb-1">💡 تلميح — العبارة الصحيحة</p>
               <MathText

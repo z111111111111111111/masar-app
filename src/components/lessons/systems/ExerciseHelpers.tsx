@@ -21,7 +21,7 @@ const KIND_FALLBACK_INFO: Record<ExerciseData['kind'], string> = {
 /* ── Context ──────────────────────────────────────────────────── */
 export interface ExerciseHelpersValue {
   info?: string;
-  hintUsed: boolean;
+  hintCount: number;
   useHint: () => void;
   ai: {
     used: boolean;
@@ -67,7 +67,7 @@ export function ExerciseHelpersProvider({
   const explainExercise = useAction(api.corrector.explainExercise);
 
   const [balance, setBalance] = useState<number | null>(null);
-  const [hintUsed, setHintUsed] = useState(false);
+  const [hintCount, setHintCount] = useState(0);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiContent, setAiContent] = useState<string | null>(null);
   const [aiError, setAiError] = useState(false);
@@ -89,7 +89,7 @@ export function ExerciseHelpersProvider({
   }, [spendJewels]);
 
   const useHint = useCallback(() => {
-    if (hintUsed || hintInFlightRef.current) return;
+    if (hintInFlightRef.current) return;
     if (jewels < HINT_COST) {
       toast({
         title: 'لا تملك مجوهرات كافية',
@@ -101,7 +101,7 @@ export function ExerciseHelpersProvider({
     hintInFlightRef.current = true;
     doSpend(HINT_COST)
       .then(() => {
-        setHintUsed(true);
+        setHintCount((c) => c + 1);
         toast({ title: 'تم فتح التلميح', description: `خُصمت ${HINT_COST} مجوهرات.` });
       })
       .catch((e) => {
@@ -113,7 +113,7 @@ export function ExerciseHelpersProvider({
         });
       })
       .finally(() => { hintInFlightRef.current = false; });
-  }, [hintUsed, jewels, doSpend]);
+  }, [jewels, doSpend]);
 
   const askAi = useCallback(async () => {
     if (aiLoading || aiInFlightRef.current) return;
@@ -171,7 +171,7 @@ export function ExerciseHelpersProvider({
 
   const value: ExerciseHelpersValue = {
     info,
-    hintUsed,
+    hintCount,
     useHint,
     ai: { used: aiUsed, loading: aiLoading, content: aiContent, error: aiError },
     askAi,
@@ -183,7 +183,7 @@ export function ExerciseHelpersProvider({
 
 /* ── Bottom helpers bar (info / hint / AI) ────────────────────── */
 export function ExerciseHelpersBar() {
-  const { info, hintUsed, useHint, ai, askAi, jewels } = useExerciseHelpers();
+  const { info, hintCount, useHint, ai, askAi, jewels } = useExerciseHelpers();
   const [panel, setPanel] = useState<'info' | 'ai' | null>(null);
 
   const toggleInfo = () => setPanel((p) => (p === 'info' ? null : 'info'));
@@ -212,14 +212,14 @@ export function ExerciseHelpersBar() {
 
           <button
             onClick={useHint}
-            disabled={hintUsed}
-            className={`${barBtn} ${hintUsed ? 'text-[hsl(var(--ember))]' : 'text-muted-foreground hover:text-[hsl(var(--ember))]'}`}
+            disabled={jewels < HINT_COST}
+            className={`${barBtn} ${jewels < HINT_COST ? 'text-muted-foreground/60' : 'text-muted-foreground hover:text-[hsl(var(--ember))]'}`}
             aria-label="تلميح"
-            title={`تلميح للجواب (${HINT_COST} مجوهرات)`}
+            title={`تلميح للجواب (${HINT_COST} مجوهرات لكل استخدام)`}
           >
             <LightbulbIcon size={15} />
-            <span>{hintUsed ? 'استُخدم' : 'تلميح'}</span>
-            {!hintUsed && <span className="text-[10px] text-muted-foreground">({HINT_COST})</span>}
+            <span>{hintCount > 0 ? `تلميح ×${hintCount}` : 'تلميح'}</span>
+            <span className="text-[10px] text-muted-foreground">({HINT_COST})</span>
           </button>
 
           <button
