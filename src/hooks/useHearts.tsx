@@ -15,6 +15,7 @@ interface HeartsSnapshot {
   refillCost: number;
   fullRefillCost: number;
   jewels: number;
+  serverNow: number;
 }
 
 interface HeartsValue {
@@ -53,8 +54,16 @@ export function HeartsProvider({ children }: { children: ReactNode }) {
   // initial query hasn't delivered data yet.
   const snapshotRef = useRef<HeartsSnapshot | null>(null);
   snapshotRef.current = snapshot;
+  // Client clock reading when the latest server snapshot was received, so the
+  // refill extrapolation runs in the *server's* time frame (serverNow + elapsed
+  // since the snapshot) instead of the raw device clock, which a user could
+  // tamper with to grant hearts early.
+  const snapshotClientAtRef = useRef<number>(0);
   useEffect(() => {
-    if (snapshot) setLocal(snapshot);
+    if (snapshot) {
+      snapshotClientAtRef.current = Date.now();
+      setLocal(snapshot);
+    }
   }, [snapshot]);
 
   // Ticking clock so the heart countdown advances live without re-querying.
@@ -65,8 +74,11 @@ export function HeartsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const base = local ?? snapshot;
+  const serverNow =
+    (base?.serverNow ?? Date.now()) +
+    (snapshotClientAtRef.current ? Date.now() - snapshotClientAtRef.current : 0);
   const hearts = base
-    ? Math.min(base.maxHearts, base.hearts + Math.max(0, Math.floor((Date.now() - base.lastHeartAt) / base.refillMs)))
+    ? Math.min(base.maxHearts, base.hearts + Math.max(0, Math.floor((serverNow - base.lastHeartAt) / base.refillMs)))
     : MAX_HEARTS;
   const nextRefillAt = base && hearts < base.maxHearts ? base.lastHeartAt + base.refillMs : null;
 
@@ -75,16 +87,17 @@ export function HeartsProvider({ children }: { children: ReactNode }) {
       const res = await loseHeartMut();
       setLocal((prev) => {
         const seed = prev ?? snapshotRef.current;
-        const now = Date.now();
+        const baseServerNow = seed?.serverNow ?? Date.now();
         return {
           hearts: res.hearts,
           maxHearts: seed?.maxHearts ?? MAX_HEARTS,
-          lastHeartAt: now,
+          lastHeartAt: baseServerNow,
           refillMs: seed?.refillMs ?? HEART_REFILL_MS,
-          nextRefillAt: now + (seed?.refillMs ?? HEART_REFILL_MS),
+          nextRefillAt: baseServerNow + (seed?.refillMs ?? HEART_REFILL_MS),
           refillCost: seed?.refillCost ?? FULL_REFILL_COST,
           fullRefillCost: seed?.fullRefillCost ?? FULL_REFILL_COST,
           jewels: seed?.jewels ?? 20,
+          serverNow: baseServerNow,
         };
       });
       return true;
@@ -99,15 +112,17 @@ export function HeartsProvider({ children }: { children: ReactNode }) {
       const res = await refillMut({ hearts: count ?? MAX_HEARTS });
       setLocal((prev) => {
         const seed = prev ?? snapshotRef.current;
+        const baseServerNow = seed?.serverNow ?? Date.now();
         return {
           hearts: res.hearts,
           maxHearts: seed?.maxHearts ?? MAX_HEARTS,
-          lastHeartAt: Date.now(),
+          lastHeartAt: baseServerNow,
           refillMs: seed?.refillMs ?? HEART_REFILL_MS,
           nextRefillAt: null,
           refillCost: seed?.refillCost ?? FULL_REFILL_COST,
           fullRefillCost: seed?.fullRefillCost ?? FULL_REFILL_COST,
           jewels: res.jewels,
+          serverNow: baseServerNow,
         };
       });
       return true;
