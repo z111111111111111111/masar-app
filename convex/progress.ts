@@ -134,7 +134,9 @@ export const spendJewels = mutation({
       .withIndex("by_userId", (q) => q.eq("userId", identity.subject))
       .unique();
     if (!progress) throw new Error("Profile not found");
-    const current = progress.jewels ?? 0;
+    // Users created before the jewels field existed have it missing → treat as the
+    // initial balance and backfill on the first spend.
+    const current = progress.jewels ?? 20;
     if (current < args.amount) throw new Error("Insufficient jewels");
     await ctx.db.patch(progress._id, { jewels: current - args.amount });
     return current - args.amount;

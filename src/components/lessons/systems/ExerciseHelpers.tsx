@@ -1,4 +1,4 @@
-import { createContext, useContext, useCallback, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useQuery, useMutation, useAction } from 'convex/react';
 import { api } from 'convex/_generated/api';
 import { toast } from '@/hooks/use-toast';
@@ -71,6 +71,9 @@ export function ExerciseHelpersProvider({
   const [aiLoading, setAiLoading] = useState(false);
   const [aiContent, setAiContent] = useState<string | null>(null);
   const [aiError, setAiError] = useState(false);
+  // In-flight guards so rapid clicks can never spend jewels twice.
+  const hintInFlightRef = useRef(false);
+  const aiInFlightRef = useRef(false);
 
   useEffect(() => {
     if (profile && balance === null) setBalance(profile.jewels ?? INITIAL_JEWELS);
@@ -86,7 +89,7 @@ export function ExerciseHelpersProvider({
   }, [spendJewels]);
 
   const useHint = useCallback(() => {
-    if (hintUsed) return;
+    if (hintUsed || hintInFlightRef.current) return;
     if (jewels < HINT_COST) {
       toast({
         title: 'لا تملك مجوهرات كافية',
@@ -95,22 +98,25 @@ export function ExerciseHelpersProvider({
       });
       return;
     }
+    hintInFlightRef.current = true;
     doSpend(HINT_COST)
       .then(() => {
         setHintUsed(true);
         toast({ title: 'تم فتح التلميح', description: `خُصمت ${HINT_COST} مجوهرات.` });
       })
-      .catch(() => {
+      .catch((e) => {
+        console.error('spendJewels failed for hint:', e);
         toast({
           title: 'تعذّر استخدام التلميح',
           description: 'رصيد المجوهرات غير كافٍ.',
           variant: 'destructive',
         });
-      });
+      })
+      .finally(() => { hintInFlightRef.current = false; });
   }, [hintUsed, jewels, doSpend]);
 
-  const askAi = useCallback(() => {
-    if (aiLoading) return;
+  const askAi = useCallback(async () => {
+    if (aiLoading || aiInFlightRef.current) return;
     // Already paid AND content is still available in this mount → nothing to do.
     if (aiUsed && aiContent !== null) return;
     if (jewels < AI_COST) {
@@ -121,32 +127,46 @@ export function ExerciseHelpersProvider({
       });
       return;
     }
+    aiInFlightRef.current = true;
     setAiLoading(true);
     setAiError(false);
     setAiContent(null);
-    explainExercise({
-      kind: exercise.kind,
-      info: info ?? '',
-      options: exerciseOptions(exercise),
-    })
-      .then(async (content) => {
-        // A paid question was already recorded for this exercise (e.g. the
-        // provider remounted on a correction round) → refetch without charging.
-        if (!aiUsed) {
+    try {
+      // Charge BEFORE calling the model so an unpayable request never runs.
+      if (!aiUsed) {
+        try {
           await doSpend(AI_COST);
-          onAiUsed();
+        } catch (e) {
+          console.error('spendJewels failed for AI:', e);
+          toast({
+            title: 'لا تملك مجوهرات كافية',
+            description: `سؤال الذكاء الاصطناعي يتطلّب ${AI_COST} مجوهرات.`,
+            variant: 'destructive',
+          });
+          return;
         }
-        setAiContent(content);
-      })
-      .catch(() => {
-        setAiError(true);
-        toast({
-          title: 'تعذّر الحصول على الشرح',
-          description: 'حاول مرة أخرى بعد قليل.',
-          variant: 'destructive',
-        });
-      })
-      .finally(() => setAiLoading(false));
+      }
+      const content = await explainExercise({
+        kind: exercise.kind,
+        info: info ?? '',
+        options: exerciseOptions(exercise),
+      });
+      // A paid question was already recorded for this exercise (e.g. the provider
+      // remounted on a correction round) → refetch without charging again.
+      if (!aiUsed) onAiUsed();
+      setAiContent(content);
+    } catch (e) {
+      console.error('explainExercise failed:', e);
+      setAiError(true);
+      toast({
+        title: 'تعذّر الحصول على الشرح',
+        description: 'حاول مرة أخرى بعد قليل.',
+        variant: 'destructive',
+      });
+    } finally {
+      aiInFlightRef.current = false;
+      setAiLoading(false);
+    }
   }, [aiUsed, aiLoading, aiContent, jewels, explainExercise, exercise, info, doSpend, onAiUsed]);
 
   const value: ExerciseHelpersValue = {
