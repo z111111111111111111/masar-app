@@ -2,8 +2,7 @@ import { createContext, useContext, useCallback, useEffect, useRef, useState, ty
 import { useQuery, useMutation, useAction } from 'convex/react';
 import { api } from 'convex/_generated/api';
 import { toast } from '@/hooks/use-toast';
-import { InfoIcon, LightbulbIcon, SparklesIcon, GemIcon, HeartIcon } from '../../icons';
-import { useHearts } from '@/hooks/useHearts';
+import { InfoIcon, LightbulbIcon, SparklesIcon, GemIcon } from '../../icons';
 import type { ExerciseData } from './types';
 
 /* ── Economy ──────────────────────────────────────────────────── */
@@ -185,7 +184,6 @@ export function ExerciseHelpersProvider({
 /* ── Bottom helpers bar (info / hint / AI) ────────────────────── */
 export function ExerciseHelpersBar() {
   const { info, hintCount, useHint, ai, askAi, jewels } = useExerciseHelpers();
-  const { hearts, maxHearts } = useHearts();
   const [panel, setPanel] = useState<'info' | 'ai' | null>(null);
 
   const toggleInfo = () => setPanel((p) => (p === 'info' ? null : 'info'));
@@ -237,10 +235,6 @@ export function ExerciseHelpersBar() {
           </button>
         </div>
 
-        <span className={`flex items-center gap-1 text-[11px] font-bold ${hearts === 0 ? 'text-[hsl(var(--coral))]' : 'text-muted-foreground'}`}>
-          <HeartIcon size={14} />
-          <span className="tabular-nums">{hearts}/{maxHearts}</span>
-        </span>
         <span className="flex items-center gap-1 text-[11px] font-bold text-[hsl(var(--sprout))]">
           <GemIcon size={14} />
           <span className="tabular-nums">{jewels}</span>

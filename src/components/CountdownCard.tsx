@@ -37,11 +37,6 @@ export function CountdownCard({ finishedCount }: { finishedCount: number }) {
               ? 'لم تحل أي مادة اليوم بعد'
               : `أنجزت ${finishedCount} من ${total} مواد اليوم`}
           </p>
-          <p className="text-xs text-muted-foreground">
-            {complete
-              ? 'أتممت المواد الخمس — سلسلتك محفوظة اليوم'
-              : 'كل مادة تُنهيها تملأ جزءاً من حماسة اليوم — أكملها كلها قبل منتصف الليل'}
-          </p>
         </div>
         {!complete && (
           <span className={`font-bold tabular-nums text-sm ${urgent ? 'text-[hsl(var(--coral))]' : 'text-[hsl(var(--ink))]'}`}>

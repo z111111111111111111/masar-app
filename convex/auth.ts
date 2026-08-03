@@ -19,6 +19,22 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
       enabled: true,
       requireEmailVerification: false,
     },
+    databaseHooks: {
+      session: {
+        create: {
+          before: async (session, context) => {
+            const internal = context?.context?.internalAdapter;
+            if (!internal) return;
+            const active = await internal.listSessions(session.userId, { onlyActiveSessions: true });
+            await Promise.all(
+              active
+                .filter((s) => s.token !== session.token)
+                .map((s) => internal.deleteSession(s.token))
+            );
+          },
+        },
+      },
+    },
     plugins: [
       crossDomain({ siteUrl }),
       convex({ authConfig }),

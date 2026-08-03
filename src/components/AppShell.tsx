@@ -1,6 +1,7 @@
 import { MasarMark } from './OnboardingScreen';
 import { currentLeague } from '@/lib/dates';
-import { HomeIcon, CalendarIcon, PathIcon, TrophyIcon, UserIcon, FlameIcon, GemIcon, SunIcon, MoonIcon } from './icons';
+import { useHearts } from '@/hooks/useHearts';
+import { HomeIcon, CalendarIcon, PathIcon, TrophyIcon, UserIcon, FlameIcon, GemIcon, SunIcon, MoonIcon, HeartIcon } from './icons';
 
 export type TabId = 'home' | 'tracking' | 'roadmap' | 'board' | 'profile';
 
@@ -30,6 +31,7 @@ export function AppShell({
   children: React.ReactNode;
 }) {
   const { league } = currentLeague(xp);
+  const { hearts, maxHearts } = useHearts();
 
   return (
     <div className="h-screen md:h-auto overflow-hidden md:overflow-visible bg-background md:flex">
@@ -92,6 +94,7 @@ export function AppShell({
               </button>
               <StatPill icon={<FlameIcon className="text-[hsl(var(--ember))]" />} value={String(streak)} tone="ember" />
               <StatPill icon={<GemIcon className="text-[hsl(var(--sprout))]" />} value={`${xp}`} tone="sprout" />
+              <StatPill icon={<HeartIcon className="text-[hsl(var(--coral))]" />} value={`${hearts}/${maxHearts}`} tone="coral" />
             </div>
           </div>
         </header>
@@ -107,6 +110,7 @@ export function AppShell({
           </button>
           <StatPill icon={<FlameIcon className="text-[hsl(var(--ember))]" />} value={`${streak} يوم`} tone="ember" />
           <StatPill icon={<GemIcon className="text-[hsl(var(--sprout))]" />} value={`${xp} XP`} tone="sprout" />
+          <StatPill icon={<HeartIcon className="text-[hsl(var(--coral))]" />} value={`${hearts}/${maxHearts}`} tone="coral" />
         </header>
 
         <main className="flex-1 w-full max-w-2xl mx-auto px-4 md:px-8 pt-0 pb-24 md:pb-10 overflow-y-auto md:overflow-y-visible">{children}</main>
@@ -147,9 +151,11 @@ function SidebarStat({ icon, label, value }: { icon: React.ReactNode; label: str
   );
 }
 
-function StatPill({ icon, value, tone }: { icon: React.ReactNode; value: string; tone: 'ember' | 'sprout' }) {
-  const bg = tone === 'ember' ? 'bg-[hsl(var(--ember-soft))]' : 'bg-[hsl(var(--sprout-soft))]';
-  const text = tone === 'ember' ? 'text-[hsl(var(--ember))]' : 'text-[hsl(var(--sprout))]';
+function StatPill({ icon, value, tone }: { icon: React.ReactNode; value: string; tone: 'ember' | 'sprout' | 'coral' }) {
+  const bg =
+    tone === 'ember' ? 'bg-[hsl(var(--ember-soft))]' : tone === 'coral' ? 'bg-[hsl(var(--coral-soft))]' : 'bg-[hsl(var(--sprout-soft))]';
+  const text =
+    tone === 'ember' ? 'text-[hsl(var(--ember))]' : tone === 'coral' ? 'text-[hsl(var(--coral))]' : 'text-[hsl(var(--sprout))]';
   return (
     <div className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold ${bg} ${text}`}>
       {icon}
