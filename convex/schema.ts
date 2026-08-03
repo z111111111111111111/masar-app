@@ -45,10 +45,16 @@ export default defineSchema({
     .index("by_xp", ["totalXP"]),
 
   // --- Free-trial usage counters (high-churn, kept separate from progress) ---
+  // aiUsed/randomUsed/dailyUsed are per rolling 24h window whose start is stored
+  // in aiWindowStart/randomWindowStart/dailyWindowStart (server clock).
   userLimits: defineTable({
     userId: v.string(),
     aiUsed: v.number(),
     randomUsed: v.number(),
+    dailyUsed: v.optional(v.number()),
+    aiWindowStart: v.optional(v.number()),
+    randomWindowStart: v.optional(v.number()),
+    dailyWindowStart: v.optional(v.number()),
   }).index("by_userId", ["userId"]),
 
   // --- Referral codes (one per user, server-generated, tamper-proof) ---

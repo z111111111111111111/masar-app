@@ -4,19 +4,44 @@ import { api } from 'convex/_generated/api';
 import type { Id } from 'convex/_generated/dataModel';
 import { Dialog, DialogContent, DialogHeader } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { ChatIcon, SendIcon, TrashIcon } from './icons';
+import { ChatIcon, SendIcon, TrashIcon, LockIcon } from './icons';
 import { MarkdownText } from './MarkdownText';
-import { isPaywallError, openPaywall } from '@/lib/paywall';
+import { formatClock } from '@/lib/dates';
+import { isLimitWaitError, isPaywallError, openPaywall } from '@/lib/paywall';
 
-export function CorrectorChatSheet({ open, onOpenChange, userName }: { open: boolean; onOpenChange: (v: boolean) => void; userName: string }) {
+export function CorrectorChatSheet({
+  open,
+  onOpenChange,
+  userName,
+  aiRemaining,
+  aiResetAt,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  userName: string;
+  aiRemaining: number | null;
+  aiResetAt: number | null;
+}) {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [viewConversations, setViewConversations] = useState(false);
   const [activeConversationId, setActiveConversationId] = useState<Id<"correctorConversations"> | null>(null);
+  const [waitLocked, setWaitLocked] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const locked = waitLocked || aiRemaining === 0;
+
+  // Countdown to the server-side AI quota reset (server clock).
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (!locked || !aiResetAt) return;
+    const id = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(id);
+  }, [locked, aiResetAt]);
+  const msLeft = locked && aiResetAt ? Math.max(0, aiResetAt - Date.now()) : null;
 
   const createConversation = useMutation(api.corrector.createConversation);
   const deleteConversation = useMutation(api.corrector.softDeleteConversation);
@@ -32,6 +57,7 @@ export function CorrectorChatSheet({ open, onOpenChange, userName }: { open: boo
       setViewConversations(false);
       setError(null);
       setInput('');
+      setWaitLocked(false);
     }
   }, [open]);
 
@@ -70,6 +96,9 @@ export function CorrectorChatSheet({ open, onOpenChange, userName }: { open: boo
         setViewConversations(false);
         onOpenChange(false);
         openPaywall();
+      } else if (isLimitWaitError(msg)) {
+        setWaitLocked(true);
+        setViewConversations(false);
       }
     } finally {
       setSending(false);
@@ -94,6 +123,13 @@ export function CorrectorChatSheet({ open, onOpenChange, userName }: { open: boo
               <ChatIcon size={16} />
             </span>
             <span className="flex-1 font-semibold text-[hsl(var(--ink))]">المصحح الذكي</span>
+            {(aiRemaining !== null || waitLocked) && (
+              <span className={`shrink-0 text-[10px] font-bold rounded-full px-2 py-0.5 ${
+                locked ? 'bg-[hsl(var(--ember-soft))] text-[hsl(var(--ember))]' : 'bg-[hsl(var(--sprout-soft))] text-[hsl(var(--sprout))]'
+              }`}>
+                {locked ? 'استنفدت' : `متبقٍ ${aiRemaining}`}
+              </span>
+            )}
             <button
               onClick={startNew}
               className="text-[11px] font-semibold text-[hsl(var(--sprout))] hover:text-[hsl(var(--sprout))]/80 transition-colors"
@@ -193,6 +229,20 @@ export function CorrectorChatSheet({ open, onOpenChange, userName }: { open: boo
               )}
             </div>
 
+            {locked && (
+              <div className="px-4 py-3 border-t border-border bg-[hsl(var(--ember-soft))]/40">
+                <div className="flex items-start gap-2">
+                  <LockIcon size={15} className="text-[hsl(var(--ember))] shrink-0 mt-0.5" />
+                  <p className="text-[11px] font-semibold text-[hsl(var(--ink))] leading-snug">
+                    استنفدت رسائل الذكاء الاصطناعي المجانية (5) لهذا اليوم.
+                    <span className="block text-[10px] font-normal text-muted-foreground mt-0.5">
+                      يعود رصيدك تلقائياً بعد <b dir="ltr">{formatClock(Math.ceil((msLeft ?? 0) / 1000))}</b> — بتوقيت الخادم.
+                    </span>
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="px-4 py-3 border-t border-border flex items-center gap-2">
               <input
                 ref={inputRef}
@@ -200,7 +250,7 @@ export function CorrectorChatSheet({ open, onOpenChange, userName }: { open: boo
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
                 placeholder="اكتب حلّك هنا..."
-                disabled={sending || creating}
+                disabled={sending || creating || locked}
                 className="flex-1 h-10 rounded-full border border-border bg-card px-4 text-sm text-[hsl(var(--ink))] placeholder:text-muted-foreground outline-none focus:border-[hsl(var(--sprout))] transition-colors disabled:opacity-50"
               />
               <Button
@@ -208,7 +258,7 @@ export function CorrectorChatSheet({ open, onOpenChange, userName }: { open: boo
                 size="icon"
                 className="h-10 w-10 rounded-full"
                 onClick={send}
-                disabled={!input.trim() || sending || creating}
+                disabled={!input.trim() || sending || creating || locked}
               >
                 <SendIcon size={16} />
               </Button>

@@ -2,6 +2,7 @@ import { MasarMark } from './OnboardingScreen';
 import { currentLeague } from '@/lib/dates';
 import { useHearts } from '@/hooks/useHearts';
 import { HomeIcon, CalendarIcon, PathIcon, TrophyIcon, UserIcon, FlameIcon, GemIcon, SunIcon, MoonIcon, HeartIcon } from './icons';
+import { AccountStatus, ReferralButton } from './AccountSubscriptions';
 
 export type TabId = 'home' | 'tracking' | 'roadmap' | 'board' | 'profile';
 
@@ -22,6 +23,7 @@ export function AppShell({
   onToggleDark,
   reminder,
   onSubscribe,
+  isPaid,
   children,
 }: {
   active: TabId;
@@ -32,6 +34,7 @@ export function AppShell({
   onToggleDark: () => void;
   reminder?: string | null;
   onSubscribe?: () => void;
+  isPaid: boolean;
   children: React.ReactNode;
 }) {
   const { league } = currentLeague(xp);
@@ -68,6 +71,8 @@ export function AppShell({
         </nav>
 
         <div className="mt-auto pt-6 space-y-2">
+          <AccountStatus isPaid={isPaid} compact />
+          <ReferralButton className="h-10 rounded-xl hover:bg-muted/50" />
           <SidebarStat icon={<FlameIcon className="text-[hsl(var(--ember))]" />} label="السلسلة" value={String(streak)} />
           <SidebarStat icon={<GemIcon className="text-[hsl(var(--sprout))]" />} label={`${xp} XP · ${league.name}`} value="" />
           <button

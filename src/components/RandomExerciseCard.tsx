@@ -3,9 +3,9 @@ import { SUBJECTS, type SubjectId } from '@/lib/subjects';
 import { currentWeekFromStart, pickTopicForSubject } from '@/lib/curriculum';
 import { formatClock } from '@/lib/dates';
 import { SubjectIcon } from './SubjectIcon';
-import { ShuffleIcon, PlayIcon, PauseIcon } from './icons';
+import { ShuffleIcon, PlayIcon, PauseIcon, LockIcon } from './icons';
 import { Button } from '@/components/ui/button';
-import { useMutation, useQuery } from 'convex/react';
+import { useMutation } from 'convex/react';
 import { api } from 'convex/_generated/api';
 
 const DURATION = 30 * 60; // fixed 30-minute countdown, independent from the daily subject timers
@@ -20,19 +20,35 @@ type TimerStatus = 'idle' | 'running' | 'stopped' | 'done';
 export function RandomExerciseCard({
   dayIndexToday,
   isPaid,
-  onSubscribe,
+  randomRemaining,
+  randomResetAt,
 }: {
   dayIndexToday: number;
   isPaid: boolean;
-  onSubscribe: () => void;
+  randomRemaining: number | null;
+  randomResetAt: number | null;
 }) {
   const [suggestion, setSuggestion] = useState<Suggestion | null>(null);
   const [status, setStatus] = useState<TimerStatus>('idle');
   const [remaining, setRemaining] = useState(DURATION);
+  const [limitLocked, setLimitLocked] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const consumeRandom = useMutation(api.entitlements.consumeRandom);
-  const entitlements = useQuery(api.entitlements.get, { now: Date.now() });
-  const randomRemaining = entitlements?.limits?.randomRemaining ?? null;
+
+  const locked = !isPaid && (randomRemaining === 0 || limitLocked);
+
+  // Countdown to the server-side quota reset (server clock, not device clock).
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (!locked || !randomResetAt) return;
+    const id = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(id);
+  }, [locked, randomResetAt]);
+  const msLeft = locked && randomResetAt ? Math.max(0, randomResetAt - Date.now()) : null;
+
+  useEffect(() => {
+    if (randomRemaining !== null && randomRemaining > 0) setLimitLocked(false);
+  }, [randomRemaining]);
 
   useEffect(() => {
     if (status !== 'running') return;
@@ -51,11 +67,12 @@ export function RandomExerciseCard({
   }, [status]);
 
   const generate = async () => {
+    if (locked) return;
     if (!isPaid) {
       try {
         await consumeRandom();
       } catch {
-        onSubscribe();
+        setLimitLocked(true);
         return;
       }
     }
@@ -74,11 +91,25 @@ export function RandomExerciseCard({
       <div className="flex items-center justify-between">
         <h2 className="font-semibold text-[hsl(var(--ink))] text-sm">تمرين عشوائي</h2>
         <span className="text-xs text-muted-foreground">
-          {isPaid || randomRemaining === null
+          {isPaid
             ? 'بلا حدّ — اقترح بقدر ما تشاء'
-            : `متبقٍ ${randomRemaining} من 3 في النسخة المجانية`}
+            : randomRemaining === null
+            ? '3 تمارين مجانية يومياً'
+            : randomRemaining > 0
+            ? `متبقٍ ${randomRemaining} من 3 في النسخة المجانية`
+            : 'استنفدت رصيدك المجاني لهذا اليوم'}
         </span>
       </div>
+
+      {locked && (
+        <div className="rounded-xl border border-[hsl(var(--ember))]/25 bg-[hsl(var(--ember-soft))]/40 p-4 text-center space-y-1.5">
+          <LockIcon size={20} className="mx-auto text-[hsl(var(--ember))]" />
+          <p className="text-xs font-bold text-[hsl(var(--ink))]">استنفدت استخداماتك المجانية (3) لهذا اليوم</p>
+          <p className="text-[11px] text-muted-foreground">
+            يعود رصيدك تلقائياً بعد <b dir="ltr">{formatClock(Math.ceil((msLeft ?? 0) / 1000))}</b> — بتوقيت الخادم.
+          </p>
+        </div>
+      )}
 
       {suggestion && (
         <div className="rounded-xl bg-muted/30 p-4 space-y-4">
@@ -154,6 +185,7 @@ export function RandomExerciseCard({
         variant="outline"
         className="w-full h-10 rounded-xl"
         onClick={generate}
+        disabled={locked}
       >
         <ShuffleIcon size={15} />
         {suggestion ? 'اقترح تمريناً آخر' : 'اقترح تمريناً عشوائياً'}

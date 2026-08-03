@@ -20,9 +20,9 @@ const buttonVariants = cva(
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
         sprout:
-          "bg-[hsl(var(--sprout))] text-white shadow-[0_4px_0_hsl(var(--sprout-dark))] hover:bg-[hsl(var(--sprout))/0.9] active:shadow-[0_1px_0_hsl(var(--sprout-dark))]",
+          "bg-[hsl(var(--sprout))] text-white shadow-[0_4px_0_hsl(var(--sprout-dark))] hover:bg-[hsl(var(--sprout)/0.9)] active:shadow-[0_1px_0_hsl(var(--sprout-dark))]",
         ember:
-          "bg-[hsl(var(--ember))] text-white shadow-[0_4px_0_hsl(var(--ember-dark))] hover:bg-[hsl(var(--ember))/0.9] active:shadow-[0_1px_0_hsl(var(--ember-dark))]",
+          "bg-[hsl(var(--ember))] text-white shadow-[0_4px_0_hsl(var(--ember-dark))] hover:bg-[hsl(var(--ember)/0.9)] active:shadow-[0_1px_0_hsl(var(--ember-dark))]",
       },
       size: {
         default: "h-9 px-4 py-2",

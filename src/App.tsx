@@ -221,6 +221,7 @@ function App() {
             : null
         }
         onSubscribe={openPaywall}
+        isPaid={isPaid}
       >
         {active === 'home' && (
           <DashboardTab
@@ -230,7 +231,6 @@ function App() {
             xp={xp}
             records={records}
             isPaid={isPaid}
-            onSubscribe={openPaywall}
             onNavigateRoadmap={() => navigateApp({ kind: 'tab', tab: 'roadmap' })}
           />
         )}

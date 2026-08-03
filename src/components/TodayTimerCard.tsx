@@ -10,7 +10,9 @@ import {
   type DayRecord,
 } from '@/lib/dates';
 import { SubjectIcon } from './SubjectIcon';
-import { PlayIcon, PauseIcon, CheckCircleIcon, ClockIcon } from './icons';
+import { PlayIcon, PauseIcon, CheckCircleIcon, ClockIcon, LockIcon } from './icons';
+import { useMutation } from 'convex/react';
+import { api } from 'convex/_generated/api';
 
 const RATE_OPTIONS = Array.from({ length: MAX_SCORE }, (_, i) => i + 1);
 
@@ -21,6 +23,9 @@ export function TodayTimerCard({
   onPause,
   onResume,
   onFinish,
+  isPaid,
+  dailyRemaining,
+  dailyResetAt,
 }: {
   todayRecord: DayRecord;
   focusRequest?: { subject: SubjectId; token: number } | null;
@@ -28,10 +33,29 @@ export function TodayTimerCard({
   onPause: (subject: SubjectId) => void;
   onResume: (subject: SubjectId) => void;
   onFinish: (subject: SubjectId, score: number) => void;
+  isPaid: boolean;
+  dailyRemaining: number | null;
+  dailyResetAt: number | null;
 }) {
   const [, setTick] = useState(0);
   const [selected, setSelected] = useState<SubjectId>(() => firstUnfinished(todayRecord));
   const [rating, setRating] = useState(false);
+  const [limitLocked, setLimitLocked] = useState(false);
+  const consumeDaily = useMutation(api.entitlements.consumeDaily);
+
+  const locked = !isPaid && (dailyRemaining === 0 || limitLocked);
+
+  // Countdown to the server-side daily quota reset (server clock).
+  useEffect(() => {
+    if (!locked || !dailyResetAt) return;
+    const id = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(id);
+  }, [locked, dailyResetAt]);
+  const msLeft = locked && dailyResetAt ? Math.max(0, dailyResetAt - Date.now()) : null;
+
+  useEffect(() => {
+    if (dailyRemaining !== null && dailyRemaining > 0) setLimitLocked(false);
+  }, [dailyRemaining]);
 
   const anyRunning = SUBJECTS.some((s) => todayRecord[s.id]?.timerStatus === 'running');
   useEffect(() => {
@@ -61,6 +85,19 @@ export function TodayTimerCard({
   const elapsed = liveElapsed(sub, Date.now());
   const isBusy = anyRunning;
 
+  const handleStart = async () => {
+    if (locked) return;
+    if (!isPaid) {
+      try {
+        await consumeDaily();
+      } catch {
+        setLimitLocked(true);
+        return;
+      }
+    }
+    onStart(selected);
+  };
+
   if (allFinished) {
     const totalXp = SUBJECTS.reduce((acc, s) => acc + xpForSubjectDay(todayRecord[s.id]), 0);
     return (
@@ -76,7 +113,16 @@ export function TodayTimerCard({
     <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="font-semibold text-[hsl(var(--ink))] text-sm">مؤقّت التمرين</h2>
-        <span className="text-xs text-muted-foreground">{finishedCount}/{SUBJECTS.length} مواد مكتملة اليوم</span>
+        <span className="text-xs text-muted-foreground">
+          {finishedCount}/{SUBJECTS.length} مواد مكتملة اليوم
+          {!isPaid && dailyRemaining !== null && (
+            <span className={`mr-2 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+              dailyRemaining > 0 ? 'bg-[hsl(var(--sprout-soft))] text-[hsl(var(--sprout))]' : 'bg-[hsl(var(--ember-soft))] text-[hsl(var(--ember))]'
+            }`}>
+              {dailyRemaining > 0 ? `متبقٍ ${dailyRemaining} من 3` : 'استنفدت رصيدك المجاني'}
+            </span>
+          )}
+        </span>
       </div>
 
       {/* subject chips */}
@@ -123,6 +169,14 @@ export function TodayTimerCard({
 
         {isFinished(sub) ? (
           <FinishedSummary sub={sub} />
+        ) : locked ? (
+          <div className="py-2 space-y-1.5">
+            <LockIcon size={20} className="mx-auto text-[hsl(var(--ember))]" />
+            <p className="text-xs font-bold text-[hsl(var(--ink))]">استنفدت استخدامات التمرين اليومي (3) لهذا اليوم</p>
+            <p className="text-[11px] text-muted-foreground">
+              يعود رصيدك تلقائياً بعد <b dir="ltr">{formatClock(Math.ceil((msLeft ?? 0) / 1000))}</b> — بتوقيت الخادم.
+            </p>
+          </div>
         ) : (
           <>
             <p className="text-4xl font-bold tabular-nums text-[hsl(var(--ink))] my-3">{formatClock(elapsed)}</p>
@@ -130,7 +184,7 @@ export function TodayTimerCard({
             {!rating ? (
               <div className="flex items-center justify-center gap-2 flex-wrap">
                 {status === 'idle' && !isBusy && (
-                  <ActionButton onClick={() => onStart(selected)} tone="ink">
+                  <ActionButton onClick={() => handleStart()} tone="ink">
                     <PlayIcon size={14} /> ابدأ
                   </ActionButton>
                 )}

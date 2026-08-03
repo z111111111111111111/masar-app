@@ -20,3 +20,9 @@ export function openPaywall(): void {
 export function isPaywallError(message: unknown): boolean {
   return typeof message === 'string' && message.includes('اشتراكك');
 }
+
+// Rolling-24h quota errors mention "24 ساعة" — the quota refills automatically
+// (server clock), so the UI should show a lock + countdown, not the paywall.
+export function isLimitWaitError(message: unknown): boolean {
+  return typeof message === 'string' && message.includes('24 ساعة');
+}

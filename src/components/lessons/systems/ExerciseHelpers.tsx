@@ -3,7 +3,7 @@ import { useQuery, useMutation, useAction } from 'convex/react';
 import { api } from 'convex/_generated/api';
 import { toast } from '@/hooks/use-toast';
 import { InfoIcon, LightbulbIcon, SparklesIcon, GemIcon } from '../../icons';
-import { isPaywallError, openPaywall } from '@/lib/paywall';
+import { isLimitWaitError, isPaywallError, openPaywall } from '@/lib/paywall';
 import type { ExerciseData } from './types';
 
 /* ── Economy ──────────────────────────────────────────────────── */
@@ -161,6 +161,15 @@ export function ExerciseHelpersProvider({
       const msg = e instanceof Error ? e.message : '';
       if (isPaywallError(msg)) {
         openPaywall();
+        return;
+      }
+      if (isLimitWaitError(msg)) {
+        setAiError(true);
+        toast({
+          title: 'استنفدت رسائل الذكاء الاصطناعي المجانية',
+          description: 'يعود رصيدك تلقائياً بعد 24 ساعة (بتوقيت الخادم).',
+          variant: 'destructive',
+        });
         return;
       }
       setAiError(true);

@@ -5,12 +5,14 @@ import { v } from "convex/values";
 // - 7 calendar days from account creation (signedUpAt).
 // - Day 3+ → the app reminds the user to subscribe.
 // - Day 7+ → everything is blocked until the user pays.
-// - During the trial the user gets 5 AI messages and 3 random/timed practice
-//   sessions (both enforced server-side).
+// - During the trial the user gets 5 AI messages, 3 random/timed practice
+//   sessions and 3 daily timed sessions. Each quota is a rolling 24h window
+//   (server clock), so it refills automatically ~24h after first use.
 export const TRIAL_DAYS = 7;
 export const REMINDER_DAYS = 3;
 export const AI_LIMIT = 5;
 export const RANDOM_LIMIT = 3;
+export const DAILY_LIMIT = 3;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 type DbCtx = { db: QueryCtx["db"] };
@@ -40,9 +42,29 @@ function trialDays(progress: { signedUpAt?: number } | null | undefined, fallbac
   return Math.floor(Math.max(0, now - signedUpAt) / DAY_MS);
 }
 
+// Rolling 24h window based purely on the server clock (Date.now()). The stored
+// windowStart keeps the phase of the window, so the quota refills ~24h after
+// the first use and the client cannot shift it by changing the phone clock.
+function windowInfo(windowStart: number | undefined, now: number): { windowStart: number; resetAt: number; rolled: boolean } {
+  if (!windowStart || windowStart > now) {
+    return { windowStart: now, resetAt: now + DAY_MS, rolled: true };
+  }
+  const elapsed = now - windowStart;
+  if (elapsed < DAY_MS) {
+    return { windowStart, resetAt: windowStart + DAY_MS, rolled: false };
+  }
+  const k = Math.floor(elapsed / DAY_MS);
+  return {
+    windowStart: windowStart + k * DAY_MS,
+    resetAt: windowStart + (k + 1) * DAY_MS,
+    rolled: true,
+  };
+}
+
 // ─── Public status used by the whole app ─────────────────────────────
-// Time is passed in from the client so the query stays fresh without the
-// server reading the wall clock.
+// `now` is still passed from the client so the query refetches on a timer, but
+// it is only used for trial/subscription maths; the usage counters and reset
+// times are derived from the server clock (windowInfo uses Date.now()).
 export const get = query({
   args: { now: v.number() },
   handler: async (ctx, args) => {
@@ -53,8 +75,14 @@ export const get = query({
     const paid = isPaid(sub, args.now);
     const daysSince = trialDays(progress, progress?._creationTime, args.now);
     const trialExpired = !paid && daysSince >= TRIAL_DAYS;
-    const aiUsed = limits?.aiUsed ?? 0;
-    const randomUsed = limits?.randomUsed ?? 0;
+
+    const aiW = windowInfo(limits?.aiWindowStart, Date.now());
+    const randomW = windowInfo(limits?.randomWindowStart, Date.now());
+    const dailyW = windowInfo(limits?.dailyWindowStart, Date.now());
+    const aiUsed = aiW.rolled ? 0 : (limits?.aiUsed ?? 0);
+    const randomUsed = randomW.rolled ? 0 : (limits?.randomUsed ?? 0);
+    const dailyUsed = dailyW.rolled ? 0 : (limits?.dailyUsed ?? 0);
+
     return {
       paid,
       signedUpAt: progress?.signedUpAt ?? progress?._creationTime ?? args.now,
@@ -69,9 +97,15 @@ export const get = query({
         aiLimit: AI_LIMIT,
         aiUsed,
         aiRemaining: paid ? null : Math.max(0, AI_LIMIT - aiUsed),
+        aiResetAt: paid ? null : aiW.resetAt,
         randomLimit: RANDOM_LIMIT,
         randomUsed,
         randomRemaining: paid ? null : Math.max(0, RANDOM_LIMIT - randomUsed),
+        randomResetAt: paid ? null : randomW.resetAt,
+        dailyLimit: DAILY_LIMIT,
+        dailyUsed,
+        dailyRemaining: paid ? null : Math.max(0, DAILY_LIMIT - dailyUsed),
+        dailyResetAt: paid ? null : dailyW.resetAt,
       },
       subscription: sub ? { status: sub.status, expiresAt: sub.expiresAt } : null,
     };
@@ -91,6 +125,7 @@ export const getStatus = internalQuery({
       trialExpired: !paid && daysSince >= TRIAL_DAYS,
       aiUsed: limits?.aiUsed ?? 0,
       randomUsed: limits?.randomUsed ?? 0,
+      dailyUsed: limits?.dailyUsed ?? 0,
     };
   },
 });
@@ -103,22 +138,29 @@ export const consumeAi = internalMutation({
     const { progress, sub, limits } = await loadState(ctx, userId);
     const now = Date.now();
     const paid = isPaid(sub, now);
-    if (paid) return { allowed: true, remaining: null };
+    if (paid) return { allowed: true, remaining: null, resetAt: null };
     const daysSince = trialDays(progress, progress?._creationTime, now);
     if (daysSince >= TRIAL_DAYS) {
       throw new Error("انتهت فترة التجربة المجانية. فعّل اشتراكك للمتابعة.");
     }
-    const used = limits?.aiUsed ?? 0;
+    const w = windowInfo(limits?.aiWindowStart, now);
+    const used = w.rolled ? 0 : (limits?.aiUsed ?? 0);
     if (used >= AI_LIMIT) {
-      throw new Error("استنفدت رسائل الذكاء الاصطناعي المجانية (5). فعّل اشتراكك لفتح المزيد.");
+      throw new Error("استنفدت رسائل الذكاء الاصطناعي المجانية (5). يعود رصيدك تلقائياً بعد 24 ساعة (بتوقيت الخادم).");
     }
     const next = used + 1;
     if (limits) {
-      await ctx.db.patch(limits._id, { aiUsed: next });
+      await ctx.db.patch(limits._id, { aiUsed: next, aiWindowStart: w.windowStart });
     } else {
-      await ctx.db.insert("userLimits", { userId, aiUsed: next, randomUsed: 0 });
+      await ctx.db.insert("userLimits", {
+        userId,
+        aiUsed: next,
+        randomUsed: 0,
+        dailyUsed: 0,
+        aiWindowStart: w.windowStart,
+      });
     }
-    return { allowed: true, remaining: AI_LIMIT - next };
+    return { allowed: true, remaining: AI_LIMIT - next, resetAt: w.resetAt };
   },
 });
 
@@ -132,21 +174,65 @@ export const consumeRandom = mutation({
     const { progress, sub, limits } = await loadState(ctx, userId);
     const now = Date.now();
     const paid = isPaid(sub, now);
-    if (paid) return { allowed: true, remaining: null };
+    if (paid) return { allowed: true, remaining: null, resetAt: null };
     const daysSince = trialDays(progress, progress?._creationTime, now);
     if (daysSince >= TRIAL_DAYS) {
       throw new Error("انتهت فترة التجربة المجانية. فعّل اشتراكك للمتابعة.");
     }
-    const used = limits?.randomUsed ?? 0;
+    const w = windowInfo(limits?.randomWindowStart, now);
+    const used = w.rolled ? 0 : (limits?.randomUsed ?? 0);
     if (used >= RANDOM_LIMIT) {
-      throw new Error("استنفدت استخدامات التمرين العشوائي (3). فعّل اشتراكك لفتح المزيد.");
+      throw new Error("استنفدت استخدامات التمرين العشوائي (3). يعود رصيدك تلقائياً بعد 24 ساعة (بتوقيت الخادم).");
     }
     const next = used + 1;
     if (limits) {
-      await ctx.db.patch(limits._id, { randomUsed: next });
+      await ctx.db.patch(limits._id, { randomUsed: next, randomWindowStart: w.windowStart });
     } else {
-      await ctx.db.insert("userLimits", { userId, aiUsed: 0, randomUsed: next });
+      await ctx.db.insert("userLimits", {
+        userId,
+        aiUsed: 0,
+        randomUsed: next,
+        dailyUsed: 0,
+        randomWindowStart: w.windowStart,
+      });
     }
-    return { allowed: true, remaining: RANDOM_LIMIT - next };
+    return { allowed: true, remaining: RANDOM_LIMIT - next, resetAt: w.resetAt };
+  },
+});
+
+// ─── Public consumption of a daily timed session (Today's Timers) ────
+// Separate quota (3) from the random exercises, same rolling-24h model.
+export const consumeDaily = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const userId = identity.subject;
+    const { progress, sub, limits } = await loadState(ctx, userId);
+    const now = Date.now();
+    const paid = isPaid(sub, now);
+    if (paid) return { allowed: true, remaining: null, resetAt: null };
+    const daysSince = trialDays(progress, progress?._creationTime, now);
+    if (daysSince >= TRIAL_DAYS) {
+      throw new Error("انتهت فترة التجربة المجانية. فعّل اشتراكك للمتابعة.");
+    }
+    const w = windowInfo(limits?.dailyWindowStart, now);
+    const used = w.rolled ? 0 : (limits?.dailyUsed ?? 0);
+    if (used >= DAILY_LIMIT) {
+      throw new Error("استنفدت استخدامات التمرين اليومي (3). يعود رصيدك تلقائياً بعد 24 ساعة (بتوقيت الخادم).");
+    }
+    const next = used + 1;
+    if (limits) {
+      await ctx.db.patch(limits._id, { dailyUsed: next, dailyWindowStart: w.windowStart });
+    } else {
+      await ctx.db.insert("userLimits", {
+        userId,
+        aiUsed: 0,
+        randomUsed: 0,
+        dailyUsed: next,
+        dailyWindowStart: w.windowStart,
+      });
+    }
+    return { allowed: true, remaining: DAILY_LIMIT - next, resetAt: w.resetAt };
   },
 });

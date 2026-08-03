@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { SubjectId } from '@/lib/subjects';
 import { SUBJECTS } from '@/lib/subjects';
 import { addDays, formatArabicDate, toISODate, currentLeague, isFinished, finishedSubjectsCount, type RecordsMap } from '@/lib/dates';
-import { useMutation } from 'convex/react';
+import { useMutation, useQuery } from 'convex/react';
 import { api } from 'convex/_generated/api';
 import { CountdownCard } from './CountdownCard';
 import { TodayTimerCard } from './TodayTimerCard';
@@ -24,7 +24,6 @@ export function DashboardTab({
   xp,
   records,
   isPaid,
-  onSubscribe,
   onNavigateRoadmap,
 }: {
   name: string;
@@ -33,7 +32,6 @@ export function DashboardTab({
   xp: number;
   records: RecordsMap;
   isPaid: boolean;
-  onSubscribe: () => void;
   onNavigateRoadmap: () => void;
 }) {
   const startTimer = useMutation(api.progress.startTimer);
@@ -46,6 +44,15 @@ export function DashboardTab({
   const todayISO = toISODate(today);
   const todayRecord = records[todayISO] ?? {};
   const finishedCount = SUBJECTS.filter((s) => isFinished(todayRecord[s.id])).length;
+
+  // Entitlements refresh each minute so quota counters/locks stay in sync.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+  const entitlements = useQuery(api.entitlements.get, { now });
+  const limits = entitlements?.limits ?? null;
 
   const dayIndexToday = useMemo(
     () => Math.round((+new Date(todayISO) - +new Date(startDate)) / 86400000),
@@ -129,7 +136,13 @@ export function DashboardTab({
         <span className="flex-1">
           <span className="block text-sm font-semibold text-[hsl(var(--ink))]">تحدّث مع المصحّح الذكي</span>
           <span className="block text-xs text-muted-foreground mt-0.5">
-            يراجع حلولك ويصحح أخطاءك تلقائياً
+            {limits && !isPaid && limits.aiRemaining !== null
+              ? limits.aiRemaining > 0
+                ? `متبقٍ ${limits.aiRemaining} من ${limits.aiLimit} رسائل مجانية`
+                : 'استنفدت رسائلك المجانية — يعود رصيدك بعد 24 ساعة'
+              : isPaid
+              ? 'غير محدود — يراجع ويصحح بلا حدود'
+              : 'يراجع حلولك ويصحح أخطاءك تلقائياً'}
           </span>
         </span>
         <ChevronIcon className="text-muted-foreground rotate-180 shrink-0" size={16} />
@@ -141,9 +154,17 @@ export function DashboardTab({
         onPause={handlePauseTimer}
         onResume={handleResumeTimer}
         onFinish={handleFinishSubject}
+        isPaid={isPaid}
+        dailyRemaining={limits?.dailyRemaining ?? null}
+        dailyResetAt={limits?.dailyResetAt ?? null}
       />
 
-      <RandomExerciseCard dayIndexToday={dayIndexToday} isPaid={isPaid} onSubscribe={onSubscribe} />
+      <RandomExerciseCard
+        dayIndexToday={dayIndexToday}
+        isPaid={isPaid}
+        randomRemaining={limits?.randomRemaining ?? null}
+        randomResetAt={limits?.randomResetAt ?? null}
+      />
 
       {/* Weekly strip — today in the center */}
       <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
@@ -202,7 +223,13 @@ export function DashboardTab({
 
       <p className="text-center text-xs text-muted-foreground italic px-4">"{quote}"</p>
 
-      <CorrectorChatSheet open={chatOpen} onOpenChange={setChatOpen} userName={name} />
+      <CorrectorChatSheet
+        open={chatOpen}
+        onOpenChange={setChatOpen}
+        userName={name}
+        aiRemaining={limits?.aiRemaining ?? null}
+        aiResetAt={limits?.aiResetAt ?? null}
+      />
     </div>
   );
 }

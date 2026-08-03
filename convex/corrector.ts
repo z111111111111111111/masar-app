@@ -181,8 +181,12 @@ export const chat = action({
     const body = {
       model: MODEL,
       messages: [systemPrompt, taskContext, ...nonEmptyMessages.map((m: { role: string; content: string }) => ({ role: m.role as "user" | "assistant", content: m.content }))],
-      max_tokens: 2000,
+      max_tokens: 4096,
       temperature: 0.7,
+      // DeepSeek V4 Flash enables "thinking" by default; reasoning tokens are
+      // streamed first and can leave the response empty if we only read
+      // delta.content. Disable reasoning so the model answers directly.
+      reasoning: { enabled: false },
       stream: true,
     };
 
@@ -195,7 +199,7 @@ export const chat = action({
         "X-Title": SITE_NAME,
       },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(30000),
+      signal: AbortSignal.timeout(60000),
     });
 
     if (!response.ok) {
@@ -208,6 +212,8 @@ export const chat = action({
     const decoder = new TextDecoder();
     let buffer = "";
     let fullReply = "";
+    let reasoningTokens = 0;
+    let streamError: string | null = null;
 
     while (true) {
       const { done, value } = await reader.read();
@@ -221,7 +227,12 @@ export const chat = action({
         if (line.startsWith("data: ") && line.trim() !== "data: [DONE]") {
           try {
             const json = JSON.parse(line.slice(6));
-            const chunk = json.choices?.[0]?.delta?.content;
+            if (json.error) {
+              streamError = typeof json.error === "string" ? json.error : JSON.stringify(json.error);
+              break;
+            }
+            const delta = json.choices?.[0]?.delta;
+            const chunk = delta?.content;
             if (chunk) {
               fullReply += chunk;
               await ctx.runMutation(api.corrector.appendToMessage, {
@@ -229,13 +240,24 @@ export const chat = action({
                 chunk,
               });
             }
+            if (delta?.reasoning) {
+              reasoningTokens += String(delta.reasoning).length;
+            }
           } catch { /* skip parse errors */ }
         }
       }
     }
 
+    if (streamError) {
+      await ctx.runMutation(api.corrector.removeMessage, { messageId: msgId });
+      throw new Error(`OpenRouter stream error: ${streamError}`);
+    }
+
     if (!fullReply) {
       await ctx.runMutation(api.corrector.removeMessage, { messageId: msgId });
+      if (reasoningTokens > 0) {
+        throw new Error("استجاب النموذج بتفكير فقط دون رد فعلي — حاول مجدداً.");
+      }
       throw new Error("Empty response from OpenRouter");
     }
 
@@ -262,8 +284,9 @@ async function generateTitle(userMessage: string, apiKey: string): Promise<strin
         { role: "system" as const, content: "لخص رسالة المستخدم التالية في عنوان قصير جداً (3-5 كلمات). أعد فقط العنوان بدون علامات اقتباس." },
         { role: "user" as const, content: userMessage },
       ],
-      max_tokens: 20,
+      max_tokens: 60,
       temperature: 0.3,
+      reasoning: { enabled: false },
     };
 
     const response = await fetch(API_URL, {
@@ -340,8 +363,9 @@ export const explainExercise = action({
         systemPrompt,
         { role: "user" as const, content: userPrompt },
       ],
-      max_tokens: 500,
+      max_tokens: 1000,
       temperature: 0.5,
+      reasoning: { enabled: false },
       stream: false,
     };
 
