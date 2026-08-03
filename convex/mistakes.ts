@@ -2,7 +2,7 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 
 // Lesson flow allowlist — add new lesson flows here.
-const FLOWS = new Set(["derivative", "derivative-2"]);
+const FLOWS = new Set(["derivative", "derivative-2", "derivative-3"]);
 
 // Exercise kinds — matches ExerciseData['kind'] in the client.
 const KINDS = new Set(["mcq", "rule", "fill", "truefalse", "sort"]);
