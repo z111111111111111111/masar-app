@@ -1,4 +1,4 @@
-import { createContext, useContext, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useQuery_experimental as useQuerySafe, useMutation } from 'convex/react';
 import { api } from 'convex/_generated/api';
 
@@ -48,6 +48,11 @@ export function HeartsProvider({ children }: { children: ReactNode }) {
 
   // Local copy so mutations update the UI instantly (no wait for refetch).
   const [local, setLocal] = useState<HeartsSnapshot | null>(null);
+  // Latest server snapshot without making callbacks depend on it (it changes
+  // every second via `now`), so mutations can still seed state even when the
+  // initial query hasn't delivered data yet.
+  const snapshotRef = useRef<HeartsSnapshot | null>(null);
+  snapshotRef.current = snapshot;
   useEffect(() => {
     if (snapshot) setLocal(snapshot);
   }, [snapshot]);
@@ -68,7 +73,20 @@ export function HeartsProvider({ children }: { children: ReactNode }) {
   const loseHeart = useCallback(async () => {
     try {
       const res = await loseHeartMut();
-      setLocal((prev) => (prev ? { ...prev, hearts: res.hearts, lastHeartAt: Date.now() } : prev));
+      setLocal((prev) => {
+        const seed = prev ?? snapshotRef.current;
+        const now = Date.now();
+        return {
+          hearts: res.hearts,
+          maxHearts: seed?.maxHearts ?? MAX_HEARTS,
+          lastHeartAt: now,
+          refillMs: seed?.refillMs ?? HEART_REFILL_MS,
+          nextRefillAt: now + (seed?.refillMs ?? HEART_REFILL_MS),
+          refillCost: seed?.refillCost ?? FULL_REFILL_COST,
+          fullRefillCost: seed?.fullRefillCost ?? FULL_REFILL_COST,
+          jewels: seed?.jewels ?? 20,
+        };
+      });
       return true;
     } catch (e) {
       console.error('loseHeart failed:', e);
@@ -79,9 +97,19 @@ export function HeartsProvider({ children }: { children: ReactNode }) {
   const refillHearts = useCallback(async (count?: number) => {
     try {
       const res = await refillMut({ hearts: count ?? MAX_HEARTS });
-      setLocal((prev) =>
-        prev ? { ...prev, hearts: res.hearts, jewels: res.jewels, lastHeartAt: Date.now() } : prev
-      );
+      setLocal((prev) => {
+        const seed = prev ?? snapshotRef.current;
+        return {
+          hearts: res.hearts,
+          maxHearts: seed?.maxHearts ?? MAX_HEARTS,
+          lastHeartAt: Date.now(),
+          refillMs: seed?.refillMs ?? HEART_REFILL_MS,
+          nextRefillAt: null,
+          refillCost: seed?.refillCost ?? FULL_REFILL_COST,
+          fullRefillCost: seed?.fullRefillCost ?? FULL_REFILL_COST,
+          jewels: res.jewels,
+        };
+      });
       return true;
     } catch (e) {
       console.error('refillHearts failed:', e);
@@ -92,7 +120,11 @@ export function HeartsProvider({ children }: { children: ReactNode }) {
   const awardStage = useCallback(async (stageId: string) => {
     try {
       const res = await awardMut({ stageId });
-      setLocal((prev) => (prev ? { ...prev, jewels: res.jewels } : prev));
+      setLocal((prev) => {
+        const seed = prev ?? snapshotRef.current;
+        if (!seed) return null;
+        return { ...seed, jewels: res.jewels };
+      });
       return res.awarded;
     } catch (e) {
       console.error('awardStage failed:', e);
