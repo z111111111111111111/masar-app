@@ -58,39 +58,39 @@ export function ReferralDialog({ open, onOpenChange }: { open: boolean; onOpenCh
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[320px] p-0 rounded-2xl max-h-[85dvh] overflow-y-auto" dir="rtl">
-        <DialogHeader className="px-4 pt-4 pb-3 border-b border-border">
+      <DialogContent className="max-w-[320px] p-0 rounded-2xl max-h-[90dvh] overflow-y-auto gap-0" dir="rtl">
+        <DialogHeader className="px-4 pt-3.5 pb-2.5 border-b border-border">
           <DialogTitle className="text-right flex items-center gap-2">
-            <span className="w-8 h-8 rounded-full bg-[hsl(var(--sprout))] text-white flex items-center justify-center shrink-0">
-              <GiftIcon size={16} />
+            <span className="w-7 h-7 rounded-full bg-[hsl(var(--sprout))] text-white flex items-center justify-center shrink-0">
+              <GiftIcon size={14} />
             </span>
             <span className="flex-1">
               ادعُ أصدقاءك واربح
-              <span className="block text-[11px] font-normal text-muted-foreground leading-snug mt-0.5">
-                احصل على <b>5000 دج</b> لكل 10 مدعوين يقومون بالاشتراك (الدفع عبر رابطك).
+              <span className="block text-[10px] font-normal text-muted-foreground leading-snug mt-0.5">
+                احصل على <b>5000 دج</b> لكل 10 مدعوين يشتركون عبر رابطك.
               </span>
             </span>
           </DialogTitle>
         </DialogHeader>
 
-        <div className="px-4 py-4 space-y-3">
+        <div className="px-4 py-3 space-y-2.5">
           {stats ? (
             <>
-              <div className="flex gap-3">
-                <div className="flex-1 rounded-xl bg-card border border-border p-2.5 text-center">
-                  <p className="text-lg font-black text-[hsl(var(--ink))] tabular-nums">{stats.registered}</p>
+              <div className="flex gap-2">
+                <div className="flex-1 rounded-xl bg-card border border-border p-2 text-center">
+                  <p className="text-base font-black text-[hsl(var(--ink))] tabular-nums">{stats.registered}</p>
                   <p className="text-[10px] text-muted-foreground">مدعو سجّل عبرك</p>
                 </div>
-                <div className="flex-1 rounded-xl bg-card border border-border p-2.5 text-center">
-                  <p className="text-lg font-black text-[hsl(var(--sprout))] tabular-nums">{stats.paid}</p>
+                <div className="flex-1 rounded-xl bg-card border border-border p-2 text-center">
+                  <p className="text-base font-black text-[hsl(var(--sprout))] tabular-nums">{stats.paid}</p>
                   <p className="text-[10px] text-muted-foreground">مدفوع ({stats.paid}/{stats.rewardTarget})</p>
                 </div>
               </div>
 
-              <div className="rounded-xl bg-card border border-border p-3 space-y-2">
+              <div className="rounded-xl bg-card border border-border p-2.5 space-y-2">
                 <div className="flex items-center gap-2">
                   <span className="shrink-0 flex items-center gap-1 text-[10px] text-muted-foreground">
-                    <UsersIcon size={13} />
+                    <UsersIcon size={12} />
                     رمزك:
                   </span>
                   <code className="flex-1 text-xs font-mono font-bold text-[hsl(var(--ink))]" dir="ltr">{stats.code}</code>
