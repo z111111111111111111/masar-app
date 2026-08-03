@@ -486,9 +486,9 @@ export function DerivativeLesson({
         {(phase === 'exercises' || phase === 'retry') && (
           <div
             key={phase === 'retry' ? `${retryItem?.flowIndex}-${retryRound}` : currentIndex}
-            className="flex-1 flex flex-col min-h-0 overflow-hidden pb-40 md:pb-0"
+            className="flex-1 min-h-0 overflow-y-auto pb-40 md:pb-0 md:overflow-hidden md:flex md:flex-col"
           >
-            <div className="my-auto w-full">
+            <div className="w-full md:my-auto">
               {phase === 'retry' && (
                 <p className="text-center text-xs font-bold text-[hsl(var(--ember))] mb-3">
                   صحّح أخطاءك في التمارين التالية ({retryQueue.length} تمرين)
