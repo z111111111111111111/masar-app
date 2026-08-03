@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { DerivativeLesson } from './DerivativeLesson';
 import { KaTeXBlock } from '@/components/landing/MathText';
 import { DERIVATIVE_FLOW_STAGE3, DERIVATIVE_FLOW_ID_3, STAGE3_MAX_ITEMS } from './DerivativeFlowStage3';
@@ -28,13 +29,31 @@ export function DerivativeLessonStage3({
 
 /* ─── المرحلة الثالثة: قواعد الاشتقاق (بدون فيديو) ─────────────── */
 const RULES = [
-  { name: 'قاعدة المجموع', tex: "(u+v)'=u'+v'" },
-  { name: 'قاعدة الجداء', tex: "(u\\cdot v)'=u'\\cdot v+u\\cdot v'" },
-  { name: 'قاعدة الخارج', tex: "(u/v)'=\\frac{u'\\cdot v-u\\cdot v'}{v^{2}}" },
-  { name: 'قاعدة التركيب', tex: "(f(g(x)))'=f'(g(x))\\cdot g'(x)" },
+  {
+    name: 'قاعدة المجموع',
+    tex: "(u+v)'=u'+v'",
+    hint: 'مشتقة جمع الدوال = جمع مشتقاتها، ببساطة اشتق كل حد لوحده ثم اجمع النتائج.',
+  },
+  {
+    name: 'قاعدة الجداء',
+    tex: "(u\\cdot v)'=u'\\cdot v+u\\cdot v'",
+    hint: 'مشتقة حاصل ضرب دالتين = مشتقة الأولى × الثانية + الأولى × مشتقة الثانية.',
+  },
+  {
+    name: 'قاعدة الخارج',
+    tex: "(u/v)'=\\frac{u'\\cdot v-u\\cdot v'}{v^{2}}",
+    hint: 'مشتقة الكسر = (مشتقة البسط × المقام − البسط × مشتقة المقام) ÷ مربع المقام.',
+  },
+  {
+    name: 'قاعدة التركيب',
+    tex: "(f(g(x)))'=f'(g(x))\\cdot g'(x)",
+    hint: 'مشتقة دالة داخل دالة = مشتقة الخارجية (مع إبقاء الداخل كما هو) × مشتقة الداخلية.',
+  },
 ];
 
 function Stage3IntroBody() {
+  const [openRule, setOpenRule] = useState<string | null>(null);
+
   return (
     <div className="space-y-4">
       <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
@@ -44,14 +63,31 @@ function Stage3IntroBody() {
           مع <span className="font-semibold border-b-2 border-dashed border-[hsl(var(--chart-1))]/60 cursor-pointer">الانتباه الدائم للدوال المركّبة</span>.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {RULES.map((rule) => (
-            <div key={rule.name} className="rounded-xl bg-muted/50 p-4 space-y-2 text-center">
-              <p className="text-xs font-bold text-[hsl(var(--muted-foreground))]">{rule.name}</p>
-              <div dir="ltr">
-                <KaTeXBlock tex={rule.tex} className="text-[hsl(var(--sprout))] text-base" />
-              </div>
-            </div>
-          ))}
+          {RULES.map((rule) => {
+            const open = openRule === rule.name;
+            return (
+              <button
+                key={rule.name}
+                type="button"
+                onClick={() => setOpenRule(open ? null : rule.name)}
+                className={`rounded-xl p-4 space-y-2 text-center transition-all active:scale-[0.98] ${
+                  open
+                    ? 'bg-[hsl(var(--sprout-soft))] ring-2 ring-[hsl(var(--sprout))]/40'
+                    : 'bg-muted/50 hover:bg-muted'
+                }`}
+              >
+                <p className="text-xs font-bold text-[hsl(var(--muted-foreground))]">{rule.name}</p>
+                <div dir="ltr">
+                  <KaTeXBlock tex={rule.tex} className="text-[hsl(var(--sprout))] text-base" />
+                </div>
+                {open && (
+                  <div className="pt-2 border-t border-[hsl(var(--sprout))]/20 text-right animate-[fade-in_0.25s_ease-out]">
+                    <p className="text-xs leading-relaxed text-[hsl(var(--ink))]">{rule.hint}</p>
+                  </div>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 

@@ -69,6 +69,7 @@ export function DerivativeLesson({
   const [phase, setPhase] = useState<'intro' | 'exercises' | 'retry' | 'done'>('intro');
   const [showGraph, setShowGraph] = useState(false);
   const [graphReady, setGraphReady] = useState(false);
+  const [showRule, setShowRule] = useState(false);
 
   // Random per-entry session: sampled once when the lesson mounts (each entry
   // remounts the component), so the exercises differ between sessions.
@@ -461,6 +462,8 @@ export function DerivativeLesson({
                   showGraph={showGraph}
                   graphReady={graphReady}
                   onToggleGraph={() => setShowGraph((g) => !g)}
+                  showRule={showRule}
+                  onToggleRule={() => setShowRule((r) => !r)}
                 />
               )}
             </div>
@@ -524,6 +527,8 @@ function VideoIntroSwap({
   showGraph,
   graphReady,
   onToggleGraph,
+  showRule,
+  onToggleRule,
 }: {
   videoUrl: string;
   videoPoster: string;
@@ -531,6 +536,8 @@ function VideoIntroSwap({
   showGraph: boolean;
   graphReady: boolean;
   onToggleGraph: () => void;
+  showRule: boolean;
+  onToggleRule: () => void;
 }) {
   const defRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLDivElement>(null);
@@ -645,12 +652,41 @@ function VideoIntroSwap({
         )}
 
         <div className="rounded-xl bg-muted/50 p-4">
-          <p className="text-xs text-muted-foreground mb-2 font-medium">القاعدة الأساسية</p>
+          <button
+            type="button"
+            onClick={onToggleRule}
+            className="w-full flex items-center justify-between gap-2"
+          >
+            <span className="text-xs text-muted-foreground font-medium">القاعدة الأساسية</span>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={`text-muted-foreground transition-transform duration-300 ${showRule ? 'rotate-180' : ''}`}
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
           <div className="flex items-center justify-center gap-3 text-base font-bold" dir="ltr">
             <KaTeXBlock tex="f(x)=x^{n}" className="text-[hsl(var(--ink))]" />
             <span className="text-muted-foreground text-sm">→</span>
             <KaTeXBlock tex="f'(x)=n\cdot x^{n-1}" className="text-[hsl(var(--sprout))]" />
           </div>
+          {showRule && (
+            <div className="pt-3 mt-3 border-t border-muted-foreground/10 text-right animate-[fade-in_0.25s_ease-out]">
+              <p className="text-xs leading-relaxed text-[hsl(var(--ink))]">
+                ببساطة: انزل الأس <KaTeXBlock tex="n" className="inline font-bold text-[hsl(var(--ink))]" /> أمام الدالة كمعامل،
+                ثم نقص <span className="font-bold">1</span> من الأس: أي <KaTeXBlock tex="x^{n}" className="inline" /> تصبح
+                <KaTeXBlock tex="n\cdot x^{n-1}" className="inline font-bold text-[hsl(var(--sprout))]" />.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>
