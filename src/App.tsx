@@ -50,8 +50,7 @@ function App() {
   const enforceExpiry = useMutation(api.subscription.enforceExpiry);
   const { theme, dark, themes, setTheme, toggleDark } = useTheme();
 
-  const [now, setNow] = useState(() => Date.now());
-  const entitlements = useQuery(api.entitlements.get, { now });
+  const entitlements = useQuery(api.entitlements.get);
 
   const [page, setPage] = useState<'landing' | 'auth'>('landing');
   const [authTab, setAuthTab] = useState<'login' | 'signup'>('signup');
@@ -61,12 +60,6 @@ function App() {
   const expiryEnforced = useRef(false);
   const { screen: appScreen, navigate: navigateApp } = useAppScreen({ kind: 'tab', tab: 'home' });
   const active = activeTab(appScreen);
-
-  // Keep the trial clock fresh (re-fetches entitlements each minute).
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 60_000);
-    return () => clearInterval(id);
-  }, []);
 
   // Capture a referral code (?ref=...) from the URL once, at signup.
   const referralCode = useRef<string | undefined>(undefined);

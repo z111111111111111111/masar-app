@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { SubjectId } from '@/lib/subjects';
 import { SUBJECTS } from '@/lib/subjects';
 import { addDays, formatArabicDate, toISODate, currentLeague, isFinished, finishedSubjectsCount, type RecordsMap } from '@/lib/dates';
@@ -43,13 +43,7 @@ export function DashboardTab({
   const todayRecord = records[todayISO] ?? {};
   const finishedCount = SUBJECTS.filter((s) => isFinished(todayRecord[s.id])).length;
 
-  // Entitlements refresh each minute so quota counters/locks stay in sync.
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 60_000);
-    return () => clearInterval(id);
-  }, []);
-  const entitlements = useQuery(api.entitlements.get, { now });
+  const entitlements = useQuery(api.entitlements.get);
   const limits = entitlements?.limits ?? null;
 
   const dayIndexToday = useMemo(

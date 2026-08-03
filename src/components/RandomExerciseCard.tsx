@@ -35,7 +35,11 @@ export function RandomExerciseCard({
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const consumeRandom = useMutation(api.entitlements.consumeRandom);
 
-  const locked = !isPaid && (randomRemaining === 0 || limitLocked);
+  // Local rollover: once resetAt passes, show the fresh quota (the next consume
+  // mutation re-validates with the server clock).
+  const windowRolled = !!randomResetAt && Date.now() >= randomResetAt;
+  const effRemaining = windowRolled ? 3 : randomRemaining;
+  const locked = !isPaid && !windowRolled && (randomRemaining === 0 || limitLocked);
 
   // Countdown to the server-side quota reset (server clock, not device clock).
   const [, setTick] = useState(0);
@@ -95,8 +99,8 @@ export function RandomExerciseCard({
             ? 'بلا حدّ — اقترح بقدر ما تشاء'
             : randomRemaining === null
             ? '3 تمارين مجانية يومياً'
-            : randomRemaining > 0
-            ? `متبقٍ ${randomRemaining} من 3 في النسخة المجانية`
+            : effRemaining > 0
+            ? `متبقٍ ${effRemaining} من 3 في النسخة المجانية`
             : 'استنفدت رصيدك المجاني لهذا اليوم'}
         </span>
       </div>

@@ -43,7 +43,12 @@ export function TodayTimerCard({
   const [limitLocked, setLimitLocked] = useState(false);
   const consumeDaily = useMutation(api.entitlements.consumeDaily);
 
-  const locked = !isPaid && (dailyRemaining === 0 || limitLocked);
+  // The rolling 24h window resets server-side; once resetAt passes we show the
+  // fresh quota locally (the next consume mutation re-validates with the server
+  // clock), so a user is never stuck locked after midnight without a refetch.
+  const windowRolled = !!dailyResetAt && Date.now() >= dailyResetAt;
+  const effRemaining = windowRolled ? 3 : dailyRemaining;
+  const locked = !isPaid && !windowRolled && (dailyRemaining === 0 || limitLocked);
 
   // Countdown to the server-side daily quota reset (server clock).
   useEffect(() => {
@@ -117,9 +122,9 @@ export function TodayTimerCard({
           {finishedCount}/{SUBJECTS.length} مواد مكتملة اليوم
           {!isPaid && dailyRemaining !== null && (
             <span className={`mr-2 rounded-full px-2 py-0.5 text-[10px] font-bold ${
-              dailyRemaining > 0 ? 'bg-[hsl(var(--sprout-soft))] text-[hsl(var(--sprout))]' : 'bg-[hsl(var(--ember-soft))] text-[hsl(var(--ember))]'
+              effRemaining > 0 ? 'bg-[hsl(var(--sprout-soft))] text-[hsl(var(--sprout))]' : 'bg-[hsl(var(--ember-soft))] text-[hsl(var(--ember))]'
             }`}>
-              {dailyRemaining > 0 ? `متبقٍ ${dailyRemaining} من 3` : 'استنفدت رصيدك المجاني'}
+              {effRemaining > 0 ? `متبقٍ ${effRemaining} من 3` : 'استنفدت رصيدك المجاني'}
             </span>
           )}
         </span>

@@ -32,7 +32,12 @@ export function CorrectorChatSheet({
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const locked = waitLocked || aiRemaining === 0;
+  // Local rollover: once resetAt passes, the quota refilled server-side; show it
+  // fresh instead of keeping the stale lock (the next send re-validates with the
+  // server clock).
+  const windowRolled = !!aiResetAt && Date.now() >= aiResetAt;
+  const effRemaining = windowRolled ? 5 : aiRemaining;
+  const locked = waitLocked || (!windowRolled && aiRemaining === 0);
 
   // Countdown to the server-side AI quota reset (server clock).
   const [, setTick] = useState(0);
@@ -127,7 +132,7 @@ export function CorrectorChatSheet({
               <span className={`shrink-0 text-[10px] font-bold rounded-full px-2 py-0.5 ${
                 locked ? 'bg-[hsl(var(--ember-soft))] text-[hsl(var(--ember))]' : 'bg-[hsl(var(--sprout-soft))] text-[hsl(var(--sprout))]'
               }`}>
-                {locked ? 'استنفدت' : `متبقٍ ${aiRemaining}`}
+                {locked ? 'استنفدت' : `متبقٍ ${effRemaining}`}
               </span>
             )}
             <button

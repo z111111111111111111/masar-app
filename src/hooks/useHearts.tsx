@@ -40,7 +40,7 @@ export function useHearts(): HeartsValue {
 }
 
 export function HeartsProvider({ children }: { children: ReactNode }) {
-  const query = useQuerySafe({ query: api.progress.getHearts, args: { now: Date.now() } });
+  const query = useQuerySafe({ query: api.progress.getHearts, args: {} });
   const snapshot: HeartsSnapshot | null = query.status === 'success' ? query.data : null;
 
   const loseHeartMut = useMutation(api.progress.loseHeart);

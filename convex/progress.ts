@@ -34,12 +34,11 @@ function heartRefillCost(heartsToAdd: number): number {
   return Math.ceil((heartsToAdd * FULL_REFILL_COST) / MAX_HEARTS);
 }
 
-// --- Hearts snapshot (client `now` only forces the query to refresh; all refill
-// math uses the server clock so a forward-tampered device clock can't refill
-// hearts early) ---
+// --- Hearts snapshot (server clock is authoritative; the client countdown
+// extrapolates silently from lastHeartAt/serverNow, so no per-tick re-query) ---
 export const getHearts = query({
-  args: { now: v.number() },
-  handler: async (ctx, args) => {
+  args: {},
+  handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return null;
     const progress = await ctx.db
@@ -59,7 +58,6 @@ export const getHearts = query({
       refillCost: heartRefillCost(missing),
       jewels: progress.jewels ?? 20,
       serverNow: Date.now(),
-      clientNow: args.now,
     };
   },
 });

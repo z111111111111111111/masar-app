@@ -58,7 +58,7 @@ export function ReferralDialog({ open, onOpenChange }: { open: boolean; onOpenCh
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[320px] p-0 rounded-2xl max-h-[90dvh] overflow-y-auto gap-0" dir="rtl">
+      <DialogContent className="max-w-[320px] sm:max-w-[360px] p-0 rounded-2xl max-h-[90dvh] overflow-y-auto gap-0" dir="rtl">
         <DialogHeader className="px-4 pt-3.5 pb-2.5 border-b border-border">
           <DialogTitle className="text-right flex items-center gap-2">
             <span className="w-7 h-7 rounded-full bg-[hsl(var(--sprout))] text-white flex items-center justify-center shrink-0">
@@ -105,7 +105,7 @@ export function ReferralDialog({ open, onOpenChange }: { open: boolean; onOpenCh
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => copy(stats.link, 'link')}
-                    className="flex-1 truncate rounded-lg border border-border bg-muted/30 px-2.5 py-1.5 text-[10px] font-mono text-muted-foreground text-left"
+                    className="flex-1 break-all leading-snug rounded-lg border border-border bg-muted/30 px-2.5 py-1.5 text-[10px] font-mono text-muted-foreground text-left"
                     dir="ltr"
                     title="انسخ رابط الدعوة"
                   >
