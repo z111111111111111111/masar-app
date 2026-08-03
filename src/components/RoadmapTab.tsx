@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ChevronIcon, MathIcon, AtomIcon, LeafIcon, BrainIcon, GlobeIcon, ShuffleIcon, BookIcon } from './icons';
 import { DerivativeLesson } from './lessons/DerivativeLesson';
+import { DerivativeLessonStage2 } from './lessons/DerivativeLessonStage2';
 
 const COMPLETED_KEY = 'masar-completed-subjects';
 function getCompletedSubjects(): string[] {
@@ -48,7 +49,7 @@ interface Stage {
 
 const MATH_STAGES: Stage[] = [
   { id: 's1', name: 'مقدمة في الاشتقاق', lessonId: 'derivative', requiredStage: null },
-  { id: 's2', name: 'قواعد الاشتقاق', lessonId: null, requiredStage: 's1' },
+  { id: 's2', name: 'مفهوم الاشتقاقية عند نقطة', lessonId: 'derivative-2', requiredStage: 's1' },
   { id: 's3', name: 'تطبيقات الاشتقاقية', lessonId: null, requiredStage: 's2' },
   { id: 's4', name: 'تمارين مركبة', lessonId: null, requiredStage: 's3' },
 ];
@@ -162,6 +163,20 @@ function SubjectPage({
         onStageComplete={(passed) => {
           if (passed) {
             markStagePassed('s1');
+            setStageProgress(getStageProgress());
+          }
+        }}
+      />
+    );
+  }
+
+  if (openStageId === 'derivative-2') {
+    return (
+      <DerivativeLessonStage2
+        onBack={() => setOpenStageId(null)}
+        onStageComplete={(passed) => {
+          if (passed) {
+            markStagePassed('s2');
             setStageProgress(getStageProgress());
           }
         }}

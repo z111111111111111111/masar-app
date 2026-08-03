@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { MathText, KaTeXBlock } from '@/components/landing/MathText';
+import { MathText } from '@/components/landing/MathText';
+import { OptionText } from './OptionText';
 import { SystemFrame, FeedbackBlock, ExerciseActionBar, CheckMark, XMark } from './SystemFrame';
 import type { MCQData } from './types';
 
@@ -58,7 +59,7 @@ export function MultipleChoice({ data, onSubmit, onNext }: {
                         <span className="text-xs font-bold">{String.fromCharCode(1571 + i)}</span>
                       )}
                     </span>
-                    <span dir="ltr"><KaTeXBlock tex={opt} className="text-base md:text-lg" /></span>
+                    <OptionText tex={opt} className="text-base md:text-lg" />
                   </span>
                 </button>
               );
@@ -75,7 +76,7 @@ export function MultipleChoice({ data, onSubmit, onNext }: {
         feedback={answered ? (
           <FeedbackBlock
             correct={correct}
-            correctAnswer={<span dir="ltr"><KaTeXBlock tex={data.options[data.correct]} className="text-sm" /></span>}
+            correctAnswer={<OptionText tex={data.options[data.correct]} className="text-sm" />}
             explanation={<MathText tex={data.explanation} className="text-xs leading-relaxed text-[hsl(var(--ink))]" />}
           />
         ) : undefined}

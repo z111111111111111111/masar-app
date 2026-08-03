@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { MathText, KaTeXBlock } from '@/components/landing/MathText';
+import { MathText } from '@/components/landing/MathText';
+import { OptionText } from './OptionText';
 import { SystemFrame, FeedbackBlock, ExerciseActionBar } from './SystemFrame';
 import type { FillData } from './types';
 
@@ -36,7 +37,7 @@ export function FillBlank({ data, onSubmit, onNext }: {
                       : 'border-dashed border-muted-foreground/40 text-muted-foreground'
               }`}
             >
-              {selected ? <KaTeXBlock tex={selected} className="text-sm md:text-base" /> : <span className="text-sm font-bold">؟</span>}
+              {selected ? <OptionText tex={selected} className="text-sm md:text-base" /> : <span className="text-sm font-bold">؟</span>}
             </span>
             {data.after}
           </p>
@@ -63,7 +64,7 @@ export function FillBlank({ data, onSubmit, onNext }: {
                   }`}
                   dir="ltr"
                 >
-                  <KaTeXBlock tex={c} className="text-sm md:text-base font-bold" />
+                  <OptionText tex={c} className="text-sm md:text-base font-bold" />
                 </button>
               );
             })}
@@ -79,7 +80,7 @@ export function FillBlank({ data, onSubmit, onNext }: {
         feedback={answered ? (
           <FeedbackBlock
             correct={correct}
-            correctAnswer={<span dir="ltr"><KaTeXBlock tex={data.correct} className="text-sm" /></span>}
+            correctAnswer={<OptionText tex={data.correct} className="text-sm" />}
             explanation={<MathText tex={data.explanation} className="text-xs leading-relaxed text-[hsl(var(--ink))]" />}
           />
         ) : undefined}

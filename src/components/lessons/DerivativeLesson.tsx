@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
+import type { ReactNode } from 'react';
 import { useMutation, useQuery_experimental as useQuerySafe } from 'convex/react';
 import { api } from 'convex/_generated/api';
 import { ChevronIcon } from '../icons';
 import { Button } from '@/components/ui/button';
 import { KaTeXBlock } from '@/components/landing/MathText';
 import { DERIVATIVE_FLOW, DERIVATIVE_FLOW_ID, serializeCorrectAnswer } from './DerivativeFlow';
+import { balancedSample } from './systems/utils';
+import type { ExerciseData } from './systems/types';
 import { MultipleChoice } from './systems/MultipleChoice';
 import { RuleAssembly } from './systems/RuleAssembly';
 import { FillBlank } from './systems/FillBlank';
@@ -38,10 +41,35 @@ function formatTime(seconds: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => void; onStageComplete?: (passed: boolean) => void }) {
+export interface DerivativeLessonIntro {
+  title: string;
+  subtitle: string;
+  description?: string;
+  body?: ReactNode;
+}
+
+export function DerivativeLesson({
+  onBack,
+  onStageComplete,
+  flowId = DERIVATIVE_FLOW_ID,
+  flow = DERIVATIVE_FLOW,
+  sessionSize = flow.length,
+  intro,
+}: {
+  onBack: () => void;
+  onStageComplete?: (passed: boolean) => void;
+  flowId?: string;
+  flow?: ExerciseData[];
+  sessionSize?: number;
+  intro?: DerivativeLessonIntro;
+}) {
   const [phase, setPhase] = useState<'intro' | 'exercises' | 'retry' | 'done'>('intro');
   const [showGraph, setShowGraph] = useState(false);
   const [graphReady, setGraphReady] = useState(false);
+
+  // Random per-entry session: sampled once when the lesson mounts (each entry
+  // remounts the component), so the exercises differ between sessions.
+  const [session] = useState<number[]>(() => balancedSample(flow, sessionSize));
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
@@ -65,7 +93,7 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
   // of crashing the lesson with a white page.
   const unresolvedQuery = useQuerySafe({
     query: api.mistakes.getUnresolved,
-    args: { flow: DERIVATIVE_FLOW_ID },
+    args: { flow: flowId },
   });
   const unresolved = unresolvedQuery.status === 'success' ? unresolvedQuery.data : undefined;
 
@@ -73,10 +101,10 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
   const [completedSubjects, setCompletedSubjects] = useState<string[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const total = DERIVATIVE_FLOW.length;
-  const current = DERIVATIVE_FLOW[currentIndex];
+  const total = session.length;
+  const current = flow[session[currentIndex]];
   const retryItem = phase === 'retry' ? retryQueue[retryIndex] : undefined;
-  const activeExercise = retryItem ? (DERIVATIVE_FLOW[retryItem.flowIndex] ?? current) : current;
+  const activeExercise = retryItem ? (flow[retryItem.flowIndex] ?? current) : current;
   const pct = phase === 'retry'
     // During correction the bar advances against the wrong-exercise queue size,
     // so each fixed mistake moves it by a meaningful step up to 100%.
@@ -101,10 +129,10 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
       stopTimer();
       setCompletedSubjects(markSubjectComplete('math'));
       // Clear any leftover unresolved mistakes once everything is corrected.
-      resetSession({ flow: DERIVATIVE_FLOW_ID }).catch(() => {});
+      resetSession({ flow: flowId }).catch(() => {});
       onStageComplete?.(true);
     }
-  }, [phase, stopTimer, onStageComplete, resetSession]);
+  }, [phase, flowId, stopTimer, onStageComplete, resetSession]);
 
   useEffect(() => {
     if (showGraph) {
@@ -125,6 +153,7 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
       setLastRetryCorrect(null);
       setPhase('retry');
     } else {
+      setCurrentIndex(0);
       setPhase('exercises');
     }
     startTimer();
@@ -136,18 +165,18 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
       return;
     }
     setWrongCount((w) => w + 1);
-    const idx = currentIndex;
+    const idx = session[currentIndex];
     setWrongSet((prev) => (prev.includes(idx) ? prev : [...prev, idx]));
-    const ex = DERIVATIVE_FLOW[idx];
+    const ex = flow[idx];
     pendingRef.current.push(
       recordMistake({
-        flow: DERIVATIVE_FLOW_ID,
+        flow: flowId,
         flowIndex: idx,
         kind: ex.kind,
         correctAnswer: serializeCorrectAnswer(ex),
       }).catch(() => {})
     );
-  }, [currentIndex, recordMistake]);
+  }, [currentIndex, session, flow, flowId, recordMistake]);
 
   const handleSubmitRetry = useCallback((correct: boolean) => {
     const item = retryQueue[retryIndex];
@@ -155,18 +184,18 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
     if (correct) {
       setCorrectCount((c) => c + 1);
       setLastRetryCorrect(true);
-      resolveMistake({ flow: DERIVATIVE_FLOW_ID, flowIndex: item.flowIndex }).catch(() => {});
+      resolveMistake({ flow: flowId, flowIndex: item.flowIndex }).catch(() => {});
     } else {
       setWrongCount((w) => w + 1);
       setLastRetryCorrect(false);
       recordMistake({
-        flow: DERIVATIVE_FLOW_ID,
+        flow: flowId,
         flowIndex: item.flowIndex,
         kind: item.kind,
         correctAnswer: item.correctAnswer,
       }).catch(() => {});
     }
-  }, [retryQueue, retryIndex, resolveMistake, recordMistake]);
+  }, [retryQueue, retryIndex, resolveMistake, recordMistake, flowId]);
 
   // Start the correction round from the results page: wrong exercises from the
   // database (unresolved) plus a local fallback so none is ever skipped.
@@ -175,7 +204,7 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
     const localSeed = wrongSet
       .filter((i) => !dbSeed.some((m) => m.flowIndex === i))
       .map((i) => {
-        const ex = DERIVATIVE_FLOW[i];
+        const ex = flow[i];
         return { flowIndex: i, kind: ex.kind, correctAnswer: serializeCorrectAnswer(ex) };
       });
     const queue = [...dbSeed, ...localSeed];
@@ -186,7 +215,7 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
     setLastRetryCorrect(null);
     setPhase('retry');
     startTimer();
-  }, [unresolved, wrongSet, startTimer]);
+  }, [unresolved, wrongSet, flow, startTimer]);
 
   const handleNextFirstPass = useCallback(async () => {
     if (currentIndex + 1 >= total) {
@@ -396,21 +425,23 @@ export function DerivativeLesson({ onBack, onStageComplete }: { onBack: () => vo
           <>
             <div className="space-y-6 animate-[fade-in_0.4s_ease-out] pb-32 md:pb-6">
               <div>
-                <h1 className="text-xl font-bold text-[hsl(var(--ink))] mb-1">الاشتقاقية</h1>
-                <p className="text-sm text-muted-foreground">الدرس الأول — الرياضيات</p>
+                <h1 className="text-xl font-bold text-[hsl(var(--ink))] mb-1">{intro?.title ?? 'الاشتقاقية'}</h1>
+                <p className="text-sm text-muted-foreground">{intro?.subtitle ?? 'الدرس الأول — الرياضيات'}</p>
                 <p className="text-[11px] text-muted-foreground mt-1">
-                  أجب عن جميع التمارين للمرور إلى المرحلة التالية — بعد انتهاء التمارين ستظهر لك صفحة النتائج (المدة، الصحيحة، الخاطئة)، وإن أخطأت في أي تمرين فستُعرض لك إجابتك الصحيحة، وتُعاد الأخطاء فقط حتى تصحّحها كلها.
+                  {intro?.description ?? 'أجب عن جميع التمارين للمرور إلى المرحلة التالية — بعد انتهاء التمارين ستظهر لك صفحة النتائج (المدة، الصحيحة، الخاطئة)، وإن أخطأت في أي تمرين فستُعرض لك إجابتك الصحيحة، وتُعاد الأخطاء فقط حتى تصحّحها كلها.'}
                 </p>
               </div>
 
-              <VideoIntroSwap
-                videoUrl="https://www.youtube-nocookie.com/embed/kNRqWehvOtE"
-                videoPoster="https://img.youtube.com/vi/kNRqWehvOtE/maxresdefault.jpg"
-                videoTitle="شرح الاشتقاقية"
-                showGraph={showGraph}
-                graphReady={graphReady}
-                onToggleGraph={() => setShowGraph((g) => !g)}
-              />
+              {intro?.body ?? (
+                <VideoIntroSwap
+                  videoUrl="https://www.youtube-nocookie.com/embed/kNRqWehvOtE"
+                  videoPoster="https://img.youtube.com/vi/kNRqWehvOtE/maxresdefault.jpg"
+                  videoTitle="شرح الاشتقاقية"
+                  showGraph={showGraph}
+                  graphReady={graphReady}
+                  onToggleGraph={() => setShowGraph((g) => !g)}
+                />
+              )}
             </div>
 
             {/* Start button — fixed above the bottom navigation */}
