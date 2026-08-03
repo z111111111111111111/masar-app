@@ -20,7 +20,6 @@ const QUOTES = [
 export function DashboardTab({
   name,
   startDate,
-  streak,
   xp,
   records,
   isPaid,
@@ -28,7 +27,6 @@ export function DashboardTab({
 }: {
   name: string;
   startDate: string;
-  streak: number;
   xp: number;
   records: RecordsMap;
   isPaid: boolean;

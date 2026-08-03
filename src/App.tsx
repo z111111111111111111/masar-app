@@ -227,7 +227,6 @@ function App() {
           <DashboardTab
             name={profile.name}
             startDate={profile.startDate}
-            streak={streak}
             xp={xp}
             records={records}
             isPaid={isPaid}

@@ -62,9 +62,10 @@ function windowInfo(windowStart: number | undefined, now: number): { windowStart
 }
 
 // ─── Public status used by the whole app ─────────────────────────────
-// `now` is still passed from the client so the query refetches on a timer, but
-// it is only used for trial/subscription maths; the usage counters and reset
-// times are derived from the server clock (windowInfo uses Date.now()).
+// `now` is passed from the client only to force the query to re-evaluate on a
+// timer (Convex won't rerun a query just because time advances). All policy
+// decisions (paid, trial days, 24h windows) are derived from the server clock,
+// so a tampered device clock can't extend the trial or shift the quotas.
 export const get = query({
   args: { now: v.number() },
   handler: async (ctx, args) => {
@@ -72,8 +73,9 @@ export const get = query({
     if (!identity) return null;
     const userId = identity.subject;
     const { progress, sub, limits } = await loadState(ctx, userId);
-    const paid = isPaid(sub, args.now);
-    const daysSince = trialDays(progress, progress?._creationTime, args.now);
+    const serverNow = Date.now();
+    const paid = isPaid(sub, serverNow);
+    const daysSince = trialDays(progress, progress?._creationTime, serverNow);
     const trialExpired = !paid && daysSince >= TRIAL_DAYS;
 
     const aiW = windowInfo(limits?.aiWindowStart, Date.now());
