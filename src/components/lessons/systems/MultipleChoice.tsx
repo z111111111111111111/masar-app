@@ -40,7 +40,7 @@ export function MultipleChoice({ data, onSubmit, onNext }: {
 
           {hintCount > 0 && !answered && (
             <p className="text-center text-[11px] font-bold text-[hsl(var(--ember))] mb-3">
-              💡 استعملتَ التلميح: بقي أمامك {visibleOptions.length === 1 ? 'خيار واحد' : `${visibleOptions.length} خيارات`}
+              💡 استعملتَ التلميح: بقي أمامك {visibleOptions.length === 1 ? 'خيار واحد' : visibleOptions.length === 2 ? 'خياران' : `${visibleOptions.length} خيارات`}
             </p>
           )}
 

@@ -197,7 +197,7 @@ export function ExerciseHelpersBar() {
     'flex items-center gap-1.5 rounded-xl border border-border bg-card px-2.5 py-1.5 text-[11px] font-semibold transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed';
 
   return (
-    <div className="mt-3 pt-3 border-t border-border">
+    <div className="mt-3 pt-3">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-1.5">
           <button
@@ -242,14 +242,14 @@ export function ExerciseHelpersBar() {
       </div>
 
       {panel === 'info' && info && (
-        <div className="mt-2.5 rounded-xl border border-[hsl(var(--chart-1))]/25 bg-[hsl(var(--chart-1))]/5 p-3 animate-[pop-in_0.25s_ease-out]">
+        <div className="mt-2.5 rounded-xl bg-[hsl(var(--chart-1))]/5 p-3 animate-[pop-in_0.25s_ease-out]">
           <p className="text-[10px] font-bold text-[hsl(var(--chart-1))] mb-1">معلومة عن التمرين</p>
           <p className="text-xs leading-relaxed text-[hsl(var(--ink))]">{info}</p>
         </div>
       )}
 
       {panel === 'ai' && (
-        <div className="mt-2.5 rounded-xl border border-[hsl(var(--chart-2))]/25 bg-[hsl(var(--chart-2))]/5 p-3 animate-[pop-in_0.25s_ease-out]">
+        <div className="mt-2.5 rounded-xl bg-[hsl(var(--chart-2))]/5 p-3 animate-[pop-in_0.25s_ease-out]">
           <p className="text-[10px] font-bold text-[hsl(var(--chart-2))] mb-1">شرح الذكاء الاصطناعي</p>
           {ai.loading ? (
             <p className="text-xs text-muted-foreground">يفكّر في شرح مبسط لك…</p>

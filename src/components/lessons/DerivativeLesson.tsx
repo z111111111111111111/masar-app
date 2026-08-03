@@ -408,7 +408,7 @@ export function DerivativeLesson({
   };
 
   return (
-    <div className={`space-y-0 flex flex-col ${phase === 'exercises' ? 'h-full' : 'min-h-[80vh]'}`}>
+    <div className="space-y-0 flex flex-col min-h-[80vh]">
       {/* Progress Bar */}
       <div className="sticky top-0 md:top-16 z-10 bg-background/95 backdrop-blur border-b border-border -mx-4 px-4 py-3 md:-mx-8 md:px-8">
         <div className="flex items-center justify-between mb-2">
@@ -435,7 +435,7 @@ export function DerivativeLesson({
       </div>
 
       {/* Content */}
-      <div className={`flex-1 pt-6 flex flex-col min-h-0 ${phase === 'exercises' ? 'overflow-hidden' : ''}`}>
+      <div className="pt-6">
         {phase === 'intro' && (
           <>
             <div className="space-y-6 animate-[fade-in_0.4s_ease-out] pb-32 md:pb-6">
@@ -486,9 +486,9 @@ export function DerivativeLesson({
         {(phase === 'exercises' || phase === 'retry') && (
           <div
             key={phase === 'retry' ? `${retryItem?.flowIndex}-${retryRound}` : currentIndex}
-            className="flex-1 min-h-0 overflow-y-auto pb-40 md:pb-0 md:overflow-hidden md:flex md:flex-col"
+            className="pb-40 md:pb-6"
           >
-            <div className="w-full md:my-auto">
+            <div className="w-full">
               {phase === 'retry' && (
                 <p className="text-center text-xs font-bold text-[hsl(var(--ember))] mb-3">
                   صحّح أخطاءك في التمارين التالية ({retryQueue.length} تمرين)

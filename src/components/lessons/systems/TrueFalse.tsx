@@ -41,13 +41,9 @@ export function TrueFalse({ data, onSubmit, onNext }: {
           </p>
 
           {hintCount > 0 && !answered && (
-            <div className="rounded-xl border border-[hsl(var(--ember))]/25 bg-[hsl(var(--ember))]/5 p-3 mb-4 animate-rise-up">
-              <p className="text-[10px] font-bold text-[hsl(var(--ember))] mb-1">💡 تلميح — العبارة الصحيحة</p>
-              <MathText
-                tex={data.explanation}
-                className="text-xs leading-relaxed text-[hsl(var(--ink))]"
-              />
-            </div>
+            <p className="text-center text-[11px] font-bold text-[hsl(var(--ember))] mb-3">
+              💡 استعملتَ التلميح: العبارة الصحيحة هي «{data.isTrue ? 'صحيح' : 'خطأ'}».
+            </p>
           )}
 
           <div className="grid grid-cols-2 gap-2 md:gap-3">

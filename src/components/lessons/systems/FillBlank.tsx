@@ -55,7 +55,7 @@ export function FillBlank({ data, onSubmit, onNext }: {
 
           {hintCount > 0 && !answered && (
             <p className="text-center text-[11px] font-bold text-[hsl(var(--ember))] -mt-1">
-              💡 استعملتَ التلميح: أُزيل {removedWrongCount === 1 ? 'خيار خاطئ واحد' : `${removedWrongCount} خيارات خاطئة`}
+              💡 استعملتَ التلميح: أُزيل {removedWrongCount === 1 ? 'خيار خاطئ واحد' : removedWrongCount === 2 ? 'خياران خاطئان' : `${removedWrongCount} خيارات خاطئة`}
             </p>
           )}
 

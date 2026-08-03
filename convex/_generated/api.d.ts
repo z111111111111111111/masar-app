@@ -15,6 +15,7 @@ import type * as http from "../http.js";
 import type * as leaderboard from "../leaderboard.js";
 import type * as mistakes from "../mistakes.js";
 import type * as progress from "../progress.js";
+import type * as prompts from "../prompts.js";
 import type * as subscription from "../subscription.js";
 
 import type {
@@ -31,6 +32,7 @@ declare const fullApi: ApiFromModules<{
   leaderboard: typeof leaderboard;
   mistakes: typeof mistakes;
   progress: typeof progress;
+  prompts: typeof prompts;
   subscription: typeof subscription;
 }>;
 
