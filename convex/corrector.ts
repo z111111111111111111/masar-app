@@ -284,3 +284,78 @@ export const getConversation = query({
     return await ctx.db.get(args.conversationId);
   },
 });
+
+// --- One-shot exercise explanation (used by the AI icon in exercises) ---
+// The correct answer is intentionally NOT sent: the model explains the concept
+// in a simplified way so the student can solve the exercise by themselves.
+const EXPLAIN_KIND_LABELS: Record<string, string> = {
+  mcq: "اختيار من متعدد",
+  rule: "تركيب قاعدة",
+  fill: "ملء الفراغ",
+  truefalse: "صحيح أو خطأ",
+  sort: "ترتيب خطوات",
+};
+
+export const explainExercise = action({
+  args: {
+    kind: v.string(),
+    info: v.string(),
+    options: v.optional(v.array(v.string())),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const apiKey = process.env.OPENROUTER_API_KEY;
+    if (!apiKey) throw new Error("OPENROUTER_API_KEY not configured");
+
+    const kindLabel = EXPLAIN_KIND_LABELS[args.kind] ?? args.kind;
+    const optionsText =
+      args.options && args.options.length > 0
+        ? `\nالخيارات المعروضة على الطالب: ${args.options.join(" | ")}`
+        : "";
+
+    const systemPrompt = {
+      role: "system" as const,
+      content:
+        "أنت مساعد تعليمي لطالب في موقع مسار (منصة للبكالوريا الجزائرية، مادة الرياضيات). تجيب بالعربية الفصحى بأسلوب بسيط وودود ومشجع. مهمتك: اشرح المفهوم والفكرة وراء التمرين في 3 إلى 5 جمل، بطريقة مبسطة. لا تذكر الإجابة الصحيحة مباشرة، ولا ترجّح أي خيار من الخيارات، ولا تعطِ الحل النهائي — هدفك أن يفهم الطالب الفكرة ليحل بنفسه.",
+    };
+    const userPrompt = `نوع التمرين: ${kindLabel}.${optionsText}\n\nمعلومة إضافية عن التمرين: ${args.info}\n\nاشرح المفهوم ببساطة دون كشف الحل.`;
+
+    const body = {
+      model: MODEL,
+      messages: [
+        systemPrompt,
+        { role: "user" as const, content: userPrompt },
+      ],
+      max_tokens: 500,
+      temperature: 0.5,
+      stream: false,
+    };
+
+    const response = await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+        "HTTP-Referer": SITE_URL,
+        "X-Title": SITE_NAME,
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(30000),
+    });
+
+    if (!response.ok) {
+      const err = await response.text();
+      throw new Error(`OpenRouter API error: ${response.status} ${err}`);
+    }
+
+    const data = (await response.json()) as {
+      choices: Array<{ message: { content: string } }>;
+    };
+    return (
+      data.choices?.[0]?.message?.content?.trim() ||
+      "عذراً، لم أستطع صياغة الشرح الآن، حاول مجدداً."
+    );
+  },
+});

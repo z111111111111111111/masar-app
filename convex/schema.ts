@@ -28,6 +28,7 @@ export default defineSchema({
     streak: v.number(),
     bestStreak: v.number(),
     totalTimeSeconds: v.number(),
+    jewels: v.optional(v.number()),
     allowSharing: v.optional(v.boolean()),
     lastMutationAt: v.optional(v.number()),
   }).index("by_userId", ["userId"])

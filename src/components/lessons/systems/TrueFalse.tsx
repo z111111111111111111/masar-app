@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { MathText } from '@/components/landing/MathText';
 import { SystemFrame, FeedbackBlock, ExerciseActionBar } from './SystemFrame';
+import { useExerciseHelpers, ExerciseHelpersBar } from './ExerciseHelpers';
 import type { TrueFalseData } from './types';
 
 export function TrueFalse({ data, onSubmit, onNext }: {
@@ -10,6 +11,7 @@ export function TrueFalse({ data, onSubmit, onNext }: {
 }) {
   const [selected, setSelected] = useState<boolean | null>(null);
   const [answered, setAnswered] = useState(false);
+  const { hintUsed } = useExerciseHelpers();
   const correct = selected === data.isTrue;
 
   const verify = () => {
@@ -38,6 +40,16 @@ export function TrueFalse({ data, onSubmit, onNext }: {
             {data.statement}
           </p>
 
+          {hintUsed && !answered && (
+            <div className="rounded-xl border border-[hsl(var(--ember))]/25 bg-[hsl(var(--ember))]/5 p-3 mb-4 animate-rise-up">
+              <p className="text-[10px] font-bold text-[hsl(var(--ember))] mb-1">💡 تلميح — العبارة الصحيحة</p>
+              <MathText
+                tex={data.explanation}
+                className="text-xs leading-relaxed text-[hsl(var(--ink))]"
+              />
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-2 md:gap-3">
             <button
               onClick={() => { if (!answered) setSelected(true); }}
@@ -54,6 +66,8 @@ export function TrueFalse({ data, onSubmit, onNext }: {
               خطأ
             </button>
           </div>
+
+          <ExerciseHelpersBar />
         </div>
       </SystemFrame>
 

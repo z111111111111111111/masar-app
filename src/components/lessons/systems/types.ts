@@ -6,6 +6,7 @@ export interface MCQData {
   options: string[];
   correct: number;
   explanation: string;
+  info?: string;
 }
 
 /* ── النظام 2: ترتيب مكوّنات القاعدة ─────────────────────────── */
@@ -15,6 +16,7 @@ export interface RuleData {
   correctOrder: string[];
   answerLabel?: string;
   note?: string;
+  info?: string;
 }
 
 /* ── النظام 3: ملء الفراغ ────────────────────────────────────── */
@@ -24,6 +26,7 @@ export interface FillData {
   choices: string[];
   correct: string;
   explanation: string;
+  info?: string;
 }
 
 /* ── النظام 4: صحيح أو خطأ ───────────────────────────────────── */
@@ -31,6 +34,7 @@ export interface TrueFalseData {
   statement: ReactNode;
   isTrue: boolean;
   explanation: string;
+  info?: string;
 }
 
 /* ── النظام 5: الترتيب الهرمي/التسلسلي بالبطاقات ─────────────── */
@@ -40,6 +44,7 @@ export interface SortData {
   cards: string[];
   correctOrder: string[];
   relation: string;
+  info?: string;
 }
 
 export type ExerciseData =

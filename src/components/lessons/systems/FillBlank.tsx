@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { MathText } from '@/components/landing/MathText';
 import { OptionText } from './OptionText';
 import { SystemFrame, FeedbackBlock, ExerciseActionBar } from './SystemFrame';
+import { useExerciseHelpers, ExerciseHelpersBar } from './ExerciseHelpers';
 import type { FillData } from './types';
 
 export function FillBlank({ data, onSubmit, onNext }: {
@@ -11,7 +12,16 @@ export function FillBlank({ data, onSubmit, onNext }: {
 }) {
   const [selected, setSelected] = useState<string | null>(null);
   const [answered, setAnswered] = useState(false);
+  const { hintUsed } = useExerciseHelpers();
   const correct = selected === data.correct;
+
+  // Hint: remove one wrong choice to make the answer easier to spot.
+  const visibleChoices = useMemo(() => {
+    if (!hintUsed) return data.choices;
+    const wrong = data.choices.filter((c) => c !== data.correct);
+    const removed = wrong.length > 0 ? wrong[Math.floor(Math.random() * wrong.length)] : null;
+    return removed ? data.choices.filter((c) => c !== removed) : data.choices;
+  }, [hintUsed, data]);
 
   const verify = () => {
     if (selected === null || answered) return;
@@ -42,8 +52,14 @@ export function FillBlank({ data, onSubmit, onNext }: {
             {data.after}
           </p>
 
+          {hintUsed && !answered && (
+            <p className="text-center text-[11px] font-bold text-[hsl(var(--ember))] -mt-1">
+              💡 استعملتَ التلميح: أُزيل خيار خاطئ واحد
+            </p>
+          )}
+
           <div className="grid grid-cols-2 gap-2 md:gap-2.5">
-            {data.choices.map((c) => {
+            {visibleChoices.map((c) => {
               const isSelected = c === selected;
               const isCorrect = c === data.correct;
               return (
@@ -69,6 +85,8 @@ export function FillBlank({ data, onSubmit, onNext }: {
               );
             })}
           </div>
+
+          <ExerciseHelpersBar />
         </div>
       </SystemFrame>
 

@@ -1,6 +1,7 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { MathText, KaTeXBlock } from '@/components/landing/MathText';
 import { SystemFrame, FeedbackBlock, ExerciseActionBar } from './SystemFrame';
+import { useExerciseHelpers, ExerciseHelpersBar } from './ExerciseHelpers';
 import { shuffle } from './utils';
 
 export function OrderBuilder({ instruction, hint, note, pool, correctOrder, answerLabel, mathStyle, vertical, onSubmit, onNext }: {
@@ -18,6 +19,18 @@ export function OrderBuilder({ instruction, hint, note, pool, correctOrder, answ
   const shuffledPool = useRef(shuffle(pool)).current;
   const [order, setOrder] = useState<string[]>([]);
   const [answered, setAnswered] = useState(false);
+  const { hintUsed } = useExerciseHelpers();
+
+  // Hint: place the first piece/card of the correct order at the start.
+  useEffect(() => {
+    if (hintUsed && correctOrder.length > 0) {
+      setOrder((o) => {
+        if (o[0] === correctOrder[0]) return o;
+        return [correctOrder[0], ...o.filter((p) => p !== correctOrder[0])];
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hintUsed]);
 
   const remaining = shuffledPool.filter((p) => !order.includes(p));
   const correct = order.length === correctOrder.length && order.every((p, i) => p === correctOrder[i]);
@@ -56,6 +69,11 @@ export function OrderBuilder({ instruction, hint, note, pool, correctOrder, answ
             className="text-base md:text-lg font-bold text-[hsl(var(--ink))] leading-relaxed text-center"
           />
           {hint && <p className="text-xs text-muted-foreground text-center">{hint}</p>}
+          {hintUsed && !answered && (
+            <p className="text-center text-[11px] font-bold text-[hsl(var(--ember))]">
+              💡 استعملتَ التلميح: وُضِع لك العنصر الأول في مكانه
+            </p>
+          )}
 
           {/* Answer slots */}
           <div className="space-y-1">
@@ -127,6 +145,8 @@ export function OrderBuilder({ instruction, hint, note, pool, correctOrder, answ
           {note && (
             <MathText tex={note} className="block text-center text-[11px] text-muted-foreground" />
           )}
+
+          <ExerciseHelpersBar />
         </div>
       </SystemFrame>
 

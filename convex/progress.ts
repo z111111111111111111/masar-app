@@ -114,8 +114,30 @@ export const create = mutation({
       streak: 0,
       bestStreak: 0,
       totalTimeSeconds: 0,
+      jewels: 20,
       lastMutationAt: Date.now(),
     });
+  },
+});
+
+// --- Spend jewels (hints / AI in exercises) ---
+export const spendJewels = mutation({
+  args: { amount: v.number() },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    if (!Number.isInteger(args.amount) || args.amount <= 0 || args.amount > 100) {
+      throw new Error("Invalid amount");
+    }
+    const progress = await ctx.db
+      .query("userProgress")
+      .withIndex("by_userId", (q) => q.eq("userId", identity.subject))
+      .unique();
+    if (!progress) throw new Error("Profile not found");
+    const current = progress.jewels ?? 0;
+    if (current < args.amount) throw new Error("Insufficient jewels");
+    await ctx.db.patch(progress._id, { jewels: current - args.amount });
+    return current - args.amount;
   },
 });
 

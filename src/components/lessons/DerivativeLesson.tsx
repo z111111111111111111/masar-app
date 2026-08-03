@@ -13,6 +13,7 @@ import { RuleAssembly } from './systems/RuleAssembly';
 import { FillBlank } from './systems/FillBlank';
 import { TrueFalse } from './systems/TrueFalse';
 import { CardSort } from './systems/CardSort';
+import { ExerciseHelpersProvider } from './systems/ExerciseHelpers';
 
 const COMPLETED_KEY = 'masar-completed-subjects';
 const SUBJECT_LABELS: Record<string, string> = {
@@ -84,6 +85,9 @@ export function DerivativeLesson({
   const [retryTotal, setRetryTotal] = useState(0);
   const [lastRetryCorrect, setLastRetryCorrect] = useState<boolean | null>(null);
   const pendingRef = useRef<Array<Promise<unknown>>>([]);
+  // One AI question per exercise: the set of flow indices already asked, kept
+  // across first pass AND correction rounds for the whole lesson entry.
+  const aiUsedRef = useRef<Set<number>>(new Set());
 
   const recordMistake = useMutation(api.mistakes.recordMistake);
   const resolveMistake = useMutation(api.mistakes.resolveMistake);
@@ -260,13 +264,24 @@ export function DerivativeLesson({
     const onNext = phase === 'retry' ? handleNextRetry : handleNextFirstPass;
     const ex = activeExercise;
     const common = { onSubmit, onNext };
+    let inner: ReactNode;
     switch (ex.kind) {
-      case 'mcq': return <MultipleChoice data={ex.data} {...common} />;
-      case 'rule': return <RuleAssembly data={ex.data} {...common} />;
-      case 'fill': return <FillBlank data={ex.data} {...common} />;
-      case 'truefalse': return <TrueFalse data={ex.data} {...common} />;
-      case 'sort': return <CardSort data={ex.data} {...common} />;
+      case 'mcq': inner = <MultipleChoice data={ex.data} {...common} />; break;
+      case 'rule': inner = <RuleAssembly data={ex.data} {...common} />; break;
+      case 'fill': inner = <FillBlank data={ex.data} {...common} />; break;
+      case 'truefalse': inner = <TrueFalse data={ex.data} {...common} />; break;
+      case 'sort': inner = <CardSort data={ex.data} {...common} />; break;
     }
+    const flowIndex = phase === 'retry' ? (retryItem?.flowIndex ?? 0) : session[currentIndex];
+    return (
+      <ExerciseHelpersProvider
+        exercise={ex}
+        aiUsed={aiUsedRef.current.has(flowIndex)}
+        onAiUsed={() => { aiUsedRef.current.add(flowIndex); }}
+      >
+        {inner}
+      </ExerciseHelpersProvider>
+    );
   };
 
   // Results page: `complete=false` shows it right after the first pass (even with

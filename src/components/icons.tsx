@@ -346,3 +346,32 @@ export function TrashIcon({ className, size = 22 }: IconProps) {
     </svg>
   );
 }
+
+export function InfoIcon({ className, size = 18 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className} {...base}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 11v5" />
+      <circle cx="12" cy="8" r="0.7" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+export function LightbulbIcon({ className, size = 18 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className} {...base}>
+      <path d="M9 18h6M10 21h4" />
+      <path d="M12 3a6 6 0 0 0-3.6 10.8c.8.6 1.1 1.2 1.1 2.2h5c0-1 .3-1.6 1.1-2.2A6 6 0 0 0 12 3Z" />
+    </svg>
+  );
+}
+
+export function SparklesIcon({ className, size = 18 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className} {...base}>
+      <path d="M12 3l1.8 4.6L18.5 9l-4.7 1.4L12 15l-1.8-4.6L5.5 9l4.7-1.4L12 3Z" />
+      <path d="M19 14l.8 2.2L22 17l-2.2.8L19 20l-.8-2.2L16 17l2.2-.8L19 14Z" />
+      <path d="M5 15l.6 1.7L7.5 17.5l-1.9.8L5 20l-.6-1.7L2.5 17.5l1.9-.8L5 15Z" />
+    </svg>
+  );
+}

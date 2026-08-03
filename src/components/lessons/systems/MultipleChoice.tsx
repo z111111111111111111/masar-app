@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { MathText } from '@/components/landing/MathText';
 import { OptionText } from './OptionText';
 import { SystemFrame, FeedbackBlock, ExerciseActionBar, CheckMark, XMark } from './SystemFrame';
+import { useExerciseHelpers, ExerciseHelpersBar } from './ExerciseHelpers';
 import type { MCQData } from './types';
 
 export function MultipleChoice({ data, onSubmit, onNext }: {
@@ -11,7 +12,17 @@ export function MultipleChoice({ data, onSubmit, onNext }: {
 }) {
   const [selected, setSelected] = useState<number | null>(null);
   const [answered, setAnswered] = useState(false);
+  const { hintUsed } = useExerciseHelpers();
   const correct = selected === data.correct;
+
+  // Hint: keep only the correct option + one random wrong option (2 total).
+  const visibleOptions = useMemo(() => {
+    const all = data.options.map((text, i) => ({ text, idx: i }));
+    if (!hintUsed) return all;
+    const wrong = all.filter((o) => o.idx !== data.correct);
+    const kept = wrong.length > 0 ? wrong[Math.floor(Math.random() * wrong.length)] : null;
+    return kept ? [all[data.correct], kept].sort((a, b) => a.idx - b.idx) : all;
+  }, [hintUsed, data]);
 
   const verify = () => {
     if (selected === null || answered) return;
@@ -27,8 +38,15 @@ export function MultipleChoice({ data, onSubmit, onNext }: {
             {data.question}
           </p>
 
+          {hintUsed && !answered && (
+            <p className="text-center text-[11px] font-bold text-[hsl(var(--ember))] mb-3">
+              💡 استعملتَ التلميح: بقي أمامك خياران فقط
+            </p>
+          )}
+
           <div className="space-y-2.5 md:space-y-3">
-            {data.options.map((opt, i) => {
+            {visibleOptions.map((opt) => {
+              const i = opt.idx;
               const isCorrect = i === data.correct;
               const isSelected = i === selected;
               return (
@@ -59,12 +77,14 @@ export function MultipleChoice({ data, onSubmit, onNext }: {
                         <span className="text-xs font-bold">{String.fromCharCode(1571 + i)}</span>
                       )}
                     </span>
-                    <OptionText tex={opt} className="text-base md:text-lg" />
+                    <OptionText tex={opt.text} className="text-base md:text-lg" />
                   </span>
                 </button>
               );
             })}
           </div>
+
+          <ExerciseHelpersBar />
         </div>
       </SystemFrame>
 
