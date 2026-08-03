@@ -443,7 +443,7 @@ export function DerivativeLesson({
                 <h1 className="text-xl font-bold text-[hsl(var(--ink))] mb-1">{intro?.title ?? 'الاشتقاقية'}</h1>
                 <p className="text-sm text-muted-foreground">{intro?.subtitle ?? 'الدرس الأول — الرياضيات'}</p>
                 <p className="text-[11px] text-muted-foreground mt-1">
-                  {intro?.description ?? 'أجب عن جميع التمارين للمرور إلى المرحلة التالية — بعد انتهاء التمارين ستظهر لك صفحة النتائج (المدة، الصحيحة، الخاطئة)، وإن أخطأت في أي تمرين فستُعرض لك إجابتك الصحيحة، وتُعاد الأخطاء فقط حتى تصحّحها كلها.'}
+                  {intro?.description ?? 'تُعاد الأخطاء حتى تصحّحها كلها.'}
                 </p>
               </div>
 
