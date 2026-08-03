@@ -1,6 +1,7 @@
 import { action, query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { api } from "./_generated/api";
+import { SMART_TEACHER_SYSTEM_PROMPT } from "./prompts";
 
 const API_URL = "https://openrouter.ai/api/v1/chat/completions";
 const MODEL = "deepseek/deepseek-v4-flash";
@@ -160,17 +161,23 @@ export const chat = action({
       conversationId: args.conversationId,
     });
 
-    // Build system prompt + history (exclude empty assistant message)
+    // Build system prompts: the master teacher directive (highest authority) +
+    // a concise task context for this conversation.
     const systemPrompt = {
       role: "system" as const,
-      content: "أنت مصحح ذكي لموقع مسار — منصة تعليمية لطلبة البكالوريا الجزائرية. أنت تجيب بالعربية الفصحى. مهمتك: مراجعة حلول الطالب، تصحيح الأخطاء خطوة بخطوة، شرح المفاهيم التي أخطأ فيها، وتقديم توجيهات دقيقة ومفيدة. أسلوبك ودود ومشجع."
+      content: SMART_TEACHER_SYSTEM_PROMPT,
+    };
+    const taskContext = {
+      role: "system" as const,
+      content:
+        "دورك في هذه المحادثة: مراجعة حلول الطالب وتصحيحها خطوة بخطوة، ومساعدة المتعلم في المواد الخمس ضمن محتوى الدرس الجاري — لا حاجة لتوليد تمارين هنا.",
     };
 
     const nonEmptyMessages = history.filter(m => m.content !== "");
 
     const body = {
       model: MODEL,
-      messages: [systemPrompt, ...nonEmptyMessages.map((m) => ({ role: m.role as "user" | "assistant", content: m.content }))],
+      messages: [systemPrompt, taskContext, ...nonEmptyMessages.map((m) => ({ role: m.role as "user" | "assistant", content: m.content }))],
       max_tokens: 2000,
       temperature: 0.7,
       stream: true,
@@ -317,10 +324,9 @@ export const explainExercise = action({
 
     const systemPrompt = {
       role: "system" as const,
-      content:
-        "أنت مساعد تعليمي لطالب في موقع مسار (منصة للبكالوريا الجزائرية، مادة الرياضيات). تجيب بالعربية الفصحى بأسلوب بسيط وودود ومشجع. مهمتك: اشرح المفهوم والفكرة وراء التمرين في 3 إلى 5 جمل، بطريقة مبسطة. لا تذكر الإجابة الصحيحة مباشرة، ولا ترجّح أي خيار من الخيارات، ولا تعطِ الحل النهائي — هدفك أن يفهم الطالب الفكرة ليحل بنفسه.",
+      content: SMART_TEACHER_SYSTEM_PROMPT,
     };
-    const userPrompt = `نوع التمرين: ${kindLabel}.${optionsText}\n\nمعلومة إضافية عن التمرين: ${args.info}\n\nاشرح المفهوم ببساطة دون كشف الحل.`;
+    const userPrompt = `نوع التمرين: ${kindLabel}.${optionsText}\n\nمعلومة إضافية عن التمرين: ${args.info}\n\nساعد المتعلم على فهم الفكرة دون كشف الإجابة مباشرة.`;
 
     const body = {
       model: MODEL,
