@@ -3,6 +3,7 @@ import { useQuery, useMutation, useAction } from 'convex/react';
 import { api } from 'convex/_generated/api';
 import { toast } from '@/hooks/use-toast';
 import { InfoIcon, LightbulbIcon, SparklesIcon, GemIcon } from '../../icons';
+import { isPaywallError, openPaywall } from '@/lib/paywall';
 import type { ExerciseData } from './types';
 
 /* ── Economy ──────────────────────────────────────────────────── */
@@ -157,6 +158,11 @@ export function ExerciseHelpersProvider({
       setAiContent(content);
     } catch (e) {
       console.error('explainExercise failed:', e);
+      const msg = e instanceof Error ? e.message : '';
+      if (isPaywallError(msg)) {
+        openPaywall();
+        return;
+      }
       setAiError(true);
       toast({
         title: 'تعذّر الحصول على الشرح',

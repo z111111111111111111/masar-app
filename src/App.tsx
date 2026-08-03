@@ -6,7 +6,6 @@ import {
   computeStreak,
   toISODate,
   type RecordsMap,
-  type DayRecord,
   type SubjectDayRecord,
   type TimerStatus,
 } from '@/lib/dates';
@@ -25,6 +24,7 @@ import { HeartsProvider } from '@/hooks/useHearts';
 import { signOut } from '@/lib/auth-client';
 import { useTheme } from '@/lib/useTheme';
 import { useAppScreen, activeTab } from '@/lib/navigation';
+import { subscribePaywall, openPaywall } from '@/lib/paywall';
 
 function flatToRecordsMap(rows: any[]): RecordsMap {
   const map: RecordsMap = {};
@@ -44,20 +44,45 @@ function flatToRecordsMap(rows: any[]): RecordsMap {
 function App() {
   const authUser = useQuery(api.progress.getAuth);
   const profile = useQuery(api.progress.get);
-  const subscription = useQuery(api.subscription.get);
   const verifySub = useQuery(api.subscription.verifySubscription);
   const rawRecords = useQuery(api.progress.getRecords);
   const createProfile = useMutation(api.progress.create);
   const enforceExpiry = useMutation(api.subscription.enforceExpiry);
   const { theme, dark, themes, setTheme, toggleDark } = useTheme();
 
+  const [now, setNow] = useState(() => Date.now());
+  const entitlements = useQuery(api.entitlements.get, { now });
+
   const [page, setPage] = useState<'landing' | 'auth'>('landing');
   const [authTab, setAuthTab] = useState<'login' | 'signup'>('signup');
+  const [paywallOpen, setPaywallOpen] = useState(false);
   const navHistory = useRef<string[]>([]);
   const [canGoBack, setCanGoBack] = useState(false);
   const expiryEnforced = useRef(false);
   const { screen: appScreen, navigate: navigateApp } = useAppScreen({ kind: 'tab', tab: 'home' });
   const active = activeTab(appScreen);
+
+  // Keep the trial clock fresh (re-fetches entitlements each minute).
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Capture a referral code (?ref=...) from the URL once, at signup.
+  const referralCode = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get('ref')?.trim();
+    if (ref) {
+      referralCode.current = ref;
+      params.delete('ref');
+      const qs = params.toString();
+      window.history.replaceState({}, '', qs ? `?${qs}` : window.location.pathname);
+    }
+  }, []);
+
+  // App-wide paywall trigger (locked features call openPaywall()).
+  useEffect(() => subscribePaywall(() => setPaywallOpen(true)), []);
 
   const navigate = (to: 'landing' | 'auth', authT?: 'login' | 'signup') => {
     navHistory.current.push(page);
@@ -85,16 +110,18 @@ function App() {
     setPage('landing');
   };
 
-  const queriesLoading = profile === undefined || rawRecords === undefined || verifySub === undefined;
+  const queriesLoading = profile === undefined || rawRecords === undefined || verifySub === undefined || entitlements === undefined;
   const authLoading = authUser === undefined;
   const isLoading = queriesLoading || authLoading;
 
   const isAuthed = authUser !== null && authUser !== undefined;
-  const isPaid = !!subscription && subscription.status === 'active';
+  const isPaid = entitlements?.paid ?? false;
   const hasProfile = !!profile;
 
-  // Determine if this is a renewal (was paid before, now expired) vs first time
-  const isExpiredRenewal = verifySub?.status === 'expired' && verifySub?.wasActive === true;
+  // Trial ended and user is not paid → hard gate.
+  const trialBlocked = !!entitlements?.blocked;
+  // Day 3+ during trial → show the reminder banner in the app shell.
+  const needsReminder = !!entitlements?.needsReminder && !trialBlocked;
 
   const records = useMemo(
     () => (rawRecords ? flatToRecordsMap(rawRecords) : ({} as RecordsMap)),
@@ -110,7 +137,7 @@ function App() {
     }
   }, [isAuthed, authUser]);
 
-  // When user is logged in but subscription is inactive, persist the expiry on server
+  // When user is logged in but subscription is active & expired, persist the expiry on server
   useEffect(() => {
     if (isAuthed && !isPaid && !expiryEnforced.current) {
       expiryEnforced.current = true;
@@ -143,22 +170,34 @@ function App() {
     );
   }
 
-  if (!isPaid) {
-    return (
-      <PaymentScreen
-        onCancel={handlePaymentCancel}
-        reason={isExpiredRenewal ? 'expired' : 'first_time'}
-        expiresAt={verifySub?.status === 'expired' ? verifySub.expiresAt : undefined}
-      />
-    );
-  }
-
   if (!hasProfile) {
-    if (authUser) createProfile({ name: authUser.name ?? 'طالب' });
+    if (authUser) {
+      createProfile({ name: authUser.name ?? 'طالب', referralCode: referralCode.current });
+    }
     return (
       <div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">
         جارٍ إعداد حسابك...
       </div>
+    );
+  }
+
+  // Trial over without payment → hard gate.
+  if (trialBlocked) {
+    return (
+      <PaymentScreen
+        onCancel={handlePaymentCancel}
+        reason="expired"
+      />
+    );
+  }
+
+  // Feature paywall opened from a locked part of the app → soft gate.
+  if (paywallOpen) {
+    return (
+      <PaymentScreen
+        onCancel={() => setPaywallOpen(false)}
+        reason="trial"
+      />
     );
   }
 
@@ -176,6 +215,12 @@ function App() {
         xp={xp}
         dark={dark}
         onToggleDark={toggleDark}
+        reminder={
+          needsReminder
+            ? `فترة التجربة المجانية تنتهي قريباً (متبقٍ ${entitlements?.daysRemaining ?? 0} يوم). فعّل اشتراكك لفتح كل المحتوى بلا حدود.`
+            : null
+        }
+        onSubscribe={openPaywall}
       >
         {active === 'home' && (
           <DashboardTab
@@ -184,13 +229,17 @@ function App() {
             streak={streak}
             xp={xp}
             records={records}
+            isPaid={isPaid}
+            onSubscribe={openPaywall}
             onNavigateRoadmap={() => navigateApp({ kind: 'tab', tab: 'roadmap' })}
           />
         )}
         {active === 'tracking' && (
           <PathTab startDate={profile.startDate} records={records} />
         )}
-        {active === 'roadmap' && <RoadmapTab screen={appScreen} navigate={navigateApp} />}
+        {active === 'roadmap' && (
+          <RoadmapTab screen={appScreen} navigate={navigateApp} isPaid={isPaid} onSubscribe={openPaywall} />
+        )}
         {active === 'board' && <LeaderboardTab userId={profile.userId} name={profile.name} xp={xp} />}
         {active === 'profile' && (
           <ProfileTab

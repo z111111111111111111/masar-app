@@ -10,6 +10,9 @@ const siteUrl = process.env.SITE_URL!;
 
 export const authComponent = createClient<DataModel>(components.betterAuth);
 
+const googleClientId = process.env.GOOGLE_CLIENT_ID;
+const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+
 export const createAuth = (ctx: GenericCtx<DataModel>) => {
   return betterAuth({
     baseURL: process.env.CONVEX_SITE_URL,
@@ -19,6 +22,15 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
       enabled: true,
       requireEmailVerification: false,
     },
+    socialProviders:
+      googleClientId && googleClientSecret
+        ? {
+            google: {
+              clientId: googleClientId,
+              clientSecret: googleClientSecret,
+            },
+          }
+        : undefined,
     databaseHooks: {
       session: {
         create: {
@@ -46,5 +58,16 @@ export const getCurrentUser = query({
   args: {},
   handler: async (ctx) => {
     return authComponent.getAuthUser(ctx);
+  },
+});
+
+// Lets the client decide whether to show the Google button (env vars may not
+// be configured yet on the deployment).
+export const getGoogleStatus = query({
+  args: {},
+  handler: async () => {
+    return {
+      enabled: Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
+    };
   },
 });

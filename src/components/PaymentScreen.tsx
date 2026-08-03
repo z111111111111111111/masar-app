@@ -1,150 +1,109 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { processPayment, validateExpiry, validateCardNumber } from '@/lib/mockPayment';
-import { useMutation } from 'convex/react';
+import { useMutation, useQuery } from 'convex/react';
 import { api } from 'convex/_generated/api';
-import { CreditCardIcon, ShieldIcon, ChevronIcon } from './icons';
+import { ShieldIcon, ChevronIcon, CheckCircleIcon, WarningIcon } from './icons';
 import { useSession } from '@/lib/auth-client';
+
+// ─── Transfer details (تعدَّل من الإدارة) ─────────────────────────
+export const SUBSCRIPTION_PRICE_DZD = 3000;
+export const SUBSCRIPTION_DURATION = '3 أشهر';
+export const PAYMENT_CCP = 'CCP: 00000000 00 00';
+export const PAYMENT_EDAHABIA = 'EDAHABIA: 0000 0000 0000';
+export const PAYMENT_NAME = 'مؤسسة مسار للتعليم';
 
 interface PaymentScreenProps {
   onCancel?: () => void;
-  reason?: 'first_time' | 'expired';
-  expiresAt?: string;
+  reason?: 'trial' | 'expired';
 }
 
-function detectCardBrand(digits: string): string {
-  if (digits.startsWith('4')) return 'Visa';
-  if (/^5[1-5]/.test(digits) || /^2[2-7]/.test(digits)) return 'Mastercard';
-  return '';
-}
-
-function CardBrandIcon({ brand }: { brand: string }) {
-  if (brand === 'Visa') {
-    return (
-      <span className="text-[11px] font-black italic tracking-tight text-[#1a1f71]">VISA</span>
-    );
+function formatDate(ts: number | null | undefined): string {
+  if (!ts) return '—';
+  try {
+    return new Date(ts).toLocaleString('ar-DZ', { dateStyle: 'short', timeStyle: 'short' });
+  } catch {
+    return '—';
   }
-  if (brand === 'Mastercard') {
-    return (
-      <div className="relative w-[28px] h-[18px]">
-        <div className="absolute left-0 top-0 w-[18px] h-[18px] rounded-full bg-[#eb001b] opacity-90" />
-        <div className="absolute right-0 top-0 w-[18px] h-[18px] rounded-full bg-[#f79e1b] opacity-90" />
-      </div>
-    );
-  }
-  return <CreditCardIcon size={18} className="text-muted-foreground" />;
 }
 
-export function PaymentScreen({ onCancel, reason = 'first_time', expiresAt }: PaymentScreenProps) {
+export function PaymentScreen({ onCancel, reason = 'trial' }: PaymentScreenProps) {
   const { data: session } = useSession();
   const user = session?.user;
+
   const initiatePayment = useMutation(api.subscription.initiatePayment);
-  const activateSubscription = useMutation(api.subscription.activate);
+  const verifySub = useQuery(api.subscription.verifySubscription);
+  const pendingList = useQuery(api.subscription.adminListPending);
+  const adminActivate = useMutation(api.subscription.adminActivate);
+  const adminCancel = useMutation(api.subscription.adminCancelPending);
 
-  const [cardNumber, setCardNumber] = useState('');
-  const [expiryDate, setExpiryDate] = useState('');
-  const [cvv, setCvv] = useState('');
-  const [cardName, setCardName] = useState('');
-
+  const [isAdmin, setIsAdmin] = useState(() => window.location.hash === '#admin');
+  const [reference, setReference] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [transactionId, setTransactionId] = useState('');
+  const [submitted, setSubmitted] = useState(false);
 
-  const rawDigits = cardNumber.replace(/\s+/g, '');
-  const cardBrand = detectCardBrand(rawDigits);
-
-  const formatCardNumber = (value: string) => {
-    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-    const matches = v.match(/\d{4,16}/g);
-    const match = matches && matches[0] || '';
-    const parts = [];
-    for (let i = 0, len = match.length; i < len; i += 4) {
-      parts.push(match.substring(i, i + 4));
-    }
-    if (parts.length) {
-      return parts.join(' ');
-    } else {
-      return value;
-    }
-  };
-
-  const handleCardNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setCardNumber(formatCardNumber(e.target.value));
-  };
-
-  const handleExpiryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let val = e.target.value.replace(/\D/g, '');
-    if (val.length >= 2) {
-      val = val.substring(0, 2) + '/' + val.substring(2, 4);
-    }
-    setExpiryDate(val);
-  };
+  const isPending = submitted || verifySub?.status === 'pending';
+  const isActive = verifySub?.status === 'active';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-
-    if (!validateCardNumber(cardNumber)) {
-      setError('رقم البطاقة غير صحيح (يجب أن يتكون من 16 رقماً).');
+    if (reference.trim().length < 4) {
+      setError('أدخل مرجع العملية (مثال: رقم إيصال التحويل).');
       return;
     }
-
-    if (!validateExpiry(expiryDate)) {
-      setError('تاريخ الانتهاء غير صحيح أو منتهي.');
-      return;
-    }
-
-    if (cvv.length < 3) {
-      setError('الرقم السري CVV غير صحيح.');
-      return;
-    }
-
-    if (!cardName.trim()) {
-      setError('يرجى إدخال اسم حامل البطاقة.');
-      return;
-    }
-
     setLoading(true);
-
     try {
-      const result = await processPayment({
-        cardNumber,
-        expiryDate,
-        cvv,
-        name: cardName
-      });
-
-      if (result.success) {
-        setTransactionId(result.transactionId || '');
-        await initiatePayment();
-        await activateSubscription({ paymentId: result.transactionId || '' });
-        setSuccess(true);
-        setTimeout(() => {
-          window.location.reload();
-        }, 2500);
-      } else {
-        setError(result.error || 'حدث خطأ أثناء معالجة الدفع.');
-      }
-    } catch {
-      setError('فشل الاتصال ببوابة الدفع.');
+      await initiatePayment({ reference: reference.trim() });
+      setSubmitted(true);
+    } catch (err: any) {
+      setError(err?.message ?? 'تعذّر إرسال الطلب. حاول مجدداً.');
     } finally {
       setLoading(false);
     }
   };
 
-  if (success) {
+  // ── Success / waiting screen ────────────────────────────────────
+  if (isActive) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-6 bg-[radial-gradient(circle_at_30%_20%,hsl(var(--sprout-soft)),transparent_45%),radial-gradient(circle_at_80%_75%,hsl(var(--ember-soft)),transparent_40%)]">
-        <div className="w-full max-w-sm bg-card border border-[hsl(var(--sprout))]/30 rounded-2xl p-8 text-center shadow-lg animate-pop">
-          <div className="w-16 h-16 rounded-full bg-[hsl(var(--sprout))] text-white flex items-center justify-center mx-auto mb-4">
-            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      <div className="min-h-screen flex items-center justify-center px-6 bg-background">
+        <div className="w-full max-w-sm bg-card border border-border rounded-2xl p-8 text-center shadow-sm">
+          <CheckCircleIcon size={40} className="text-[hsl(var(--sprout))] mx-auto mb-3" />
+          <h2 className="text-lg font-bold text-[hsl(var(--ink))] mb-1">اشتراكك مفعّل</h2>
+          <p className="text-sm text-muted-foreground">يمكنك الآن تصفح كل المحتوى.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isPending) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-6 bg-background">
+        {onCancel && (
+          <button
+            onClick={onCancel}
+            className="fixed top-5 right-5 z-50 w-10 h-10 rounded-full bg-card/80 backdrop-blur-sm border border-border shadow-sm flex items-center justify-center text-muted-foreground hover:text-[hsl(var(--ink))] hover:bg-muted/60 transition-all active:scale-95"
+            aria-label="الرجوع"
+          >
+            <ChevronIcon size={17} className="rotate-180" />
+          </button>
+        )}
+        <div className="w-full max-w-sm bg-card border border-border rounded-2xl p-8 text-center shadow-sm">
+          <div className="w-14 h-14 rounded-full bg-[hsl(var(--amber))]/15 text-[hsl(var(--amber))] flex items-center justify-center mx-auto mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
           </div>
-          <h2 className="text-xl font-bold text-[hsl(var(--ink))] mb-2">تم الدفع بنجاح!</h2>
-          <p className="text-sm text-muted-foreground mb-4">تم تفعيل اشتراكك للفصل الدراسي الكامل.</p>
-          {transactionId && (
-            <p className="text-[10px] text-muted-foreground font-mono mb-5">رقم المعاملة: {transactionId}</p>
+          <h2 className="text-xl font-bold text-[hsl(var(--ink))] mb-2">طلبك قيد المراجعة</h2>
+          <p className="text-sm text-muted-foreground mb-2">
+            استلمنا طلب الاشتراك. سيقوم فريق الإدارة بتأكيد وصول التحويل وتفعيل حسابك (3 أشهر).
+          </p>
+          <p className="text-[11px] text-muted-foreground mb-6">
+            يظهر هذا عادةً خلال ساعات العمل. سيُفتح المحتوى تلقائياً بعد التفعيل.
+          </p>
+          {verifySub?.status === 'pending' && (
+            <div className="text-[10px] text-muted-foreground font-mono bg-muted/50 rounded-lg px-3 py-2 mb-4" dir="ltr">
+              {String(verifySub.userId).slice(0, 8)}…
+            </div>
           )}
           <div className="w-5 h-5 rounded-full border-2 border-[hsl(var(--ink))] border-t-transparent animate-spin mx-auto" />
         </div>
@@ -152,12 +111,78 @@ export function PaymentScreen({ onCancel, reason = 'first_time', expiresAt }: Pa
     );
   }
 
+  // ── Admin panel ─────────────────────────────────────────────────
+  if (isAdmin) {
+    return (
+      <div className="min-h-screen px-6 py-10 bg-background">
+        <div className="max-w-lg mx-auto">
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-lg font-bold text-[hsl(var(--ink))]">لوحة إدارة الاشتراكات</h1>
+            <button
+              onClick={() => { setIsAdmin(false); window.location.hash = ''; }}
+              className="text-xs text-muted-foreground underline"
+            >
+              عودة للمستخدم
+            </button>
+          </div>
+
+          {pendingList === undefined ? (
+            <p className="text-sm text-muted-foreground">جارٍ التحميل...</p>
+          ) : pendingList.length === 0 ? (
+            <div className="bg-card border border-border rounded-2xl p-6 text-center text-sm text-muted-foreground">
+              لا توجد طلبات بانتظار التأكيد.
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {pendingList.map((row) => (
+                <div key={String(row._id)} className="bg-card border border-border rounded-2xl p-4">
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-[hsl(var(--ink))] truncate">{row.name}</p>
+                      <p className="text-[11px] text-muted-foreground truncate" dir="ltr">{row.email}</p>
+                    </div>
+                    <span className="text-sm font-black text-[hsl(var(--ink))] shrink-0">
+                      {row.amount} دج
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-muted-foreground space-y-0.5 mb-3">
+                    <p>مرجع العملية: <span className="font-mono" dir="ltr">{row.paymentRef ?? '—'}</span></p>
+                    <p>طلب في: {formatDate(row.requestedAt)}</p>
+                    <p className="font-mono" dir="ltr">{String(row._id)}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={async () => {
+                        await adminActivate({ subscriptionId: row._id as any });
+                      }}
+                      className="flex-1 h-9 bg-[hsl(var(--sprout))] hover:bg-[hsl(var(--sprout))]/90 text-white text-xs font-bold"
+                    >
+                      تأكيد الدفع وتفعيل
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={async () => { await adminCancel({ subscriptionId: row._id as any }); }}
+                      className="h-9 text-xs text-muted-foreground"
+                    >
+                      إلغاء
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── User payment screen ─────────────────────────────────────────
   return (
-    <div className="min-h-screen flex items-center justify-center px-6 bg-background">
+    <div className="min-h-screen flex items-center justify-center px-6 py-10 bg-background">
       {onCancel && (
         <button
           onClick={onCancel}
-          className="fixed top-5 right-5 z-50 w-10 h-10 rounded-full bg-card/80 backdrop-blur-sm border border-border shadow-sm flex items-center justify-center text-muted-foreground hover:text-[hsl(var(--ink))] hover:bg-muted/60 transition-all active:scale-95 animate-[fade-in_0.2s_ease-out]"
+          className="fixed top-5 right-5 z-50 w-10 h-10 rounded-full bg-card/80 backdrop-blur-sm border border-border shadow-sm flex items-center justify-center text-muted-foreground hover:text-[hsl(var(--ink))] hover:bg-muted/60 transition-all active:scale-95"
           aria-label="الرجوع"
         >
           <ChevronIcon size={17} className="rotate-180" />
@@ -166,14 +191,9 @@ export function PaymentScreen({ onCancel, reason = 'first_time', expiresAt }: Pa
 
       <div className="w-full max-w-md">
 
-        <div className="bg-card border border-border rounded-2xl p-6 shadow-sm mb-6 relative overflow-hidden">
-          {/* Test badge */}
-          <div className="absolute top-0 right-0 bg-[hsl(var(--ember))] text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg">
-            بيئة تجريبية
-          </div>
-
+        <div className="bg-card border border-border rounded-2xl p-6 shadow-sm mb-4">
           {/* Header */}
-          <div className="flex justify-between items-start mb-8 mt-2">
+          <div className="flex justify-between items-start mb-5 mt-2">
             <div>
               <h1 className="text-xl font-bold text-[hsl(var(--ink))]">
                 {reason === 'expired' ? 'تجديد الاشتراك' : 'تفعيل الحساب'}
@@ -181,11 +201,14 @@ export function PaymentScreen({ onCancel, reason = 'first_time', expiresAt }: Pa
               <p className="text-xs text-muted-foreground mt-1">
                 {reason === 'expired'
                   ? 'انتهت صلاحية اشتراكك. يرجى التجديد للمتابعة.'
-                  : 'الاشتراك للشهر (3 أشهر)'}
+                  : `اشتراك لمدة ${SUBSCRIPTION_DURATION} بعد فترة التجربة المجانية`}
               </p>
             </div>
-            <div className="text-2xl font-black text-[hsl(var(--ink))]">
-              $15<span className="text-sm text-muted-foreground font-medium">.00</span>
+            <div className="text-right">
+              <div className="text-2xl font-black text-[hsl(var(--ink))]">
+                {SUBSCRIPTION_PRICE_DZD}<span className="text-sm text-muted-foreground font-medium"> دج</span>
+              </div>
+              <p className="text-[10px] text-muted-foreground">لمدة {SUBSCRIPTION_DURATION}</p>
             </div>
           </div>
 
@@ -202,103 +225,74 @@ export function PaymentScreen({ onCancel, reason = 'first_time', expiresAt }: Pa
             </div>
           )}
 
+          {/* Transfer instructions */}
+          <div className="bg-[hsl(var(--sprout))]/10 border border-[hsl(var(--sprout))]/25 rounded-xl p-4 mb-5">
+            <h3 className="text-sm font-bold text-[hsl(var(--ink))] mb-2 flex items-center gap-1.5">
+              <ShieldIcon size={15} className="text-[hsl(var(--sprout))]" />
+              تحويل يدوي عبر CCP أو EDAHABIA
+            </h3>
+            <div className="text-xs text-muted-foreground space-y-1.5 leading-relaxed">
+              <p><span className="font-semibold text-[hsl(var(--ink))]">1.</span> حوّل المبلغ <b>{SUBSCRIPTION_PRICE_DZD} دج</b> إلى حساب: </p>
+              <p className="font-mono text-[11px] bg-card border border-border rounded-lg px-3 py-2" dir="ltr">
+                {PAYMENT_NAME}
+                <br />{PAYMENT_CCP}
+                <br />{PAYMENT_EDAHABIA}
+              </p>
+              <p><span className="font-semibold text-[hsl(var(--ink))]">2.</span> أدخل مرجع/رقم العملية في الحقل أدناه.</p>
+              <p><span className="font-semibold text-[hsl(var(--ink))]">3.</span> سنفعّل حسابك بعد التأكد من وصول التحويل (عادة خلال ساعات).</p>
+            </div>
+          </div>
+
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            {/* Card name */}
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">اسم حامل البطاقة</label>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">مرجع العملية (رقم التحويل)</label>
               <Input
-                value={cardName}
-                onChange={(e) => setCardName(e.target.value)}
-                placeholder="JOHN DOE"
-                className="h-11 text-left uppercase"
+                value={reference}
+                onChange={(e) => setReference(e.target.value)}
+                placeholder="مثال: 2024-00012345"
+                maxLength={100}
+                className="h-11 text-right"
                 dir="ltr"
               />
             </div>
 
-            {/* Card number with brand */}
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">رقم البطاقة</label>
-              <div className="relative">
-                <Input
-                  value={cardNumber}
-                  onChange={handleCardNumberChange}
-                  placeholder="0000 0000 0000 0000"
-                  maxLength={19}
-                  className="h-11 text-left font-mono pr-4 pl-16"
-                  dir="ltr"
-                />
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                  <CardBrandIcon brand={cardBrand} />
-                </span>
-              </div>
-            </div>
-
-            {/* Expiry + CVV */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">تاريخ الانتهاء</label>
-                <Input
-                  value={expiryDate}
-                  onChange={handleExpiryChange}
-                  placeholder="MM/YY"
-                  maxLength={5}
-                  className="h-11 text-left font-mono"
-                  dir="ltr"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">الرمز السري (CVV)</label>
-                <Input
-                  type="password"
-                  value={cvv}
-                  onChange={(e) => setCvv(e.target.value.replace(/\D/g, ''))}
-                  placeholder="•••"
-                  maxLength={4}
-                  className="h-11 text-left font-mono"
-                  dir="ltr"
-                />
-              </div>
-            </div>
-
-            {/* Error */}
             {error && (
               <div className="text-[11px] font-medium text-[hsl(var(--coral))] bg-[hsl(var(--coral))]/10 p-2.5 rounded-md flex items-start gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-0.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <WarningIcon size={14} className="shrink-0 mt-0.5" />
                 {error}
               </div>
             )}
 
-            {/* Submit */}
             <Button
               type="submit"
-              className="w-full h-12 bg-[#0a2540] hover:bg-[#113a65] text-white font-bold mt-1 rounded-xl text-base shadow-md"
+              className="w-full h-12 bg-[hsl(var(--ink-solid))] hover:bg-[hsl(var(--ink-solid))]/90 text-white font-bold mt-1 rounded-xl text-base"
               disabled={loading}
             >
               {loading ? (
                 <span className="flex items-center gap-2">
                   <span className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                  جاري المعالجة...
+                  جاري الإرسال...
                 </span>
               ) : (
-                'تأكيد الدفع ($15.00)'
+                'أرسل طلب الاشتراك'
               )}
             </Button>
 
-            {/* Security footer */}
             <p className="text-[10px] text-muted-foreground text-center flex items-center justify-center gap-1.5">
               <ShieldIcon size={12} />
-              دفع آمن ومشفّر. هذه بيئة تجريبية ولن يتم خصم أي مبالغ.
+              التفعيل يتم يدوياً بعد تأكيد التحويل.
             </p>
           </form>
         </div>
 
-        {/* Accepted cards hint */}
-        <div className="flex items-center justify-center gap-4 text-muted-foreground">
-          <span className="text-[11px] font-semibold tracking-tight text-[#1a1f71] italic">VISA</span>
-          <div className="relative w-[22px] h-[14px]">
-            <div className="absolute left-0 top-0 w-[14px] h-[14px] rounded-full bg-[#eb001b] opacity-60" />
-            <div className="absolute right-0 top-0 w-[14px] h-[14px] rounded-full bg-[#f79e1b] opacity-60" />
-          </div>
+        {/* Admin access */}
+        <div className="text-center">
+          <button
+            onClick={() => { setIsAdmin(true); window.location.hash = '#admin'; }}
+            className="text-[10px] text-muted-foreground/60 underline"
+          >
+            إدارة الطلبات
+          </button>
         </div>
       </div>
     </div>

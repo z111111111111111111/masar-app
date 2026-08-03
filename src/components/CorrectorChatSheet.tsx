@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ChatIcon, SendIcon, TrashIcon } from './icons';
 import { MarkdownText } from './MarkdownText';
+import { isPaywallError, openPaywall } from '@/lib/paywall';
 
 export function CorrectorChatSheet({ open, onOpenChange, userName }: { open: boolean; onOpenChange: (v: boolean) => void; userName: string }) {
   const [input, setInput] = useState('');
@@ -63,7 +64,13 @@ export function CorrectorChatSheet({ open, onOpenChange, userName }: { open: boo
       setSending(true);
       await chatAction({ conversationId: convId, content: text });
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'حدث خطأ غير متوقع');
+      const msg = e instanceof Error ? e.message : 'حدث خطأ غير متوقع';
+      setError(msg);
+      if (isPaywallError(msg)) {
+        setViewConversations(false);
+        onOpenChange(false);
+        openPaywall();
+      }
     } finally {
       setSending(false);
     }

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useMutation } from 'convex/react';
+import { useEffect, useState } from 'react';
+import { useMutation, useQuery } from 'convex/react';
 import { api } from 'convex/_generated/api';
 import { SUBJECTS, subjectColor } from '@/lib/subjects';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ import {
   toISODate,
   type RecordsMap,
 } from '@/lib/dates';
-import { FlameIcon, TrophyIcon, ShareIcon, LogoutIcon } from './icons';
+import { FlameIcon, TrophyIcon, ShareIcon, LogoutIcon, GiftIcon, UsersIcon, CopyIcon } from './icons';
 import { SubjectLineChart, SubjectPercentBarChart } from './SubjectPerformanceCharts';
 import { ShareProfileSheet } from './ShareProfileSheet';
 import { signOut } from '@/lib/auth-client';
@@ -124,6 +124,8 @@ export function ProfileTab({
         <StatCard label="وقت الحل الكلي" value={formatClock(totalTimeSeconds)} />
       </div>
 
+      <ReferralCard />
+
       <div className="rounded-2xl border border-border bg-card p-4">
         <h3 className="text-sm font-bold text-[hsl(var(--ink))] mb-1">أداؤك حسب المادة</h3>
         <p className="text-[11px] text-muted-foreground mb-3">علاماتك اليومية في كل مادة، بدلالة الأيام منذ بدايتك</p>
@@ -216,6 +218,92 @@ function StatCard({ label, value, icon }: { label: string; value: string; icon?:
         {value}
       </div>
       <div className="text-[10px] text-muted-foreground mt-0.5">{label}</div>
+    </div>
+  );
+}
+
+function ReferralCard() {
+  const stats = useQuery(api.referrals.getMyStats);
+  const claimMyCode = useMutation(api.referrals.claimMyCode);
+  const [copied, setCopied] = useState<'code' | 'link' | null>(null);
+
+  useEffect(() => {
+    if (stats === null) claimMyCode().catch(() => {});
+  }, [stats, claimMyCode]);
+
+  const copy = async (text: string, kind: 'code' | 'link') => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(kind);
+      setTimeout(() => setCopied(null), 1500);
+    } catch {
+      // Clipboard unavailable (e.g. non-secure context) → fall back to prompt.
+      window.prompt('انسخ الرابط:', text);
+    }
+  };
+
+  return (
+    <div className="rounded-2xl border border-[hsl(var(--sprout))]/25 bg-[hsl(var(--sprout))]/5 p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        <span className="w-8 h-8 rounded-full bg-[hsl(var(--sprout))] text-white flex items-center justify-center shrink-0">
+          <GiftIcon size={16} />
+        </span>
+        <div className="flex-1">
+          <h3 className="text-sm font-bold text-[hsl(var(--ink))]">ادعُ أصدقاءك واربح</h3>
+          <p className="text-[11px] text-muted-foreground leading-snug">
+            احصل على <b>5000 دج</b> لكل 10 مدعوين يقومون بالاشتراك (الدفع عبر رابطك).
+          </p>
+        </div>
+      </div>
+
+      {stats && (
+        <>
+          <div className="flex gap-3">
+            <div className="flex-1 rounded-xl bg-card border border-border p-2.5 text-center">
+              <p className="text-lg font-black text-[hsl(var(--ink))] tabular-nums">{stats.registered}</p>
+              <p className="text-[10px] text-muted-foreground">مدعو سجّل عبرك</p>
+            </div>
+            <div className="flex-1 rounded-xl bg-card border border-border p-2.5 text-center">
+              <p className="text-lg font-black text-[hsl(var(--sprout))] tabular-nums">{stats.paid}</p>
+              <p className="text-[10px] text-muted-foreground">مدفوع ({stats.paid}/{stats.rewardTarget})</p>
+            </div>
+          </div>
+
+          <div className="rounded-xl bg-card border border-border p-3 space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="shrink-0 flex items-center gap-1 text-[10px] text-muted-foreground">
+                <UsersIcon size={13} />
+                رمزك:
+              </span>
+              <code className="flex-1 text-xs font-mono font-bold text-[hsl(var(--ink))]" dir="ltr">{stats.code}</code>
+              <button
+                onClick={() => copy(stats.code, 'code')}
+                className="shrink-0 flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-[10px] font-semibold text-muted-foreground hover:text-[hsl(var(--ink))] hover:bg-muted/50 transition-colors"
+              >
+                <CopyIcon size={12} />
+                {copied === 'code' ? 'نُسخ' : 'نسخ'}
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => copy(stats.link, 'link')}
+                className="flex-1 truncate rounded-lg border border-border bg-muted/30 px-2.5 py-1.5 text-[10px] font-mono text-muted-foreground text-left"
+                dir="ltr"
+                title="انسخ رابط الدعوة"
+              >
+                {stats.link}
+              </button>
+              <button
+                onClick={() => copy(stats.link, 'link')}
+                className="shrink-0 flex items-center gap-1 rounded-lg bg-[hsl(var(--ink-solid))] px-2.5 py-1.5 text-[10px] font-bold text-white hover:bg-[hsl(var(--ink-solid))]/90 transition-colors"
+              >
+                <CopyIcon size={12} />
+                {copied === 'link' ? 'نُسخ' : 'نسخ الرابط'}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

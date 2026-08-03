@@ -5,16 +5,21 @@ export default defineSchema({
   // Better Auth manages its own tables: user, session, account, verification
 
   // --- Subscriptions ---
+  // status: "pending" = payment requested, awaiting admin confirmation.
+  // "active" = paid & within window. "inactive" = expired/revoked.
   subscriptions: defineTable({
     userId: v.string(),
     plan: v.string(),
-    status: v.union(v.literal("active"), v.literal("inactive")),
+    status: v.union(v.literal("active"), v.literal("inactive"), v.literal("pending")),
     amount: v.number(),
-    paidAt: v.string(),
+    paidAt: v.optional(v.union(v.number(), v.string())),
     expiresAt: v.string(),
     paymentId: v.optional(v.string()),
+    paymentRef: v.optional(v.string()),
+    requestedAt: v.optional(v.number()),
   }).index("by_userId", ["userId"])
-    .index("by_paymentId", ["paymentId"]),
+    .index("by_paymentId", ["paymentId"])
+    .index("by_status", ["status"]),
 
   // --- User Progress ---
   userProgress: defineTable({
@@ -34,8 +39,35 @@ export default defineSchema({
     rewardedStages: v.optional(v.array(v.string())),
     allowSharing: v.optional(v.boolean()),
     lastMutationAt: v.optional(v.number()),
+    signedUpAt: v.optional(v.number()),
+    completedStages: v.optional(v.array(v.string())),
   }).index("by_userId", ["userId"])
     .index("by_xp", ["totalXP"]),
+
+  // --- Free-trial usage counters (high-churn, kept separate from progress) ---
+  userLimits: defineTable({
+    userId: v.string(),
+    aiUsed: v.number(),
+    randomUsed: v.number(),
+  }).index("by_userId", ["userId"]),
+
+  // --- Referral codes (one per user, server-generated, tamper-proof) ---
+  referralCodes: defineTable({
+    userId: v.string(),
+    code: v.string(),
+  }).index("by_userId", ["userId"])
+    .index("by_code", ["code"]),
+
+  // --- Referral attribution events (one per referred user) ---
+  // status: "registered" = signed up through the referrer's link.
+  // "paid" = that invitee later paid (counts toward the 5000 DZD reward).
+  referralEvents: defineTable({
+    referredUserId: v.string(),
+    referrerUserId: v.string(),
+    status: v.union(v.literal("registered"), v.literal("paid")),
+    paidAt: v.optional(v.number()),
+  }).index("by_referredUserId", ["referredUserId"])
+    .index("by_referrerUserId", ["referrerUserId"]),
 
   // --- Daily Records ---
   dailyRecords: defineTable({

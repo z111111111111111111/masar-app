@@ -1,6 +1,6 @@
 import { action, query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import { SMART_TEACHER_SYSTEM_PROMPT } from "./prompts";
 
 const API_URL = "https://openrouter.ai/api/v1/chat/completions";
@@ -128,6 +128,9 @@ export const chat = action({
     const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) throw new Error("OPENROUTER_API_KEY not configured");
 
+    // Enforce the free-trial AI limit (5 messages shared with explanations).
+    await ctx.runMutation(internal.entitlements.consumeAi, { userId });
+
     // Save user message
     await ctx.runMutation(api.corrector.saveMessage, {
       userId,
@@ -173,11 +176,11 @@ export const chat = action({
         "دورك في هذه المحادثة: مراجعة حلول الطالب وتصحيحها خطوة بخطوة، ومساعدة المتعلم في المواد الخمس ضمن محتوى الدرس الجاري — لا حاجة لتوليد تمارين هنا.",
     };
 
-    const nonEmptyMessages = history.filter(m => m.content !== "");
+    const nonEmptyMessages = history.filter((m: { role: string; content: string }) => m.content !== "");
 
     const body = {
       model: MODEL,
-      messages: [systemPrompt, taskContext, ...nonEmptyMessages.map((m) => ({ role: m.role as "user" | "assistant", content: m.content }))],
+      messages: [systemPrompt, taskContext, ...nonEmptyMessages.map((m: { role: string; content: string }) => ({ role: m.role as "user" | "assistant", content: m.content }))],
       max_tokens: 2000,
       temperature: 0.7,
       stream: true,
@@ -312,6 +315,9 @@ export const explainExercise = action({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
+
+    // Enforce the free-trial AI limit (shared with the corrector chat).
+    await ctx.runMutation(internal.entitlements.consumeAi, { userId: identity.subject });
 
     const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) throw new Error("OPENROUTER_API_KEY not configured");

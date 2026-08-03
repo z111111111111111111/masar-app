@@ -1,9 +1,16 @@
 import { useState, useEffect } from 'react';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from 'convex/_generated/api';
 import type { AppScreen } from '@/lib/navigation';
 import { ChevronIcon, MathIcon, AtomIcon, LeafIcon, BrainIcon, GlobeIcon, ShuffleIcon, BookIcon } from './icons';
 import { DerivativeLesson } from './lessons/DerivativeLesson';
 import { DerivativeLessonStage2 } from './lessons/DerivativeLessonStage2';
 import { DerivativeLessonStage3 } from './lessons/DerivativeLessonStage3';
+
+// During the free trial only the first stage of each subject may be completed.
+// Completion is persisted server-side (profile.completedStages) so it can't be
+// tampered with; the server enforces the trial limit on markStagePassed.
+const FIRST_STAGE_OF_SUBJECT: Record<string, string> = { math: 's1' };
 
 const COMPLETED_KEY = 'masar-completed-subjects';
 function getCompletedSubjects(): string[] {
@@ -13,17 +20,6 @@ function getCompletedSubjects(): string[] {
 function markSubjectVisited(id: string) {
   const s = getCompletedSubjects();
   if (!s.includes(id)) { s.push(id); localStorage.setItem(COMPLETED_KEY, JSON.stringify(s)); }
-}
-
-const STAGES_KEY = 'masar-lesson-stages';
-function getStageProgress(): Record<string, boolean> {
-  try { return JSON.parse(localStorage.getItem(STAGES_KEY) || '{}'); }
-  catch { return {}; }
-}
-function markStagePassed(stageId: string) {
-  const p = getStageProgress();
-  p[stageId] = true;
-  localStorage.setItem(STAGES_KEY, JSON.stringify(p));
 }
 
 interface RoadmapSubject {
@@ -56,23 +52,27 @@ const MATH_STAGES: Stage[] = [
   { id: 's4', name: 'تمارين مركبة', lessonId: null, requiredStage: 's3' },
 ];
 
-function isStageUnlocked(stageId: string, completed: Record<string, boolean>): boolean {
+function isStageUnlocked(stageId: string, completed: string[]): boolean {
   const stage = MATH_STAGES.find((s) => s.id === stageId);
   if (!stage) return false;
   if (!stage.requiredStage) return true;
-  return !!completed[stage.requiredStage];
+  return completed.includes(stage.requiredStage);
 }
 
-function countCompleted(stages: Stage[], completed: Record<string, boolean>): number {
-  return stages.filter((s) => !!completed[s.id]).length;
+function countCompleted(stages: Stage[], completed: string[]): number {
+  return stages.filter((s) => completed.includes(s.id)).length;
 }
 
 export function RoadmapTab({
   screen,
   navigate,
+  isPaid,
+  onSubscribe,
 }: {
   screen: AppScreen;
   navigate: (s: AppScreen) => void;
+  isPaid: boolean;
+  onSubscribe: () => void;
 }) {
   if (screen.kind === 'lesson') {
     return (
@@ -89,6 +89,8 @@ export function RoadmapTab({
     return (
       <SubjectPage
         subject={subject}
+        isPaid={isPaid}
+        onSubscribe={onSubscribe}
         onBack={() => navigate({ kind: 'tab', tab: 'roadmap' })}
         onSelectStage={(stage) => {
           if (stage.lessonId) navigate({ kind: 'lesson', subjectId: subject.id, stageId: stage.lessonId });
@@ -162,16 +164,21 @@ function SubjectBranch({
 
 function SubjectPage({
   subject,
+  isPaid,
+  onSubscribe,
   onBack,
   onSelectStage,
 }: {
   subject: RoadmapSubject;
+  isPaid: boolean;
+  onSubscribe: () => void;
   onBack: () => void;
   onSelectStage: (stage: Stage) => void;
 }) {
   const Icon = subject.icon;
+  const profile = useQuery(api.progress.get);
   const stages = subject.id === 'math' ? MATH_STAGES : [];
-  const [stageProgress] = useState<Record<string, boolean>>(getStageProgress);
+  const completedStages = profile?.completedStages ?? [];
 
   useEffect(() => {
     markSubjectVisited(subject.id);
@@ -201,7 +208,9 @@ function SubjectPage({
         <LessonCard
           subject={subject}
           stages={stages}
-          stageProgress={stageProgress}
+          completedStages={completedStages}
+          isPaid={isPaid}
+          onSubscribe={onSubscribe}
           onSelectStage={onSelectStage}
         />
       ) : (
@@ -229,37 +238,28 @@ function StageLesson({
   stageId: string;
   onBack: () => void;
 }) {
+  const markStagePassed = useMutation(api.progress.markStagePassed);
+  const stageMap: Record<string, string> = {
+    derivative: 's1',
+    'derivative-2': 's2',
+    'derivative-3': 's3',
+  };
+  const handleComplete = (passed: boolean) => {
+    const target = stageMap[stageId];
+    if (!passed || !target) return;
+    markStagePassed({ stageId: target }).catch(() => {});
+  };
+
   if (stageId === 'derivative') {
-    return (
-      <DerivativeLesson
-        onBack={onBack}
-        onStageComplete={(passed) => {
-          if (passed) markStagePassed('s1');
-        }}
-      />
-    );
+    return <DerivativeLesson onBack={onBack} onStageComplete={handleComplete} />;
   }
 
   if (stageId === 'derivative-2') {
-    return (
-      <DerivativeLessonStage2
-        onBack={onBack}
-        onStageComplete={(passed) => {
-          if (passed) markStagePassed('s2');
-        }}
-      />
-    );
+    return <DerivativeLessonStage2 onBack={onBack} onStageComplete={handleComplete} />;
   }
 
   if (stageId === 'derivative-3') {
-    return (
-      <DerivativeLessonStage3
-        onBack={onBack}
-        onStageComplete={(passed) => {
-          if (passed) markStagePassed('s3');
-        }}
-      />
-    );
+    return <DerivativeLessonStage3 onBack={onBack} onStageComplete={handleComplete} />;
   }
 
   return null;
@@ -268,16 +268,30 @@ function StageLesson({
 function LessonCard({
   subject,
   stages,
-  stageProgress,
+  completedStages,
+  isPaid,
+  onSubscribe,
   onSelectStage,
 }: {
   subject: RoadmapSubject;
   stages: Stage[];
-  stageProgress: Record<string, boolean>;
+  completedStages: string[];
+  isPaid: boolean;
+  onSubscribe: () => void;
   onSelectStage: (stage: Stage) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const completedCount = countCompleted(stages, stageProgress);
+  const completedCount = countCompleted(stages, completedStages);
+  const firstStageId = FIRST_STAGE_OF_SUBJECT[subject.id];
+
+  const openStage = (stage: Stage) => {
+    // Sequentially unlocked, but locked by the free trial → open paywall.
+    if (!isPaid && stage.lessonId && stage.id !== firstStageId) {
+      onSubscribe();
+      return;
+    }
+    if (stage.lessonId) onSelectStage(stage);
+  };
 
   return (
     <div className="space-y-2">
@@ -305,8 +319,10 @@ function LessonCard({
         <div className="rounded-xl border border-border bg-card p-3 space-y-2 animate-[slideDown_0.25s_ease-out] origin-top">
           <p className="text-xs text-muted-foreground font-medium px-1 pb-1">أكمل كل مرحلة بالكامل للانتقال للتالية</p>
           {stages.map((stage, i) => {
-            const done = !!stageProgress[stage.id];
-            const unlocked = isStageUnlocked(stage.id, stageProgress);
+            const done = completedStages.includes(stage.id);
+            const unlocked = isStageUnlocked(stage.id, completedStages);
+            const trialLocked = !isPaid && stage.id !== firstStageId;
+            const available = unlocked && !trialLocked;
             const isLast = i === stages.length - 1;
 
             return (
@@ -314,12 +330,12 @@ function LessonCard({
                 <button
                   disabled={!unlocked}
                   onClick={() => {
-                    if (unlocked && stage.lessonId) onSelectStage(stage);
+                    if (unlocked) openStage(stage);
                   }}
                   className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all ${
                     done
                       ? 'border-[hsl(var(--sprout))]/30 bg-[hsl(var(--sprout))]/5 hover:shadow-md active:scale-[0.98]'
-                      : unlocked
+                      : available
                         ? 'border-border bg-card hover:shadow-md hover:border-[hsl(var(--sprout))]/30 active:scale-[0.98]'
                         : 'border-border bg-muted/30 opacity-50 cursor-not-allowed'
                   }`}
@@ -327,7 +343,7 @@ function LessonCard({
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${
                     done
                       ? 'bg-[hsl(var(--sprout))] text-white'
-                      : unlocked
+                      : available
                         ? 'bg-muted text-muted-foreground'
                         : 'bg-muted/60 text-muted-foreground/60'
                   }`}>
@@ -341,21 +357,26 @@ function LessonCard({
                   </div>
 
                   <div className="flex-1 text-right">
-                    <p className={`text-sm font-bold ${done ? 'text-[hsl(var(--sprout))]' : unlocked ? 'text-[hsl(var(--ink))]' : 'text-muted-foreground'}`}>
+                    <p className={`text-sm font-bold ${done ? 'text-[hsl(var(--sprout))]' : available ? 'text-[hsl(var(--ink))]' : 'text-muted-foreground'}`}>
                       {stage.name}
                     </p>
                     <p className="text-[10px] text-muted-foreground mt-0.5">
-                      {done ? 'مكتمل' : unlocked ? (stage.lessonId ? 'اضغط للبدء' : 'قريباً إن شاء الله') : 'مقفل'}
+                      {done ? 'مكتمل' : available ? (stage.lessonId ? 'اضغط للبدء' : 'قريباً إن شاء الله') : trialLocked ? 'متاح في النسخة المدفوعة' : 'مقفل'}
                     </p>
                   </div>
 
-                  {!unlocked && !done && (
+                  {trialLocked && !done && (
+                    <span className="text-[9px] font-bold text-[hsl(var(--ember))] bg-[hsl(var(--ember-soft))] rounded-full px-2 py-0.5 shrink-0">
+                      PRO
+                    </span>
+                  )}
+                  {!unlocked && !done && !trialLocked && (
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-muted-foreground/50 shrink-0">
                       <rect x="5" y="11" width="14" height="10" rx="2" />
                       <path d="M8 11V7a4 4 0 0 1 8 0v4" />
                     </svg>
                   )}
-                  {unlocked && !done && stage.lessonId && (
+                  {available && !done && stage.lessonId && (
                     <ChevronIcon size={14} className="rotate-180 text-muted-foreground shrink-0" />
                   )}
                 </button>

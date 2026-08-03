@@ -10,12 +10,14 @@
 
 import type * as auth from "../auth.js";
 import type * as corrector from "../corrector.js";
+import type * as entitlements from "../entitlements.js";
 import type * as exercises from "../exercises.js";
 import type * as http from "../http.js";
 import type * as leaderboard from "../leaderboard.js";
 import type * as mistakes from "../mistakes.js";
 import type * as progress from "../progress.js";
 import type * as prompts from "../prompts.js";
+import type * as referrals from "../referrals.js";
 import type * as subscription from "../subscription.js";
 
 import type {
@@ -27,12 +29,14 @@ import type {
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   corrector: typeof corrector;
+  entitlements: typeof entitlements;
   exercises: typeof exercises;
   http: typeof http;
   leaderboard: typeof leaderboard;
   mistakes: typeof mistakes;
   progress: typeof progress;
   prompts: typeof prompts;
+  referrals: typeof referrals;
   subscription: typeof subscription;
 }>;
 

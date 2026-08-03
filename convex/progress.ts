@@ -1,5 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 
 // ─── Hearts economy ─────────────────────────────────────────────
 export const MAX_HEARTS = 15;
@@ -7,6 +8,11 @@ export const HEART_REFILL_MS = 10 * 60 * 60 * 1000; // 1 heart every 10 hours
 export const FULL_REFILL_COST = 50; // refilling all 15 hearts costs 50 jewels
 export const STAGE_REWARD = 100; // jewels earned for passing a stage
 const STAGES = new Set(["derivative", "derivative-2", "derivative-3"]);
+
+// Roadmap stage progress ids (server-side, tamper-proof). During the free
+// trial only the first stage of each subject may be completed.
+const ROADMAP_STAGES = new Set(["s1", "s2", "s3"]);
+const FIRST_ROADMAP_STAGES = new Set(["s1"]);
 
 // Progress up to `now`: hearts regenerate 1 per 10h, capped at MAX_HEARTS.
 function reconcileHearts(
@@ -207,7 +213,7 @@ export const setAllowSharing = mutation({
 
 // --- Create profile (first login after payment) ---
 export const create = mutation({
-  args: { name: v.string() },
+  args: { name: v.string(), referralCode: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
@@ -231,7 +237,7 @@ export const create = mutation({
     const now = new Date();
     const dateStr = now.toISOString().slice(0, 10);
 
-    return await ctx.db.insert("userProgress", {
+    const profileId = await ctx.db.insert("userProgress", {
       userId: identity.subject,
       name: trimmedName,
       email: email,
@@ -247,7 +253,53 @@ export const create = mutation({
       lastHeartAt: Date.now(),
       rewardedStages: [],
       lastMutationAt: Date.now(),
+      signedUpAt: Date.now(),
+      completedStages: [],
     });
+
+    // Server-side referral setup: mint this user's own code and (if they came
+    // through a link) record the attribution at signup time.
+    await ctx.runMutation(internal.referrals.ensureCode, { userId: identity.subject });
+    const referralCode = args.referralCode?.trim();
+    if (referralCode) {
+      await ctx.runMutation(internal.referrals.recordReferral, {
+        referredUserId: identity.subject,
+        code: referralCode,
+      });
+    }
+
+    return profileId;
+  },
+});
+
+// --- Mark a roadmap stage as passed (server-side, tamper-proof) ---
+export const markStagePassed = mutation({
+  args: { stageId: v.string() },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const stageId = args.stageId.trim();
+    if (!ROADMAP_STAGES.has(stageId)) throw new Error("Invalid stage");
+    const progress = await ctx.db
+      .query("userProgress")
+      .withIndex("by_userId", (q) => q.eq("userId", identity.subject))
+      .unique();
+    if (!progress) throw new Error("Profile not found");
+
+    // Free trial users may only complete the first stage of a subject.
+    const status = await ctx.runQuery(internal.entitlements.getStatus, { userId: identity.subject });
+    if (!status.paid && !FIRST_ROADMAP_STAGES.has(stageId)) {
+      throw new Error("هذه المرحلة مقفلة في النسخة المجانية. فعّل اشتراكك لفتح كل المراحل.");
+    }
+
+    const completed = progress.completedStages ?? [];
+    if (!completed.includes(stageId)) {
+      await ctx.db.patch(progress._id, {
+        completedStages: [...completed, stageId],
+        lastMutationAt: Date.now(),
+      });
+    }
+    return { completedStages: completed.includes(stageId) ? completed : [...completed, stageId] };
   },
 });
 

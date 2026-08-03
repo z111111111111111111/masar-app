@@ -23,6 +23,8 @@ export function DashboardTab({
   streak,
   xp,
   records,
+  isPaid,
+  onSubscribe,
   onNavigateRoadmap,
 }: {
   name: string;
@@ -30,6 +32,8 @@ export function DashboardTab({
   streak: number;
   xp: number;
   records: RecordsMap;
+  isPaid: boolean;
+  onSubscribe: () => void;
   onNavigateRoadmap: () => void;
 }) {
   const startTimer = useMutation(api.progress.startTimer);
@@ -139,7 +143,7 @@ export function DashboardTab({
         onFinish={handleFinishSubject}
       />
 
-      <RandomExerciseCard dayIndexToday={dayIndexToday} />
+      <RandomExerciseCard dayIndexToday={dayIndexToday} isPaid={isPaid} onSubscribe={onSubscribe} />
 
       {/* Weekly strip — today in the center */}
       <div className="rounded-2xl border border-border bg-card p-5 space-y-3">

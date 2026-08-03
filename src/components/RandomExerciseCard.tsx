@@ -5,6 +5,8 @@ import { formatClock } from '@/lib/dates';
 import { SubjectIcon } from './SubjectIcon';
 import { ShuffleIcon, PlayIcon, PauseIcon } from './icons';
 import { Button } from '@/components/ui/button';
+import { useMutation, useQuery } from 'convex/react';
+import { api } from 'convex/_generated/api';
 
 const DURATION = 30 * 60; // fixed 30-minute countdown, independent from the daily subject timers
 
@@ -15,11 +17,22 @@ interface Suggestion {
 
 type TimerStatus = 'idle' | 'running' | 'stopped' | 'done';
 
-export function RandomExerciseCard({ dayIndexToday }: { dayIndexToday: number }) {
+export function RandomExerciseCard({
+  dayIndexToday,
+  isPaid,
+  onSubscribe,
+}: {
+  dayIndexToday: number;
+  isPaid: boolean;
+  onSubscribe: () => void;
+}) {
   const [suggestion, setSuggestion] = useState<Suggestion | null>(null);
   const [status, setStatus] = useState<TimerStatus>('idle');
   const [remaining, setRemaining] = useState(DURATION);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const consumeRandom = useMutation(api.entitlements.consumeRandom);
+  const entitlements = useQuery(api.entitlements.get, { now: Date.now() });
+  const randomRemaining = entitlements?.limits?.randomRemaining ?? null;
 
   useEffect(() => {
     if (status !== 'running') return;
@@ -37,7 +50,15 @@ export function RandomExerciseCard({ dayIndexToday }: { dayIndexToday: number })
     };
   }, [status]);
 
-  const generate = () => {
+  const generate = async () => {
+    if (!isPaid) {
+      try {
+        await consumeRandom();
+      } catch {
+        onSubscribe();
+        return;
+      }
+    }
     const week = currentWeekFromStart(dayIndexToday);
     const subject = SUBJECTS[Math.floor(Math.random() * SUBJECTS.length)];
     const topic = pickTopicForSubject(subject.id, week);
@@ -52,7 +73,11 @@ export function RandomExerciseCard({ dayIndexToday }: { dayIndexToday: number })
     <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
       <div className="flex items-center justify-between">
         <h2 className="font-semibold text-[hsl(var(--ink))] text-sm">تمرين عشوائي</h2>
-        <span className="text-xs text-muted-foreground">بلا حدّ — اقترح بقدر ما تشاء</span>
+        <span className="text-xs text-muted-foreground">
+          {isPaid || randomRemaining === null
+            ? 'بلا حدّ — اقترح بقدر ما تشاء'
+            : `متبقٍ ${randomRemaining} من 3 في النسخة المجانية`}
+        </span>
       </div>
 
       {suggestion && (

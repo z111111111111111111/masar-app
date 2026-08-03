@@ -20,6 +20,8 @@ export function AppShell({
   xp,
   dark,
   onToggleDark,
+  reminder,
+  onSubscribe,
   children,
 }: {
   active: TabId;
@@ -28,6 +30,8 @@ export function AppShell({
   xp: number;
   dark: boolean;
   onToggleDark: () => void;
+  reminder?: string | null;
+  onSubscribe?: () => void;
   children: React.ReactNode;
 }) {
   const { league } = currentLeague(xp);
@@ -112,6 +116,23 @@ export function AppShell({
           <StatPill icon={<GemIcon className="text-[hsl(var(--sprout))]" />} value={`${xp} XP`} tone="sprout" />
           <StatPill icon={<HeartIcon className="text-[hsl(var(--coral))]" />} value={`${hearts}/${maxHearts}`} tone="coral" />
         </header>
+
+        {/* Trial reminder */}
+        {reminder && (
+          <div className="bg-[hsl(var(--ember-soft))]/70 border-b border-[hsl(var(--ember))]/20 px-4 md:px-8 py-2.5 flex items-center justify-between gap-3">
+            <p className="text-[11px] md:text-xs font-semibold text-[hsl(var(--ember))] leading-snug">
+              {reminder}
+            </p>
+            {onSubscribe && (
+              <button
+                onClick={onSubscribe}
+                className="shrink-0 text-[11px] font-bold text-white bg-[hsl(var(--ember))] hover:bg-[hsl(var(--ember))]/90 rounded-full px-3 py-1.5 transition-colors"
+              >
+                فعّل الآن
+              </button>
+            )}
+          </div>
+        )}
 
         <main className="flex-1 w-full max-w-2xl mx-auto px-4 md:px-8 pt-0 pb-24 md:pb-10 overflow-y-auto md:overflow-y-visible">{children}</main>
 
