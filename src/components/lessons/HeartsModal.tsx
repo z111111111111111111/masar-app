@@ -33,11 +33,11 @@ export function HeartsModal({ onBack }: { onBack: () => void }) {
         <div className="text-4xl mb-3">❤️</div>
         <h2 className="text-lg font-bold text-[hsl(var(--ink))] mb-2">نفدت قلوبك</h2>
         <p className="text-xs text-muted-foreground leading-relaxed mb-4">
-          كل إجابة خاطئة تُفقدك قلباً. اشحن القلوب بالجواهر، أو انتظر تجددها تلقائياً (قلب واحد كل 10 ساعات).
+          كل إجابة خاطئة تُفقدك قلباً. اشحن القلوب بالجواهر، أو انتظر تجدّدها تلقائياً — جميع القلوب (15) تعود بعد 13 ساعة من فقدان أول قلب.
         </p>
 
         <p className="text-[11px] font-bold text-[hsl(var(--ember))] mb-4">
-          قلب جديد بعد {hours} س و {minutes} د و {seconds} ث
+          جميع القلوب تعود بعد {hours} س و {minutes} د و {seconds} ث
         </p>
 
         <Button

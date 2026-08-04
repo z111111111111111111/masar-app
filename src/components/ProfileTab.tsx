@@ -11,9 +11,9 @@ import {
   isFinished,
   MAX_SCORE,
   subjectDailySeries,
-  toISODate,
   type RecordsMap,
 } from '@/lib/dates';
+import { useDayInfo } from '@/hooks/useDayInfo';
 import { FlameIcon, TrophyIcon, ShareIcon, LogoutIcon } from './icons';
 import { SubjectLineChart, SubjectPercentBarChart } from './SubjectPerformanceCharts';
 import { ShareProfileSheet } from './ShareProfileSheet';
@@ -53,8 +53,9 @@ export function ProfileTab({
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const { league } = currentLeague(xp);
+  const { todayISO } = useDayInfo();
 
-  const daysElapsed = Math.max(1, dayIndexFromStart(startDate, toISODate(new Date())) + 1);
+  const daysElapsed = Math.max(1, dayIndexFromStart(startDate, todayISO) + 1);
   const maxPossiblePerSubject = daysElapsed * MAX_SCORE;
 
   const perSubject = SUBJECTS.map((s) => {

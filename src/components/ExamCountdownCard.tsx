@@ -1,7 +1,8 @@
 import { daysUntilExam, examDate, formatArabicShort, TOTAL_DAYS } from '@/lib/dates';
+import { useDayInfo } from '@/hooks/useDayInfo';
 
 export function ExamCountdownCard({ startDate, dayIndexToday }: { startDate: string; dayIndexToday: number }) {
-  const todayISO = new Date().toISOString().slice(0, 10);
+  const { todayISO } = useDayInfo();
   const daysLeft = daysUntilExam(startDate, todayISO);
   const exam = examDate(startDate);
   const progress = Math.min(1, Math.max(0, dayIndexToday / TOTAL_DAYS));

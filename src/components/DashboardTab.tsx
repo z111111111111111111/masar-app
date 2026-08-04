@@ -4,6 +4,7 @@ import { SUBJECTS } from '@/lib/subjects';
 import { addDays, formatArabicDate, toISODate, currentLeague, isFinished, finishedSubjectsCount, type RecordsMap } from '@/lib/dates';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from 'convex/_generated/api';
+import { useDayInfo } from '@/hooks/useDayInfo';
 import { CountdownCard } from './CountdownCard';
 import { TodayTimerCard } from './TodayTimerCard';
 import { CorrectorChatSheet } from './CorrectorChatSheet';
@@ -39,7 +40,7 @@ export function DashboardTab({
 
   const [chatOpen, setChatOpen] = useState(false);
   const today = new Date();
-  const todayISO = toISODate(today);
+  const { todayISO } = useDayInfo();
   const todayRecord = records[todayISO] ?? {};
   const finishedCount = SUBJECTS.filter((s) => isFinished(todayRecord[s.id])).length;
 

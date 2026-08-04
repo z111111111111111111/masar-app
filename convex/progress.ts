@@ -1,10 +1,14 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
+import { dayTodayISO, dayNextMidnightAt } from "./dayBoundary";
 
 // ─── Hearts economy ─────────────────────────────────────────────
 export const MAX_HEARTS = 15;
-export const HEART_REFILL_MS = 10 * 60 * 60 * 1000; // 1 heart every 10 hours
+// All hearts restore to MAX at once, 13h after the FIRST heart was lost
+// (the timer starts when hearts drop below the cap and keeps running until
+// every heart is back — no per-heart ticking).
+export const HEART_FULL_REFILL_MS = 13 * 60 * 60 * 1000;
 export const FULL_REFILL_COST = 50; // refilling all 15 hearts costs 50 jewels
 export const STAGE_REWARD = 100; // jewels earned for passing a stage
 const STAGES = new Set(["derivative", "derivative-2", "derivative-3"]);
@@ -40,20 +44,24 @@ const STAGE_PREREQ: Record<string, string | null> = {
 const MIN_FLOW_TIME_MS = 20_000;
 const MAX_FLOW_TIME_MS = 6 * 60 * 60 * 1000;
 
-// Progress up to `now`: hearts regenerate 1 per 10h, capped at MAX_HEARTS.
+// Progress up to `now`: once hearts drop below the cap, ALL of them come back
+// together exactly HEART_FULL_REFILL_MS after the first heart was lost. While
+// the window hasn't elapsed the count stays where it is (no gradual refill);
+// after it elapses the cap is restored and the timer resets from "now".
 function reconcileHearts(
   storedHearts: number | undefined,
   lastHeartAt: number | undefined,
   now: number
 ): { hearts: number; lastHeartAt: number } {
   const stored = typeof storedHearts === "number" && storedHearts >= 0 ? storedHearts : MAX_HEARTS;
+  if (stored >= MAX_HEARTS) {
+    return { hearts: MAX_HEARTS, lastHeartAt: now };
+  }
   const base = typeof lastHeartAt === "number" ? lastHeartAt : now;
-  const gained = Math.max(0, Math.floor((now - base) / HEART_REFILL_MS));
-  const hearts = Math.min(MAX_HEARTS, stored + gained);
-  // Advance the countdown base by whole regeneration periods; when full the
-  // countdown starts from "now" so hearts never accumulate past the cap.
-  const advanced = gained > 0 ? base + gained * HEART_REFILL_MS : base;
-  return { hearts, lastHeartAt: hearts >= MAX_HEARTS ? now : advanced };
+  if (now - base >= HEART_FULL_REFILL_MS) {
+    return { hearts: MAX_HEARTS, lastHeartAt: now };
+  }
+  return { hearts: stored, lastHeartAt: base };
 }
 
 function heartRefillCost(heartsToAdd: number): number {
@@ -78,8 +86,8 @@ export const getHearts = query({
       hearts,
       maxHearts: MAX_HEARTS,
       lastHeartAt,
-      refillMs: HEART_REFILL_MS,
-      nextRefillAt: hearts < MAX_HEARTS ? lastHeartAt + HEART_REFILL_MS : null,
+      refillMs: HEART_FULL_REFILL_MS,
+      nextRefillAt: hearts < MAX_HEARTS ? lastHeartAt + HEART_FULL_REFILL_MS : null,
       fullRefillCost: FULL_REFILL_COST,
       refillCost: heartRefillCost(missing),
       jewels: progress.jewels ?? 20,
@@ -102,7 +110,11 @@ export const loseHeart = mutation({
     const now = Date.now();
     const { hearts } = reconcileHearts(progress.hearts, progress.lastHeartAt, now);
     const next = Math.max(0, hearts - 1);
-    await ctx.db.patch(progress._id, { hearts: next, lastHeartAt: now });
+    // The 13h full-refill window starts on the FIRST loss below the cap; any
+    // further loss keeps the same lastHeartAt so all hearts restore together.
+    const wasFull = hearts >= MAX_HEARTS;
+    const lastHeartAt = wasFull ? now : progress.lastHeartAt ?? now;
+    await ctx.db.patch(progress._id, { hearts: next, lastHeartAt });
     return { hearts: next };
   },
 });
@@ -209,6 +221,29 @@ export const getAuth = query({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return null;
     return { userId: identity.subject, email: identity.email, name: identity.name };
+  },
+});
+
+// --- Server-clock day info (tamper-proof day boundary) ---
+// The client passes its timezone offset (minutes east of UTC) so the local day
+// rolls at the user's midnight, but "today" and the next midnight are computed
+// from the SERVER clock only. Changing the phone clock cannot advance or rewind
+// the day or its countdown.
+export const getDayInfo = query({
+  args: { tzOffsetMin: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+    const offsetMin =
+      typeof args.tzOffsetMin === "number" && Number.isFinite(args.tzOffsetMin)
+        ? Math.max(-840, Math.min(840, Math.round(args.tzOffsetMin)))
+        : 0;
+    const now = Date.now();
+    return {
+      todayISO: dayTodayISO(now, offsetMin),
+      nextMidnightAt: dayNextMidnightAt(now, offsetMin),
+      serverNow: now,
+    };
   },
 });
 

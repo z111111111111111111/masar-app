@@ -3,7 +3,8 @@ import { useQuery_experimental as useQuerySafe, useMutation } from 'convex/react
 import { api } from 'convex/_generated/api';
 
 export const MAX_HEARTS = 15;
-export const HEART_REFILL_MS = 10 * 60 * 60 * 1000; // 1 heart every 10 hours
+// All hearts restore to the cap at once, 13h after the first heart was lost.
+export const HEART_FULL_REFILL_MS = 13 * 60 * 60 * 1000;
 export const FULL_REFILL_COST = 50;
 
 interface HeartsSnapshot {
@@ -77,8 +78,14 @@ export function HeartsProvider({ children }: { children: ReactNode }) {
   const serverNow =
     (base?.serverNow ?? Date.now()) +
     (snapshotClientAtRef.current ? Date.now() - snapshotClientAtRef.current : 0);
+  // No gradual refill: while the 13h window is open the count stays where it
+  // is; once the window elapses every heart is back at once.
   const hearts = base
-    ? Math.min(base.maxHearts, base.hearts + Math.max(0, Math.floor((serverNow - base.lastHeartAt) / base.refillMs)))
+    ? base.hearts >= base.maxHearts
+      ? base.maxHearts
+      : serverNow - base.lastHeartAt >= base.refillMs
+        ? base.maxHearts
+        : base.hearts
     : MAX_HEARTS;
   const nextRefillAt = base && hearts < base.maxHearts ? base.lastHeartAt + base.refillMs : null;
 
@@ -92,8 +99,8 @@ export function HeartsProvider({ children }: { children: ReactNode }) {
           hearts: res.hearts,
           maxHearts: seed?.maxHearts ?? MAX_HEARTS,
           lastHeartAt: baseServerNow,
-          refillMs: seed?.refillMs ?? HEART_REFILL_MS,
-          nextRefillAt: baseServerNow + (seed?.refillMs ?? HEART_REFILL_MS),
+          refillMs: seed?.refillMs ?? HEART_FULL_REFILL_MS,
+          nextRefillAt: baseServerNow + (seed?.refillMs ?? HEART_FULL_REFILL_MS),
           refillCost: seed?.refillCost ?? FULL_REFILL_COST,
           fullRefillCost: seed?.fullRefillCost ?? FULL_REFILL_COST,
           jewels: seed?.jewels ?? 20,
@@ -117,7 +124,7 @@ export function HeartsProvider({ children }: { children: ReactNode }) {
           hearts: res.hearts,
           maxHearts: seed?.maxHearts ?? MAX_HEARTS,
           lastHeartAt: baseServerNow,
-          refillMs: seed?.refillMs ?? HEART_REFILL_MS,
+          refillMs: seed?.refillMs ?? HEART_FULL_REFILL_MS,
           nextRefillAt: null,
           refillCost: seed?.refillCost ?? FULL_REFILL_COST,
           fullRefillCost: seed?.fullRefillCost ?? FULL_REFILL_COST,
@@ -151,7 +158,7 @@ export function HeartsProvider({ children }: { children: ReactNode }) {
     () => ({
       hearts,
       maxHearts: base?.maxHearts ?? MAX_HEARTS,
-      refillMs: base?.refillMs ?? HEART_REFILL_MS,
+      refillMs: base?.refillMs ?? HEART_FULL_REFILL_MS,
       nextRefillAt,
       refillCost: base?.refillCost ?? FULL_REFILL_COST,
       fullRefillCost: FULL_REFILL_COST,

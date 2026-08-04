@@ -15,6 +15,7 @@ import {
 import type { SubjectId } from '@/lib/subjects';
 import { useMutation } from 'convex/react';
 import { api } from 'convex/_generated/api';
+import { useDayInfo } from '@/hooks/useDayInfo';
 import { ScoreDialog } from './ScoreDialog';
 import { MonthChart } from './MonthChart';
 import { ExamCountdownCard } from './ExamCountdownCard';
@@ -31,7 +32,7 @@ export function PathTab({
 
   const chunks = useMemo(() => buildMonthChunks(), []);
   const start = useMemo(() => new Date(startDate), [startDate]);
-  const todayISO = toISODate(new Date());
+  const { todayISO } = useDayInfo();
   const dayIndexToday = Math.round((+new Date(todayISO) - +start) / 86400000);
 
   const [selectedISO, setSelectedISO] = useState<string | null>(null);

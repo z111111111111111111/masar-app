@@ -4,7 +4,6 @@ import { api } from 'convex/_generated/api';
 import type { SubjectId } from '@/lib/subjects';
 import {
   computeStreak,
-  toISODate,
   type RecordsMap,
   type SubjectDayRecord,
   type TimerStatus,
@@ -21,6 +20,7 @@ import { LeaderboardTab } from '@/components/LeaderboardTab';
 import { ProfileTab } from '@/components/ProfileTab';
 import { BackButton } from '@/components/BackButton';
 import { HeartsProvider } from '@/hooks/useHearts';
+import { useDayInfo } from '@/hooks/useDayInfo';
 import { signOut } from '@/lib/auth-client';
 import { useTheme } from '@/lib/useTheme';
 import { useAppScreen, activeTab } from '@/lib/navigation';
@@ -46,6 +46,7 @@ function App() {
   const profile = useQuery(api.progress.get);
   const verifySub = useQuery(api.subscription.verifySubscription);
   const rawRecords = useQuery(api.progress.getRecords);
+  const dayInfo = useDayInfo();
   const createProfile = useMutation(api.progress.create);
   const enforceExpiry = useMutation(api.subscription.enforceExpiry);
   const { theme, dark, themes, setTheme, toggleDark } = useTheme();
@@ -105,9 +106,12 @@ function App() {
 
   const queriesLoading = profile === undefined || rawRecords === undefined || verifySub === undefined || entitlements === undefined;
   const authLoading = authUser === undefined;
-  const isLoading = queriesLoading || authLoading;
-
   const isAuthed = authUser !== null && authUser !== undefined;
+  // For an authenticated user the server-clock day info must be ready before we
+  // compute anything day-based (streak, "today"), so a tampered device clock
+  // can't leak in for even one frame. Unauthenticated screens never gate on it.
+  const isLoading = queriesLoading || authLoading || (isAuthed && !dayInfo.ready);
+
   const isPaid = entitlements?.paid ?? false;
   const hasProfile = !!profile;
 
@@ -194,7 +198,7 @@ function App() {
     );
   }
 
-  const todayISO = toISODate(new Date());
+  const todayISO = dayInfo.todayISO;
   const streak = computeStreak(records, todayISO);
   const bestStreak = Math.max(profile.bestStreak, streak);
   const xp = profile.totalXP;

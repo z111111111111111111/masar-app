@@ -1,19 +1,27 @@
 import { useEffect, useState } from 'react';
-import { formatClock, secondsUntilMidnight } from '@/lib/dates';
+import { formatClock } from '@/lib/dates';
+import { useDayInfo } from '@/hooks/useDayInfo';
 import { SUBJECTS } from '@/lib/subjects';
 import { CheckCircleIcon, WarningIcon, FlameIcon } from './icons';
 
+// Countdown to the next day is computed from the server clock (nextMidnightAt)
+// and then decremented by one second per real second — never from the device
+// clock — so changing the phone time can't advance or rewind the day boundary.
 export function CountdownCard({ finishedCount }: { finishedCount: number }) {
-  const [remaining, setRemaining] = useState(() => secondsUntilMidnight(new Date()));
+  const { nextMidnightAt, serverNow } = useDayInfo();
+  const [remaining, setRemaining] = useState<number | null>(null);
 
   useEffect(() => {
-    const id = setInterval(() => setRemaining(secondsUntilMidnight(new Date())), 1000);
+    if (!nextMidnightAt || !serverNow) return;
+    setRemaining(Math.max(0, Math.ceil((nextMidnightAt - serverNow) / 1000)));
+    const id = setInterval(() => setRemaining((r) => (r == null ? null : Math.max(0, r - 1))), 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [nextMidnightAt, serverNow]);
 
+  const rem = remaining ?? 0;
   const total = SUBJECTS.length;
   const complete = finishedCount >= total;
-  const urgent = !complete && remaining < 3 * 3600; // last 3 hours, streak not secured yet
+  const urgent = !complete && rem < 3 * 3600; // last 3 hours, streak not secured yet
 
   return (
     <div className="rounded-2xl border border-border bg-card px-4 py-3.5 space-y-3">
@@ -40,7 +48,7 @@ export function CountdownCard({ finishedCount }: { finishedCount: number }) {
         </div>
         {!complete && (
           <span className={`font-bold tabular-nums text-sm ${urgent ? 'text-[hsl(var(--coral))]' : 'text-[hsl(var(--ink))]'}`}>
-            {formatClock(remaining)}
+            {formatClock(rem)}
           </span>
         )}
       </div>

@@ -18,8 +18,10 @@ const DAY_WIDTH = 100;
 
 export function SubjectLineChart({
   series,
+  fitWidth = false,
 }: {
   series: Array<{ day: number } & Record<string, number | null | undefined>>;
+  fitWidth?: boolean;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [boxW, setBoxW] = useState(0);
@@ -75,8 +77,13 @@ export function SubjectLineChart({
   // Never narrower than the visible box, so the X axis always reaches the end
   // of the card even when there are only a few days. With many days the chart
   // grows and scrolls, keeping the value labels pinned in the fixed column.
-  const contentWidth = Math.max(series.length, 1) * DAY_WIDTH;
-  const chartWidth = Math.max(contentWidth, boxW);
+  // In `fitWidth` mode (compact dialogs) the whole series is squeezed into the
+  // box instead, so nothing is ever hidden off-screen.
+  const days = Math.max(series.length, 1);
+  const contentWidth = days * DAY_WIDTH;
+  const chartWidth = fitWidth ? Math.max(boxW, 1) : Math.max(contentWidth, boxW);
+  const xInterval = fitWidth ? Math.max(0, Math.ceil(days / 8) - 1) : 0;
+  const hideDots = fitWidth && days > 14;
 
   // Keep the value labels pinned while the days column scrolls horizontally:
   // the Y axis is hidden inside the chart (domain only) and its tick labels are
@@ -108,7 +115,7 @@ export function SubjectLineChart({
                 tick={{ fontSize: 11, fill: 'hsl(var(--slate))' }}
                 axisLine={{ stroke: 'hsl(var(--border))' }}
                 tickLine={false}
-                interval={0}
+                interval={xInterval}
               />
               <YAxis hide domain={[0, MAX_SCORE]} allowDecimals={false} />
               <Tooltip
@@ -132,7 +139,7 @@ export function SubjectLineChart({
                 name={s.id}
                 stroke={subjectColor(s.id)}
                 strokeWidth={2}
-                dot={{ r: 2.5 }}
+                dot={hideDots ? false : { r: 2.5 }}
                 connectNulls={false}
                 isAnimationActive={false}
               />
