@@ -154,9 +154,7 @@ export function PublicProfileDialog({ open, onOpenChange, userId, name, xp, rank
 
             <div className="rounded-xl border border-border bg-card p-3">
               <h4 className="text-xs font-bold text-[hsl(var(--ink))] mb-2">الأداء حسب المادة</h4>
-              <div className="pointer-events-none">
-                <SubjectLineChart series={series} />
-              </div>
+              <SubjectLineChart series={series} />
             </div>
 
             <div className="rounded-xl border border-border bg-card p-3">
