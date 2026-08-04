@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useMutation, useQuery } from 'convex/react';
+import { useMutation, useQuery, useQuery_experimental as useQuerySafe } from 'convex/react';
 import { api } from 'convex/_generated/api';
 import { ShieldIcon, ChevronIcon, CheckCircleIcon, WarningIcon } from './icons';
 import { useSession } from '@/lib/auth-client';
@@ -33,7 +33,7 @@ export function PaymentScreen({ onCancel, reason = 'trial' }: PaymentScreenProps
 
   const initiatePayment = useMutation(api.subscription.initiatePayment);
   const verifySub = useQuery(api.subscription.verifySubscription);
-  const pendingList = useQuery(api.subscription.adminListPending);
+  const pendingListResult = useQuerySafe({ query: api.subscription.adminListPending, args: {} });
   const adminActivate = useMutation(api.subscription.adminActivate);
   const adminCancel = useMutation(api.subscription.adminCancelPending);
 
@@ -126,15 +126,22 @@ export function PaymentScreen({ onCancel, reason = 'trial' }: PaymentScreenProps
             </button>
           </div>
 
-          {pendingList === undefined ? (
+          {pendingListResult.status === 'loading' && (
             <p className="text-sm text-muted-foreground">جارٍ التحميل...</p>
-          ) : pendingList.length === 0 ? (
+          )}
+          {pendingListResult.status === 'error' && (
+            <div className="bg-card border border-border rounded-2xl p-6 text-center text-sm text-muted-foreground">
+              غير مصرح — هذه اللوحة متاحة للإدارة فقط.
+            </div>
+          )}
+          {pendingListResult.status === 'success' && pendingListResult.data.length === 0 && (
             <div className="bg-card border border-border rounded-2xl p-6 text-center text-sm text-muted-foreground">
               لا توجد طلبات بانتظار التأكيد.
             </div>
-          ) : (
+          )}
+          {pendingListResult.status === 'success' && pendingListResult.data.length > 0 && (
             <div className="flex flex-col gap-3">
-              {pendingList.map((row) => (
+              {pendingListResult.data.map((row) => (
                 <div key={String(row._id)} className="bg-card border border-border rounded-2xl p-4">
                   <div className="flex items-start justify-between gap-3 mb-2">
                     <div className="min-w-0">

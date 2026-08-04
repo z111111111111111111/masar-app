@@ -1,4 +1,4 @@
-import { action, query, mutation } from "./_generated/server";
+import { action, query, mutation, internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { api, internal } from "./_generated/api";
 import { SMART_TEACHER_SYSTEM_PROMPT } from "./prompts";
@@ -37,7 +37,7 @@ export const getConversations = query({
   },
 });
 
-export const updateTitle = mutation({
+export const updateTitle = internalMutation({
   args: {
     conversationId: v.id("correctorConversations"),
     title: v.string(),
@@ -50,6 +50,10 @@ export const updateTitle = mutation({
 export const softDeleteConversation = mutation({
   args: { conversationId: v.id("correctorConversations") },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const convo = await ctx.db.get(args.conversationId);
+    if (!convo || convo.userId !== identity.subject) throw new Error("Conversation not found");
     await ctx.db.patch(args.conversationId, { deleted: true });
   },
 });
@@ -59,6 +63,10 @@ export const softDeleteConversation = mutation({
 export const getMessages = query({
   args: { conversationId: v.id("correctorConversations") },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const convo = await ctx.db.get(args.conversationId);
+    if (!convo || convo.userId !== identity.subject) throw new Error("Conversation not found");
     return await ctx.db
       .query("correctorMessages")
       .withIndex("by_conversation", (q) => q.eq("conversationId", args.conversationId))
@@ -66,7 +74,7 @@ export const getMessages = query({
   },
 });
 
-const saveMessage = mutation({
+const saveMessage = internalMutation({
   args: {
     userId: v.string(),
     conversationId: v.optional(v.id("correctorConversations")),
@@ -84,7 +92,7 @@ const saveMessage = mutation({
   },
 });
 
-const createEmptyMessage = mutation({
+const createEmptyMessage = internalMutation({
   args: {
     userId: v.string(),
     conversationId: v.id("correctorConversations"),
@@ -100,7 +108,7 @@ const createEmptyMessage = mutation({
   },
 });
 
-const appendToMessage = mutation({
+const appendToMessage = internalMutation({
   args: {
     messageId: v.id("correctorMessages"),
     chunk: v.string(),
@@ -125,6 +133,15 @@ export const chat = action({
     if (!identity) throw new Error("Not authenticated");
     const userId = identity.subject;
 
+    // The conversation must belong to the caller — never operate on another
+    // user's conversation even if its id is known or guessed.
+    const conversation = await ctx.runQuery(internal.corrector.getConversation, {
+      conversationId: args.conversationId,
+    });
+    if (!conversation || conversation.userId !== userId) {
+      throw new Error("Conversation not found");
+    }
+
     const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) throw new Error("OPENROUTER_API_KEY not configured");
 
@@ -132,7 +149,7 @@ export const chat = action({
     await ctx.runMutation(internal.entitlements.consumeAi, { userId });
 
     // Save user message
-    await ctx.runMutation(api.corrector.saveMessage, {
+    await ctx.runMutation(internal.corrector.saveMessage, {
       userId,
       conversationId: args.conversationId,
       role: "user",
@@ -146,12 +163,9 @@ export const chat = action({
 
     // If first message, generate title immediately (before streaming)
     if (history.length <= 1) {
-      const conversation = await ctx.runQuery(api.corrector.getConversation, {
-        conversationId: args.conversationId,
-      });
-      if (conversation?.title === "محادثة جديدة") {
+      if (conversation.title === "محادثة جديدة") {
         const title = await generateTitle(args.content, apiKey);
-        await ctx.runMutation(api.corrector.updateTitle, {
+        await ctx.runMutation(internal.corrector.updateTitle, {
           conversationId: args.conversationId,
           title,
         });
@@ -159,7 +173,7 @@ export const chat = action({
     }
 
     // Create empty assistant message for streaming
-    const msgId = await ctx.runMutation(api.corrector.createEmptyMessage, {
+    const msgId = await ctx.runMutation(internal.corrector.createEmptyMessage, {
       userId,
       conversationId: args.conversationId,
     });
@@ -203,7 +217,7 @@ export const chat = action({
     });
 
     if (!response.ok) {
-      await ctx.runMutation(api.corrector.removeMessage, { messageId: msgId });
+      await ctx.runMutation(internal.corrector.removeMessage, { messageId: msgId });
       const err = await response.text();
       throw new Error(`OpenRouter API error: ${response.status} ${err}`);
     }
@@ -235,7 +249,7 @@ export const chat = action({
             const chunk = delta?.content;
             if (chunk) {
               fullReply += chunk;
-              await ctx.runMutation(api.corrector.appendToMessage, {
+              await ctx.runMutation(internal.corrector.appendToMessage, {
                 messageId: msgId,
                 chunk,
               });
@@ -249,12 +263,12 @@ export const chat = action({
     }
 
     if (streamError) {
-      await ctx.runMutation(api.corrector.removeMessage, { messageId: msgId });
+      await ctx.runMutation(internal.corrector.removeMessage, { messageId: msgId });
       throw new Error(`OpenRouter stream error: ${streamError}`);
     }
 
     if (!fullReply) {
-      await ctx.runMutation(api.corrector.removeMessage, { messageId: msgId });
+      await ctx.runMutation(internal.corrector.removeMessage, { messageId: msgId });
       if (reasoningTokens > 0) {
         throw new Error("استجاب النموذج بتفكير فقط دون رد فعلي — حاول مجدداً.");
       }
@@ -267,7 +281,7 @@ export const chat = action({
 
 // --- Cleanup for failed messages ---
 
-export const removeMessage = mutation({
+const removeMessage = internalMutation({
   args: { messageId: v.id("correctorMessages") },
   handler: async (ctx, args) => {
     await ctx.db.delete(args.messageId);
@@ -309,12 +323,16 @@ async function generateTitle(userMessage: string, apiKey: string): Promise<strin
   }
 }
 
-export { saveMessage, createEmptyMessage, appendToMessage };
+export { saveMessage, createEmptyMessage, appendToMessage, removeMessage };
 
-export const getConversation = query({
+export const getConversation = internalQuery({
   args: { conversationId: v.id("correctorConversations") },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.conversationId);
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+    const convo = await ctx.db.get(args.conversationId);
+    if (!convo || convo.userId !== identity.subject) return null;
+    return convo;
   },
 });
 

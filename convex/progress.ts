@@ -14,6 +14,32 @@ const STAGES = new Set(["derivative", "derivative-2", "derivative-3"]);
 const ROADMAP_STAGES = new Set(["s1", "s2", "s3"]);
 const FIRST_ROADMAP_STAGES = new Set(["s1"]);
 
+// Roadmap stage ↔ lesson flow mapping. markStagePassed and awardStageCompletion
+// share these maps so a stage can't be awarded without completing the
+// prerequisite roadmap stage, and no stage can be skipped by calling the
+// mutation directly.
+const STAGE_FLOW: Record<string, string> = {
+  s1: "derivative",
+  s2: "derivative-2",
+  s3: "derivative-3",
+};
+const FLOW_STAGE: Record<string, string> = {
+  derivative: "s1",
+  "derivative-2": "s2",
+  "derivative-3": "s3",
+};
+const STAGE_PREREQ: Record<string, string | null> = {
+  s1: null,
+  s2: "s1",
+  s3: "s2",
+};
+
+// A stage may only be completed/rewarded when its flow session was started on
+// the server at least MIN_FLOW_TIME_MS ago and at most MAX_FLOW_TIME_MS ago
+// (prevents "instant done" claims; the session is (re)started by startFlow).
+const MIN_FLOW_TIME_MS = 20_000;
+const MAX_FLOW_TIME_MS = 6 * 60 * 60 * 1000;
+
 // Progress up to `now`: hearts regenerate 1 per 10h, capped at MAX_HEARTS.
 function reconcileHearts(
   storedHearts: number | undefined,
@@ -125,14 +151,39 @@ export const awardStageCompletion = mutation({
       .withIndex("by_userId", (q) => q.eq("userId", identity.subject))
       .unique();
     if (!progress) throw new Error("Profile not found");
+
+    // Don't award a later stage before the previous roadmap stage is done.
+    const roadmapStage = FLOW_STAGE[stageId];
+    const prereq = roadmapStage ? STAGE_PREREQ[roadmapStage] : null;
+    const completed = progress.completedStages ?? [];
+    if (prereq && !completed.includes(prereq)) {
+      throw new Error("أكمل المرحلة السابقة أولاً");
+    }
+
+    // Proof of work: the flow session must have been started server-side within
+    // the valid window and must not already be spent (finishedAt).
+    const session = await ctx.db
+      .query("flowSessions")
+      .withIndex("by_user_flow", (q) => q.eq("userId", identity.subject).eq("flow", stageId))
+      .unique();
+    const now = Date.now();
+    const elapsed = session ? now - session.startedAt : 0;
+    if (!session || elapsed < MIN_FLOW_TIME_MS || elapsed > MAX_FLOW_TIME_MS) {
+      throw new Error("لم يتم العثور على جلسة تمرين نشطة لهذه المرحلة.");
+    }
+    if (session.finishedAt) {
+      throw new Error("تمت مكافأة هذه الجلسة مسبقاً.");
+    }
+
     const rewarded = progress.rewardedStages ?? [];
     if (rewarded.includes(stageId)) return { jewels: progress.jewels ?? 20, awarded: false };
     const newBalance = (progress.jewels ?? 20) + STAGE_REWARD;
     await ctx.db.patch(progress._id, {
       rewardedStages: [...rewarded, stageId],
       jewels: newBalance,
-      lastMutationAt: Date.now(),
+      lastMutationAt: now,
     });
+    await ctx.db.patch(session._id, { finishedAt: now });
     return { jewels: newBalance, awarded: true };
   },
 });
@@ -281,6 +332,32 @@ export const create = mutation({
   },
 });
 
+// --- Announce that a lesson flow started (server-side proof-of-work) ---
+// (Re)starts the flow session so a stage can only be completed/rewarded after
+// the student actually began the lesson. Called by the lesson when it starts.
+export const startFlow = mutation({
+  args: { flow: v.string() },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    if (!STAGES.has(args.flow)) throw new Error("Invalid flow");
+    const now = Date.now();
+    const existing = await ctx.db
+      .query("flowSessions")
+      .withIndex("by_user_flow", (q) => q.eq("userId", identity.subject).eq("flow", args.flow))
+      .unique();
+    if (existing) {
+      await ctx.db.patch(existing._id, { startedAt: now, finishedAt: undefined });
+    } else {
+      await ctx.db.insert("flowSessions", {
+        userId: identity.subject,
+        flow: args.flow,
+        startedAt: now,
+      });
+    }
+  },
+});
+
 // --- Mark a roadmap stage as passed (server-side, tamper-proof) ---
 export const markStagePassed = mutation({
   args: { stageId: v.string() },
@@ -301,14 +378,36 @@ export const markStagePassed = mutation({
       throw new Error("هذه المرحلة مقفلة في النسخة المجانية. فعّل اشتراكك لفتح كل المراحل.");
     }
 
+    // Stages must be completed in order (no skipping s2/s3 via direct calls).
+    const prereq = STAGE_PREREQ[stageId];
     const completed = progress.completedStages ?? [];
-    if (!completed.includes(stageId)) {
-      await ctx.db.patch(progress._id, {
-        completedStages: [...completed, stageId],
-        lastMutationAt: Date.now(),
-      });
+    if (prereq && !completed.includes(prereq)) {
+      throw new Error("أكمل المرحلة السابقة أولاً");
     }
-    return { completedStages: completed.includes(stageId) ? completed : [...completed, stageId] };
+    if (completed.includes(stageId)) {
+      return { completedStages: completed };
+    }
+
+    // Proof of work: the lesson flow for this stage must have been started
+    // server-side within the valid window (no instant "done").
+    const flow = STAGE_FLOW[stageId];
+    const session = flow
+      ? await ctx.db
+          .query("flowSessions")
+          .withIndex("by_user_flow", (q) => q.eq("userId", identity.subject).eq("flow", flow))
+          .unique()
+      : null;
+    const now = Date.now();
+    const elapsed = session ? now - session.startedAt : 0;
+    if (!session || elapsed < MIN_FLOW_TIME_MS || elapsed > MAX_FLOW_TIME_MS) {
+      throw new Error("لم يتم العثور على جلسة تمرين نشطة لهذه المرحلة.");
+    }
+
+    await ctx.db.patch(progress._id, {
+      completedStages: [...completed, stageId],
+      lastMutationAt: now,
+    });
+    return { completedStages: [...completed, stageId] };
   },
 });
 

@@ -135,4 +135,15 @@ export default defineSchema({
   }).index("by_user_flow", ["userId", "flow"])
     .index("by_user_flow_index", ["userId", "flow", "flowIndex"])
     .index("by_user_flow_resolved", ["userId", "flow", "resolved"]),
+
+  // --- Lesson flow proof-of-work sessions (gate stage completion + rewards) ---
+  // `startedAt` is (re)set server-side whenever the student begins a lesson flow;
+  // `awardStageCompletion` marks the session spent via `finishedAt` so each run
+  // can only be rewarded once.
+  flowSessions: defineTable({
+    userId: v.string(),
+    flow: v.string(),
+    startedAt: v.number(),
+    finishedAt: v.optional(v.number()),
+  }).index("by_user_flow", ["userId", "flow"]),
 });

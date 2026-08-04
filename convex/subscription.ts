@@ -1,6 +1,7 @@
 import { query, mutation, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
+import { isOwner } from "./owners";
 
 // ─── Subscription flow ────────────────────────────────────────────
 // Payment is a manual CCP/EDAHABIA bank transfer: the user requests a
@@ -124,10 +125,17 @@ export const initiatePayment = mutation({
   },
 });
 
-// Admin panel (no auth yet) ────────────────────────────────────────
+// Admin panel ─────────────────────────────────────────────────────
+// All admin operations are restricted to the owner identity server-side, so a
+// random user can't activate their own subscription, cancel others' requests or
+// read the pending requests (names, emails, transfer references).
+
 export const adminListPending = query({
   args: {},
   handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!isOwner(identity)) throw new Error("Not authorized");
+
     const subs = await ctx.db
       .query("subscriptions")
       .withIndex("by_status", (q) => q.eq("status", "pending"))
@@ -159,6 +167,9 @@ export const adminListPending = query({
 export const adminActivate = mutation({
   args: { subscriptionId: v.id("subscriptions") },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!isOwner(identity)) throw new Error("Not authorized");
+
     const sub = await ctx.db.get(args.subscriptionId);
     if (!sub) throw new Error("Subscription not found");
 
@@ -180,6 +191,9 @@ export const adminActivate = mutation({
 export const adminCancelPending = mutation({
   args: { subscriptionId: v.id("subscriptions") },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!isOwner(identity)) throw new Error("Not authorized");
+
     const sub = await ctx.db.get(args.subscriptionId);
     if (!sub) throw new Error("Subscription not found");
     if (sub.status !== "pending") throw new Error("Only pending requests can be cancelled");

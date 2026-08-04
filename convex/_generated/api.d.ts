@@ -15,6 +15,7 @@ import type * as exercises from "../exercises.js";
 import type * as http from "../http.js";
 import type * as leaderboard from "../leaderboard.js";
 import type * as mistakes from "../mistakes.js";
+import type * as owners from "../owners.js";
 import type * as progress from "../progress.js";
 import type * as prompts from "../prompts.js";
 import type * as referrals from "../referrals.js";
@@ -34,6 +35,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   leaderboard: typeof leaderboard;
   mistakes: typeof mistakes;
+  owners: typeof owners;
   progress: typeof progress;
   prompts: typeof prompts;
   referrals: typeof referrals;

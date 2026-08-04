@@ -1,8 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-
-// Developer/owner identity allowed to grant the verified badge (no admin UI yet).
-const OWNER_SUBJECT = "k173f31604ft3e4apbj6rs737d8awn6z";
+import { OWNER_SUBJECT } from "./owners";
 
 export const list = query({
   args: {},

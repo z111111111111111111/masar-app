@@ -95,6 +95,7 @@ export function DerivativeLesson({
   const recordMistake = useMutation(api.mistakes.recordMistake);
   const resolveMistake = useMutation(api.mistakes.resolveMistake);
   const resetSession = useMutation(api.mistakes.resetSession);
+  const startFlow = useMutation(api.progress.startFlow);
   const { hearts, loseHeart, awardStage } = useHearts();
   // Non-throwing query: if the backend function/table is unavailable the result is
   // simply `undefined` (the retry queue falls back to local wrong answers) instead
@@ -151,6 +152,9 @@ export function DerivativeLesson({
   }, [showGraph]);
 
   const handleStart = () => {
+    // Announce the session server-side: stage completion/rewards are gated on a
+    // started flow session (startedAt window), so it must begin here.
+    startFlow({ flow: flowId }).catch(() => {});
     // Re-entry: if the student left with unresolved mistakes, jump straight to
     // correcting only those exercises; otherwise start the full set fresh.
     const pending = unresolved ?? [];
