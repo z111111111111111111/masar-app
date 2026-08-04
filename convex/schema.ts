@@ -38,6 +38,7 @@ export default defineSchema({
     lastHeartAt: v.optional(v.number()),
     rewardedStages: v.optional(v.array(v.string())),
     allowSharing: v.optional(v.boolean()),
+    isVerified: v.optional(v.boolean()),
     lastMutationAt: v.optional(v.number()),
     signedUpAt: v.optional(v.number()),
     completedStages: v.optional(v.array(v.string())),

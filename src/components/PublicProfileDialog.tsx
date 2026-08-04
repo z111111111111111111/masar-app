@@ -15,7 +15,7 @@ import {
   type SubjectDayRecord,
   type TimerStatus,
 } from '@/lib/dates';
-import { FlameIcon, TrophyIcon, LockIcon } from './icons';
+import { FlameIcon, TrophyIcon, LockIcon, VerifiedBadge } from './icons';
 import { SubjectLineChart, SubjectPercentBarChart } from './SubjectPerformanceCharts';
 
 function buildRecordsMap(rows: any[]): RecordsMap {
@@ -40,9 +40,10 @@ interface PublicProfileDialogProps {
   name: string;
   xp: number;
   rank: number;
+  verified?: boolean;
 }
 
-export function PublicProfileDialog({ open, onOpenChange, userId, name, xp, rank }: PublicProfileDialogProps) {
+export function PublicProfileDialog({ open, onOpenChange, userId, name, xp, rank, verified }: PublicProfileDialogProps) {
   const data = useQuery(api.progress.getPublicProfile, open ? { userId } : 'skip');
 
   const isPrivate = data?.private === true;
@@ -94,7 +95,10 @@ export function PublicProfileDialog({ open, onOpenChange, userId, name, xp, rank
             <span className="w-9 h-9 rounded-full bg-[hsl(var(--sprout))] text-white flex items-center justify-center text-xs font-bold">
               #{rank}
             </span>
-            <span className="flex-1 text-base">حساب {name}</span>
+            <span className="flex-1 text-base flex items-center gap-1.5">
+              حساب {name}
+              {verified && <VerifiedBadge size={15} className="shrink-0" />}
+            </span>
           </DialogTitle>
         </DialogHeader>
 

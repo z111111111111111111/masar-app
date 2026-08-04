@@ -1,4 +1,8 @@
-import { query } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
+import { v } from "convex/values";
+
+// Developer/owner identity allowed to grant the verified badge (no admin UI yet).
+const OWNER_SUBJECT = "k173f31604ft3e4apbj6rs737d8awn6z";
 
 export const list = query({
   args: {},
@@ -16,6 +20,27 @@ export const list = query({
       userId: e.userId,
       name: e.name,
       xp: e.totalXP,
+      verified: !!e.isVerified,
     }));
+  },
+});
+
+// Grants/revokes the verified badge. Restricted to the owner identity so a
+// random user can't fake it; the admin tool runs it with the owner identity.
+export const setVerified = mutation({
+  args: { userId: v.string(), verified: v.boolean() },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity || identity.subject !== OWNER_SUBJECT) {
+      throw new Error("Not authorized");
+    }
+
+    const progress = await ctx.db
+      .query("userProgress")
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .unique();
+    if (!progress) throw new Error("User not found");
+
+    await ctx.db.patch(progress._id, { isVerified: args.verified });
   },
 });

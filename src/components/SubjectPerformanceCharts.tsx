@@ -41,31 +41,40 @@ export function SubjectLineChart({
 
   const chartWidth = Math.max(series.length, 1) * DAY_WIDTH;
 
+  // Keep the value labels pinned while the days column scrolls horizontally:
+  // the Y axis is hidden inside the chart (domain only) and its tick labels are
+  // re-drawn in a fixed column outside the scroll container, aligned to the
+  // same plot geometry (256px tall, 8px top margin) as the grid lines.
+  const ticks = Array.from({ length: MAX_SCORE / 2 + 1 }, (_, i) => i * 2);
+  const tickTops = ticks.map((t) => 8 + (MAX_SCORE - t) * (248 / MAX_SCORE));
+
   return (
     <div>
-      <div
-        ref={scrollRef}
-        className="w-full overflow-x-auto masar-scroll"
-      >
-        <div className="h-64" dir="ltr" style={{ width: chartWidth }}>
-          <LineChart data={series} width={chartWidth} height={256} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-            <CartesianGrid stroke="hsl(var(--border))" vertical={false} />
-            <XAxis
-              dataKey="day"
-              tick={{ fontSize: 11, fill: 'hsl(var(--slate))' }}
-              axisLine={{ stroke: 'hsl(var(--border))' }}
-              tickLine={false}
-              interval={0}
-            />
-            <YAxis
-              domain={[0, MAX_SCORE]}
-              allowDecimals={false}
-              tick={{ fontSize: 11, fill: 'hsl(var(--slate))' }}
-              axisLine={false}
-              tickLine={false}
-              width={22}
-            />
-            <Tooltip
+      <div className="flex" dir="ltr">
+        <div className="relative shrink-0 w-7 h-64 select-none" aria-hidden>
+          {ticks.map((t, i) => (
+            <span
+              key={t}
+              className="absolute right-0 -translate-y-1/2 text-[11px] leading-none text-[hsl(var(--slate))]"
+              style={{ top: tickTops[i] }}
+            >
+              {t}
+            </span>
+          ))}
+        </div>
+        <div ref={scrollRef} className="flex-1 min-w-0 overflow-x-auto masar-scroll">
+          <div className="h-64" style={{ width: chartWidth }}>
+            <LineChart data={series} width={chartWidth} height={256} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+              <CartesianGrid stroke="hsl(var(--border))" vertical={false} />
+              <XAxis
+                dataKey="day"
+                tick={{ fontSize: 11, fill: 'hsl(var(--slate))' }}
+                axisLine={{ stroke: 'hsl(var(--border))' }}
+                tickLine={false}
+                interval={0}
+              />
+              <YAxis hide domain={[0, MAX_SCORE]} allowDecimals={false} />
+              <Tooltip
               contentStyle={{
                 fontSize: 12,
                 borderRadius: 10,
@@ -101,6 +110,7 @@ export function SubjectLineChart({
             {s.short}
           </span>
         ))}
+      </div>
       </div>
     </div>
   );

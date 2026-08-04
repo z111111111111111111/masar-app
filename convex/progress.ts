@@ -220,10 +220,17 @@ export const create = mutation({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
-    const trimmedName = args.name.trim();
-    if (trimmedName.length === 0 || trimmedName.length > 100) {
-      throw new Error("Invalid name");
-    }
+    // Server-side backstop for the signup name. The client enforces letters
+    // only + max 20 chars with visible messages; here we strip anything that
+    // isn't a letter or space, collapse runs of spaces and cap at 20 chars so
+    // a tampered client (or Google sign-up name) can never reach the leader-
+    // board as-is. Fall back to a generic label if nothing survives.
+    const name =
+      args.name
+        .trim()
+        .replace(/[^\p{L}\p{M}\s]/gu, "")
+        .replace(/\s+/g, " ")
+        .slice(0, 20) || "طالب";
 
     const email = identity.email ?? "";
     if (email.length > 254 || !email.includes("@")) {
@@ -241,7 +248,7 @@ export const create = mutation({
 
     const profileId = await ctx.db.insert("userProgress", {
       userId: identity.subject,
-      name: trimmedName,
+      name,
       email: email,
       startDate: dateStr,
       currentWeek: 1,

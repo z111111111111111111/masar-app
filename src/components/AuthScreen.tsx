@@ -7,6 +7,9 @@ import { signIn, signUp, signInWithGoogle } from '@/lib/auth-client';
 import { useQuery } from 'convex/react';
 import { api } from 'convex/_generated/api';
 
+const NAME_MAX_LENGTH = 20;
+const NAME_PATTERN = /^[\p{L}\p{M}]+(?:\s+[\p{L}\p{M}]+)*$/u;
+
 export function AuthScreen({ defaultTab = 'login', onAuthSuccess }: { defaultTab?: 'login' | 'signup'; onAuthSuccess?: () => void }) {
   const [isLogin, setIsLogin] = useState(defaultTab === 'login');
 
@@ -16,8 +19,18 @@ export function AuthScreen({ defaultTab = 'login', onAuthSuccess }: { defaultTab
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [nameError, setNameError] = useState('');
+  const nameTouchedRef = useRef(false);
 
   const googleStatus = useQuery(api.auth.getGoogleStatus);
+
+  const validateName = (value: string): string => {
+    const t = value.trim();
+    if (!t) return 'يرجى إدخال اسمك';
+    if (t.length > NAME_MAX_LENGTH) return `الاسم يجب ألا يتجاوز ${NAME_MAX_LENGTH} حرفاً`;
+    if (!NAME_PATTERN.test(t)) return 'الاسم يجب أن يحتوي على حروف فقط (بدون أرقام أو رموز)';
+    return '';
+  };
 
   const handleGoogleSignIn = async () => {
     setError('');
@@ -74,6 +87,8 @@ export function AuthScreen({ defaultTab = 'login', onAuthSuccess }: { defaultTab
       setIsLogin(true);
     }
     setError('');
+    setNameError('');
+    nameTouchedRef.current = false;
   }, [defaultTab]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -101,9 +116,11 @@ export function AuthScreen({ defaultTab = 'login', onAuthSuccess }: { defaultTab
       return;
     }
 
-    if (!isLogin && !name.trim()) {
-      setError('يرجى إدخال اسمك');
-      return;
+    if (!isLogin) {
+      nameTouchedRef.current = true;
+      const nameMsg = validateName(name);
+      setNameError(nameMsg);
+      if (nameMsg) return;
     }
 
     setLoading(true);
@@ -160,7 +177,7 @@ export function AuthScreen({ defaultTab = 'login', onAuthSuccess }: { defaultTab
                     ? 'text-[hsl(var(--ink))] border-b-2 border-[hsl(var(--sprout))]'
                     : 'text-muted-foreground hover:text-[hsl(var(--ink))]'
                 }`}
-                onClick={() => { setIsLogin(true); setError(''); }}
+                onClick={() => { setIsLogin(true); setError(''); setNameError(''); nameTouchedRef.current = false; }}
               >
                 تسجيل الدخول
               </button>
@@ -170,7 +187,7 @@ export function AuthScreen({ defaultTab = 'login', onAuthSuccess }: { defaultTab
                     ? 'text-[hsl(var(--ink))] border-b-2 border-[hsl(var(--sprout))]'
                     : 'text-muted-foreground hover:text-[hsl(var(--ink))]'
                 }`}
-                onClick={() => { setIsLogin(false); setError(''); }}
+                onClick={() => { setIsLogin(false); setError(''); setNameError(''); nameTouchedRef.current = false; }}
               >
                 حساب جديد
               </button>
@@ -184,7 +201,10 @@ export function AuthScreen({ defaultTab = 'login', onAuthSuccess }: { defaultTab
                   <div className="relative">
                     <Input
                       value={name}
-                      onChange={(e) => setName(e.target.value)}
+                      onChange={(e) => {
+                        setName(e.target.value);
+                        if (nameTouchedRef.current) setNameError(validateName(e.target.value));
+                      }}
                       placeholder="مثال: أمين"
                       className="h-11 text-right pr-10"
                       onFocus={handleInputFocus}
@@ -196,6 +216,9 @@ export function AuthScreen({ defaultTab = 'login', onAuthSuccess }: { defaultTab
                       </svg>
                     </span>
                   </div>
+                  {nameError && (
+                    <p className="text-[11px] font-medium text-[hsl(var(--coral))] mt-1.5">{nameError}</p>
+                  )}
                 </div>
               )}
 

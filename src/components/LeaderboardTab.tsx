@@ -3,13 +3,14 @@ import { useQuery } from 'convex/react';
 import { api } from 'convex/_generated/api';
 import { currentLeague } from '@/lib/dates';
 import { PublicProfileDialog } from './PublicProfileDialog';
+import { VerifiedBadge } from './icons';
 
 export function LeaderboardTab({ userId, name, xp }: { userId: string; name: string; xp: number }) {
   const entries = useQuery(api.leaderboard.list);
   const { league } = currentLeague(xp);
   const myRank = entries?.findIndex((e) => e.userId === userId) ?? -1;
 
-  const [selected, setSelected] = useState<{ userId: string; name: string; xp: number; rank: number } | null>(null);
+  const [selected, setSelected] = useState<{ userId: string; name: string; xp: number; rank: number; verified: boolean } | null>(null);
 
   return (
     <div className="space-y-5 pt-6">
@@ -32,7 +33,7 @@ export function LeaderboardTab({ userId, name, xp }: { userId: string; name: str
           return (
             <button
               key={e.userId}
-              onClick={() => setSelected({ userId: e.userId, name: e.name, xp: e.xp, rank })}
+              onClick={() => setSelected({ userId: e.userId, name: e.name, xp: e.xp, rank, verified: e.verified })}
               className={`w-full flex items-center gap-3 px-4 py-3 text-start transition-colors hover:bg-muted/40 ${isMe ? 'bg-[hsl(var(--sprout-soft))]' : ''}`}
             >
               <span
@@ -47,8 +48,10 @@ export function LeaderboardTab({ userId, name, xp }: { userId: string; name: str
               <div className="w-9 h-9 rounded-full bg-[hsl(var(--ink-solid))] text-white flex items-center justify-center text-xs font-semibold shrink-0">
                 {e.name.slice(0, 1)}
               </div>
-              <span className={`flex-1 text-sm font-semibold ${isMe ? 'text-[hsl(var(--sprout))]' : 'text-[hsl(var(--ink))]'}`}>
-                {e.name} {isMe && '(أنت)'}
+              <span className={`flex-1 text-sm font-semibold flex items-center gap-1 ${isMe ? 'text-[hsl(var(--sprout))]' : 'text-[hsl(var(--ink))]'}`}>
+                <span className="truncate">{e.name}</span>
+                {e.verified && <VerifiedBadge size={14} className="shrink-0" />}
+                {isMe && '(أنت)'}
               </span>
               <span className="text-sm font-semibold text-muted-foreground">{e.xp} XP</span>
             </button>
@@ -70,6 +73,7 @@ export function LeaderboardTab({ userId, name, xp }: { userId: string; name: str
           name={selected.name}
           xp={selected.xp}
           rank={selected.rank}
+          verified={selected.verified}
         />
       )}
     </div>

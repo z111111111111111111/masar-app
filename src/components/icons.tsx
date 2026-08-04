@@ -72,6 +72,22 @@ export function CheckCircleIcon({ className, size = 20 }: IconProps) {
   );
 }
 
+export function VerifiedBadge({ className, size = 16 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className} aria-label="حساب موثّق">
+      <circle cx="12" cy="12" r="10" fill="#3897f0" />
+      <path
+        d="M8 12.5l2.5 2.5L16 9.5"
+        fill="none"
+        stroke="#fff"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function XCircleIcon({ className, size = 20 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" className={className} {...base}>
