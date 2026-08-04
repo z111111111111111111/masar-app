@@ -24,6 +24,9 @@ interface HeartsValue {
   maxHearts: number;
   refillMs: number;
   nextRefillAt: number | null;
+  // Raw server clock from the latest snapshot (never extrapolated with the
+  // device clock), so countdowns can be anchored to two server values only.
+  serverNow: number;
   refillCost: number;
   fullRefillCost: number;
   jewels: number;
@@ -160,6 +163,7 @@ export function HeartsProvider({ children }: { children: ReactNode }) {
       maxHearts: base?.maxHearts ?? MAX_HEARTS,
       refillMs: base?.refillMs ?? HEART_FULL_REFILL_MS,
       nextRefillAt,
+      serverNow: base?.serverNow ?? 0,
       refillCost: base?.refillCost ?? FULL_REFILL_COST,
       fullRefillCost: FULL_REFILL_COST,
       jewels: base?.jewels ?? 20,

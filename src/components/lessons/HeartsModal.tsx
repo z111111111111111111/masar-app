@@ -1,22 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useHearts } from '@/hooks/useHearts';
+import { useServerCountdown } from '@/hooks/useServerCountdown';
 import { Button } from '@/components/ui/button';
 import { GemIcon } from '../icons';
 
 export function HeartsModal({ onBack }: { onBack: () => void }) {
-  const { hearts, maxHearts, nextRefillAt, refillCost, jewels, refillHearts } = useHearts();
+  const { hearts, maxHearts, nextRefillAt, serverNow, refillCost, jewels, refillHearts } = useHearts();
   const [busy, setBusy] = useState(false);
-  const [now, setNow] = useState(() => Date.now());
-
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
+  const remaining = useServerCountdown(nextRefillAt ?? 0, serverNow);
 
   if (hearts > 0) return null;
 
   const canAfford = jewels >= refillCost;
-  const waitMs = nextRefillAt ? Math.max(0, nextRefillAt - now) : 0;
+  const waitMs = (remaining ?? 0) * 1000;
   const hours = Math.floor(waitMs / 3600000);
   const minutes = Math.floor((waitMs % 3600000) / 60000);
   const seconds = Math.floor((waitMs % 60000) / 1000);

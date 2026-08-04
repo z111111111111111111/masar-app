@@ -5,6 +5,7 @@ import { addDays, formatArabicDate, toISODate, currentLeague, isFinished, finish
 import { useMutation, useQuery } from 'convex/react';
 import { api } from 'convex/_generated/api';
 import { useDayInfo } from '@/hooks/useDayInfo';
+import { HeartsRefillCountdown } from './HeartsRefillCountdown';
 import { CountdownCard } from './CountdownCard';
 import { TodayTimerCard } from './TodayTimerCard';
 import { CorrectorChatSheet } from './CorrectorChatSheet';
@@ -97,9 +98,12 @@ export function DashboardTab({
 
   return (
     <div className="space-y-5 pt-6">
-      <div>
-        <h1 className="text-xl font-bold text-[hsl(var(--ink))]">مرحباً {name}</h1>
-        <p className="text-sm text-muted-foreground">{formatArabicDate(today)}</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-[hsl(var(--ink))]">مرحباً {name}</h1>
+          <p className="text-sm text-muted-foreground">{formatArabicDate(today)}</p>
+        </div>
+        <HeartsRefillCountdown />
       </div>
 
       <CountdownCard finishedCount={finishedCount} />
