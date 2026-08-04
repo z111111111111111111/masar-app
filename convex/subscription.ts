@@ -162,6 +162,38 @@ export const adminListPending = query({
   },
 });
 
+// Admin lists active subscribers with their current verified badge status, so
+// the owner can grant/revoke "verified" (which gates the referral program).
+export const adminListActive = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!isOwner(identity)) throw new Error("Not authorized");
+
+    const subs = await ctx.db
+      .query("subscriptions")
+      .withIndex("by_status", (q) => q.eq("status", "active"))
+      .take(200);
+    const rows = [];
+    for (const sub of subs) {
+      const profile = await ctx.db
+        .query("userProgress")
+        .withIndex("by_userId", (q) => q.eq("userId", sub.userId))
+        .unique();
+      rows.push({
+        subscriptionId: sub._id,
+        userId: sub.userId,
+        name: profile?.name ?? "غير معروف",
+        email: profile?.email ?? "",
+        verified: profile?.isVerified === true,
+        expiresAt: sub.expiresAt,
+        active: new Date(sub.expiresAt).getTime() > Date.now(),
+      });
+    }
+    return rows;
+  },
+});
+
 // Admin confirms the money arrived → activate for 3 months from now and advance
 // the referrer's paid counter.
 export const adminActivate = mutation({

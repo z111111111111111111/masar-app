@@ -352,9 +352,10 @@ export const create = mutation({
       completedStages: [],
     });
 
-    // Server-side referral setup: mint this user's own code and (if they came
-    // through a link) record the attribution at signup time.
-    await ctx.runMutation(internal.referrals.ensureCode, { userId: identity.subject });
+    // If they came through a referral link, record the attribution at signup.
+    // No code is minted here: codes are created on demand only once the account
+    // is verified and paid (referrals.claimMyCode), so a free account never has
+    // a working invite link.
     const referralCode = args.referralCode?.trim();
     if (referralCode) {
       await ctx.runMutation(internal.referrals.recordReferral, {

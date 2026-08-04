@@ -34,8 +34,10 @@ export function PaymentScreen({ onCancel, reason = 'trial' }: PaymentScreenProps
   const initiatePayment = useMutation(api.subscription.initiatePayment);
   const verifySub = useQuery(api.subscription.verifySubscription);
   const pendingListResult = useQuerySafe({ query: api.subscription.adminListPending, args: {} });
+  const activeListResult = useQuerySafe({ query: api.subscription.adminListActive, args: {} });
   const adminActivate = useMutation(api.subscription.adminActivate);
   const adminCancel = useMutation(api.subscription.adminCancelPending);
+  const setVerified = useMutation(api.leaderboard.setVerified);
 
   const [isAdmin, setIsAdmin] = useState(() => window.location.hash === '#admin');
   const [reference, setReference] = useState('');
@@ -174,6 +176,51 @@ export function PaymentScreen({ onCancel, reason = 'trial' }: PaymentScreenProps
                       إلغاء
                     </Button>
                   </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Verified badge control: only verified + paid accounts may promote/refer */}
+          <h2 className="text-base font-bold text-[hsl(var(--ink))] mt-8 mb-3">المشتركون النشطون — منح التوثيق (يفتح الترويج والإحالة)</h2>
+          {activeListResult.status === 'loading' && (
+            <p className="text-sm text-muted-foreground">جارٍ التحميل...</p>
+          )}
+          {activeListResult.status === 'error' && (
+            <div className="bg-card border border-border rounded-2xl p-6 text-center text-sm text-muted-foreground">
+              غير مصرح — هذه اللوحة متاحة للإدارة فقط.
+            </div>
+          )}
+          {activeListResult.status === 'success' && activeListResult.data.length === 0 && (
+            <div className="bg-card border border-border rounded-2xl p-6 text-center text-sm text-muted-foreground">
+              لا يوجد مشتركون نشطون بعد.
+            </div>
+          )}
+          {activeListResult.status === 'success' && activeListResult.data.length > 0 && (
+            <div className="flex flex-col gap-2">
+              {activeListResult.data.map((row) => (
+                <div key={String(row.subscriptionId)} className="bg-card border border-border rounded-xl p-3 flex items-center gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-bold text-[hsl(var(--ink))] truncate">
+                      {row.name}
+                      {row.active ? (
+                        <span className="text-[10px] font-semibold text-[hsl(var(--sprout))] mr-1">(نشط)</span>
+                      ) : (
+                        <span className="text-[10px] font-semibold text-[hsl(var(--coral))] mr-1">(منتهي)</span>
+                      )}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground truncate" dir="ltr">{row.email}</p>
+                  </div>
+                  <button
+                    onClick={async () => { await setVerified({ userId: row.userId, verified: !row.verified }); }}
+                    className={`shrink-0 h-8 px-3 rounded-full text-[11px] font-bold transition-colors ${
+                      row.verified
+                        ? 'bg-[hsl(var(--sprout))]/15 text-[hsl(var(--sprout))] hover:bg-[hsl(var(--sprout))]/25'
+                        : 'bg-muted text-muted-foreground hover:bg-[hsl(var(--sprout))]/15 hover:text-[hsl(var(--sprout))]'
+                    }`}
+                  >
+                    {row.verified ? 'موثّق ✓' : 'توثيق'}
+                  </button>
                 </div>
               ))}
             </div>

@@ -4,17 +4,21 @@ import { api } from 'convex/_generated/api';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
-import { GiftIcon, UsersIcon, CopyIcon, CheckCircleIcon, XCircleIcon, SparklesIcon } from './icons';
+import { GiftIcon, UsersIcon, CopyIcon, CheckCircleIcon, XCircleIcon, SparklesIcon, LockIcon } from './icons';
 
 /* ── "ادعُ واربح" tile (profile + desktop sidebar share the same dialog).
       `variant="ember"` matches the sidebar's "اشترك الآن" button style so both
-      actions read as one family — green = paid status, amber = invite reward. ── */
+      actions read as one family — green = paid status, amber = invite reward.
+      The server only hands out a real invite code to verified + paid accounts;
+      free/unverified users get a blocked dialog that asks them to subscribe. ── */
 export function ReferralButton({
   className,
   variant = 'neutral',
+  onSubscribe,
 }: {
   className?: string;
   variant?: 'neutral' | 'ember';
+  onSubscribe?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -31,19 +35,32 @@ export function ReferralButton({
         <GiftIcon size={16} />
         ادعُ واربح
       </button>
-      <ReferralDialog open={open} onOpenChange={setOpen} />
+      <ReferralDialog open={open} onOpenChange={setOpen} onSubscribe={onSubscribe} />
     </>
   );
 }
 
-export function ReferralDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+export function ReferralDialog({
+  open,
+  onOpenChange,
+  onSubscribe,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  onSubscribe?: () => void;
+}) {
   const stats = useQuery(api.referrals.getMyStats);
   const claimMyCode = useMutation(api.referrals.claimMyCode);
   const [copied, setCopied] = useState<'code' | 'link' | null>(null);
 
   useEffect(() => {
-    if (stats === null) claimMyCode().catch(() => {});
+    // Eligible but no code minted yet → claim it (server re-checks eligibility).
+    if (stats && !stats.blocked && !stats.code) claimMyCode().catch(() => {});
   }, [stats, claimMyCode]);
+
+  const blocked = stats?.blocked;
+  const needsPaid = blocked && !stats?.subscribed;
+  const needsVerified = blocked && stats?.subscribed && !stats?.verified;
 
   const copy = async (text: string, kind: 'code' | 'link') => {
     try {
@@ -74,7 +91,33 @@ export function ReferralDialog({ open, onOpenChange }: { open: boolean; onOpenCh
         </DialogHeader>
 
         <div className="px-4 py-3 space-y-2.5">
-          {stats ? (
+          {stats === undefined ? (
+            <p className="text-center text-xs text-muted-foreground py-2">جارٍ التحميل...</p>
+          ) : blocked ? (
+            <div className="px-2 py-5 text-center space-y-3">
+              <div className="w-12 h-12 rounded-full bg-[hsl(var(--amber))]/15 text-[hsl(var(--amber))] flex items-center justify-center mx-auto">
+                <LockIcon size={20} />
+              </div>
+              <h3 className="text-sm font-bold text-[hsl(var(--ink))]">الترويج والإحالة متوقّف</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {needsVerified ? (
+                  <>اشتراكك مدفوع، لكن يجب <b>توثيق حسابك رسمياً</b> أولاً لفتح رابط الدعوة وكسب 5000 دج لكل 10 مدعوين. تواصل مع الإدارة لتوثيق حسابك.</>
+                ) : needsPaid ? (
+                  <>الإحالة والترويج متاحان فقط للحسابات <b>الموثّقة والمدفوعة الاشتراك</b>. اشترك لفتح رابط الدعوة وكسب 5000 دج لكل 10 مدعوين.</>
+                ) : (
+                  <>الإحالة والترويج متاحان فقط للحسابات <b>الموثّقة والمدفوعة الاشتراك</b>.</>
+                )}
+              </p>
+              {needsPaid && onSubscribe && (
+                <Button variant="sprout" className="w-full h-10 rounded-xl" onClick={onSubscribe}>
+                  <SparklesIcon size={15} />
+                  اشترك الآن
+                </Button>
+              )}
+            </div>
+          ) : !stats.code ? (
+            <p className="text-center text-xs text-muted-foreground py-2">جارٍ تجهيز رمزك...</p>
+          ) : (
             <>
               <div className="flex gap-2">
                 <div className="flex-1 rounded-xl bg-card border border-border p-2 text-center">
@@ -121,8 +164,6 @@ export function ReferralDialog({ open, onOpenChange }: { open: boolean; onOpenCh
                 </div>
               </div>
             </>
-          ) : (
-            <p className="text-center text-xs text-muted-foreground py-2">جارٍ تجهيز رمزك...</p>
           )}
         </div>
       </DialogContent>

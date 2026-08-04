@@ -250,6 +250,7 @@ function App() {
             dark={dark}
             isPaid={isPaid}
             onSelectTheme={setTheme}
+            onSubscribe={openPaywall}
           />
         )}
       </AppShell>

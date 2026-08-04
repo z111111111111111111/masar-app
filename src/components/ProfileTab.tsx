@@ -35,6 +35,7 @@ export function ProfileTab({
   dark,
   isPaid,
   onSelectTheme,
+  onSubscribe,
 }: {
   name: string;
   startDate: string;
@@ -47,6 +48,7 @@ export function ProfileTab({
   dark: boolean;
   isPaid: boolean;
   onSelectTheme: (id: ThemeId) => void;
+  onSubscribe?: () => void;
 }) {
   const setAllowSharing = useMutation(api.progress.setAllowSharing);
   const [shareOpen, setShareOpen] = useState(false);
@@ -117,7 +119,7 @@ export function ProfileTab({
           onSelectTheme={onSelectTheme}
         />
 
-        <ReferralButton />
+        <ReferralButton onSubscribe={onSubscribe} />
       </div>
 
       <AccountStatus isPaid={isPaid} />
