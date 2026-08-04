@@ -36,6 +36,28 @@ export function SubjectLineChart({
     return () => ro.disconnect();
   }, []);
 
+  // Desktop mouse wheel only scrolls the page vertically, so a wide chart
+  // inside this horizontal container looks "cut off" and unmovable. Translate a
+  // vertical wheel over the chart into a horizontal scroll of this container
+  // (only while the chart actually overflows).
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (el.scrollWidth <= el.clientWidth) return;
+      if (e.shiftKey) return;
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+        const before = el.scrollLeft;
+        el.scrollLeft += e.deltaY;
+        if (el.scrollLeft !== before) {
+          e.preventDefault();
+        }
+      }
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
+
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollLeft = scrollRef.current.scrollWidth;
