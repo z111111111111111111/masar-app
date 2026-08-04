@@ -94,22 +94,22 @@ export function ReferralDialog({
           {stats === undefined ? (
             <p className="text-center text-xs text-muted-foreground py-2">جارٍ التحميل...</p>
           ) : blocked ? (
-            <div className="px-2 py-5 text-center space-y-3">
+            <div className="px-2 py-5 text-center space-y-3.5">
               <div className="w-12 h-12 rounded-full bg-[hsl(var(--amber))]/15 text-[hsl(var(--amber))] flex items-center justify-center mx-auto">
                 <LockIcon size={20} />
               </div>
-              <h3 className="text-sm font-bold text-[hsl(var(--ink))]">الترويج والإحالة متوقّف</h3>
+              <h3 className="text-sm font-bold text-[hsl(var(--ink))]">خاصية الإحالة معطّلة</h3>
               <p className="text-xs text-muted-foreground leading-relaxed">
                 {needsVerified ? (
-                  <>اشتراكك مدفوع، لكن يجب <b>توثيق حسابك رسمياً</b> أولاً لفتح رابط الدعوة وكسب 5000 دج لكل 10 مدعوين. تواصل مع الإدارة لتوثيق حسابك.</>
+                  <>اشتراكك مدفوع، لكن يجب <b>توثيق حسابك رسمياً</b> أولاً لتفعيل الإحالة والحصول على رمزك الخاص. تواصل مع الإدارة لتوثيق حسابك.</>
                 ) : needsPaid ? (
-                  <>الإحالة والترويج متاحان فقط للحسابات <b>الموثّقة والمدفوعة الاشتراك</b>. اشترك لفتح رابط الدعوة وكسب 5000 دج لكل 10 مدعوين.</>
+                  <>هذه الخاصية <b>معطّلة</b> في حسابك المجاني. فعّل حسابك واشترك للحصول على رمزك الخاص ودعوة أصدقائك وكسب <b>5000 دج</b> لكل 10 مدعوين يشتركون عبرك.</>
                 ) : (
-                  <>الإحالة والترويج متاحان فقط للحسابات <b>الموثّقة والمدفوعة الاشتراك</b>.</>
+                  <>هذه الخاصية <b>معطّلة</b>. تفعيل الإحالة يتطلب حساباً موثّقاً ومدفوع الاشتراك.</>
                 )}
               </p>
               {needsPaid && onSubscribe && (
-                <Button variant="sprout" className="w-full h-10 rounded-xl" onClick={onSubscribe}>
+                <Button variant="sprout" className="w-full h-11 rounded-full" onClick={onSubscribe}>
                   <SparklesIcon size={15} />
                   اشترك الآن
                 </Button>
