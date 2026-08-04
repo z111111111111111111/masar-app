@@ -118,6 +118,7 @@ export function SubjectLineChart({
           </LineChart>
         </div>
       </div>
+      </div>
       <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
         {SUBJECTS.map((s) => (
           <span key={s.id} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
@@ -125,7 +126,6 @@ export function SubjectLineChart({
             {s.short}
           </span>
         ))}
-      </div>
       </div>
     </div>
   );
