@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import {
   ResponsiveContainer,
   LineChart,
@@ -22,14 +22,25 @@ export function SubjectLineChart({
   series: Array<{ day: number } & Record<string, number | null | undefined>>;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [boxW, setBoxW] = useState(0);
 
   const hasAnyData = series.some((row) => SUBJECTS.some((s) => typeof row[s.id] === 'number'));
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const update = () => setBoxW(el.clientWidth);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollLeft = scrollRef.current.scrollWidth;
     }
-  }, [series]);
+  }, [series, boxW]);
 
   if (!hasAnyData) {
     return (
@@ -39,7 +50,11 @@ export function SubjectLineChart({
     );
   }
 
-  const chartWidth = Math.max(series.length, 1) * DAY_WIDTH;
+  // Never narrower than the visible box, so the X axis always reaches the end
+  // of the card even when there are only a few days. With many days the chart
+  // grows and scrolls, keeping the value labels pinned in the fixed column.
+  const contentWidth = Math.max(series.length, 1) * DAY_WIDTH;
+  const chartWidth = Math.max(contentWidth, boxW);
 
   // Keep the value labels pinned while the days column scrolls horizontally:
   // the Y axis is hidden inside the chart (domain only) and its tick labels are
