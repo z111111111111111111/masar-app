@@ -6,7 +6,7 @@ import { ChevronIcon } from '../icons';
 import { Button } from '@/components/ui/button';
 import { KaTeXBlock } from '@/components/landing/MathText';
 import { DERIVATIVE_FLOW, DERIVATIVE_FLOW_ID, serializeCorrectAnswer } from './DerivativeFlow';
-import { balancedSample } from './systems/utils';
+import { balancedSample, buildSession } from './systems/utils';
 import type { ExerciseData } from './systems/types';
 import { MultipleChoice } from './systems/MultipleChoice';
 import { RuleAssembly } from './systems/RuleAssembly';
@@ -73,7 +73,7 @@ export function DerivativeLesson({
 
   // Random per-entry session: sampled once when the lesson mounts (each entry
   // remounts the component), so the exercises differ between sessions.
-  const [session] = useState<number[]>(() => balancedSample(flow, sessionSize));
+  const [session] = useState<number[]>(() => buildSession(flow, sessionSize));
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);

@@ -33,3 +33,24 @@ export function balancedSample(flow: ExerciseData[], max: number): number[] {
   const extra = shuffle(rest).slice(0, Math.max(0, max - picked.length));
   return shuffle([...picked, ...extra]);
 }
+
+// Session builder: fill-in-the-blank exercises always appear as one contiguous
+// block in flow order, so multi-blank passages (a single text split into fill
+// items) read sequentially instead of being scattered randomly among the other
+// systems. The remaining slots are still sampled randomly with coverage.
+export function buildSession(flow: ExerciseData[], max: number): number[] {
+  const fillIdx = flow.map((ex, i) => (ex.kind === 'fill' ? i : -1)).filter((i) => i >= 0);
+  if (fillIdx.length === 0) return balancedSample(flow, max);
+  const restPool = flow.map((ex, i) => ({ ex, i })).filter(({ ex }) => ex.kind !== 'fill');
+  const restMax = Math.max(0, max - fillIdx.length);
+  const restSession =
+    restMax >= restPool.length
+      ? restPool.map((x) => x.i)
+      : balancedSample(
+          restPool.map((x) => x.ex),
+          restMax
+        )
+          .map((k) => restPool[k].i)
+          .slice(0, restMax);
+  return [...fillIdx, ...restSession];
+}
