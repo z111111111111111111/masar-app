@@ -2,6 +2,7 @@ import { createContext, useContext, useCallback, useEffect, useRef, useState, ty
 import { useQuery, useMutation, useAction } from 'convex/react';
 import { api } from 'convex/_generated/api';
 import { toast } from '@/hooks/use-toast';
+import { MathText } from '@/components/landing/MathText';
 import { InfoIcon, LightbulbIcon, SparklesIcon, GemIcon } from '../../icons';
 import { isLimitWaitError, isPaywallError, openPaywall } from '@/lib/paywall';
 import type { ExerciseData } from './types';
@@ -259,7 +260,7 @@ export function ExerciseHelpersBar() {
       {panel === 'info' && info && (
         <div className="mt-2.5 rounded-xl bg-[hsl(var(--chart-1))]/5 p-3 animate-[pop-in_0.25s_ease-out]">
           <p className="text-[10px] font-bold text-[hsl(var(--chart-1))] mb-1">معلومة عن التمرين</p>
-          <p className="text-xs leading-relaxed text-[hsl(var(--ink))]">{info}</p>
+          <MathText tex={info} className="text-xs leading-relaxed text-[hsl(var(--ink))]" />
         </div>
       )}
 
