@@ -11,11 +11,11 @@ export const MAX_HEARTS = 15;
 export const HEART_FULL_REFILL_MS = 13 * 60 * 60 * 1000;
 export const FULL_REFILL_COST = 50; // refilling all 15 hearts costs 50 jewels
 export const STAGE_REWARD = 100; // jewels earned for passing a stage
-const STAGES = new Set(["derivative", "derivative-2", "derivative-3"]);
+const STAGES = new Set(["derivative", "derivative-2", "derivative-3", "derivative-4"]);
 
 // Roadmap stage progress ids (server-side, tamper-proof). During the free
 // trial only the first stage of each subject may be completed.
-const ROADMAP_STAGES = new Set(["s1", "s2", "s3"]);
+const ROADMAP_STAGES = new Set(["s1", "s2", "s3", "s4"]);
 const FIRST_ROADMAP_STAGES = new Set(["s1"]);
 
 // Roadmap stage ↔ lesson flow mapping. markStagePassed and awardStageCompletion
@@ -26,16 +26,19 @@ const STAGE_FLOW: Record<string, string> = {
   s1: "derivative",
   s2: "derivative-2",
   s3: "derivative-3",
+  s4: "derivative-4",
 };
 const FLOW_STAGE: Record<string, string> = {
   derivative: "s1",
   "derivative-2": "s2",
   "derivative-3": "s3",
+  "derivative-4": "s4",
 };
 const STAGE_PREREQ: Record<string, string | null> = {
   s1: null,
   s2: "s1",
   s3: "s2",
+  s4: "s3",
 };
 
 // A stage may only be completed/rewarded when its flow session was started on

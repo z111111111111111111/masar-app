@@ -6,6 +6,7 @@ import { ChevronIcon, MathIcon, AtomIcon, LeafIcon, BrainIcon, GlobeIcon, Shuffl
 import { DerivativeLesson } from './lessons/DerivativeLesson';
 import { DerivativeLessonStage2 } from './lessons/DerivativeLessonStage2';
 import { DerivativeLessonStage3 } from './lessons/DerivativeLessonStage3';
+import { DerivativeLessonStage4 } from './lessons/DerivativeLessonStage4';
 
 // During the free trial only the first stage of each subject may be completed.
 // Completion is persisted server-side (profile.completedStages) so it can't be
@@ -49,7 +50,7 @@ const MATH_STAGES: Stage[] = [
   { id: 's1', name: 'مقدمة في الاشتقاق', lessonId: 'derivative', requiredStage: null },
   { id: 's2', name: 'مفهوم الاشتقاقية عند نقطة', lessonId: 'derivative-2', requiredStage: 's1' },
   { id: 's3', name: 'قواعد الاشتقاق', lessonId: 'derivative-3', requiredStage: 's2' },
-  { id: 's4', name: 'تمارين مركبة', lessonId: null, requiredStage: 's3' },
+  { id: 's4', name: 'تمارين مركبة', lessonId: 'derivative-4', requiredStage: 's3' },
 ];
 
 function isStageUnlocked(stageId: string, completed: string[]): boolean {
@@ -243,6 +244,7 @@ function StageLesson({
     derivative: 's1',
     'derivative-2': 's2',
     'derivative-3': 's3',
+    'derivative-4': 's4',
   };
   const handleComplete = (passed: boolean) => {
     const target = stageMap[stageId];
@@ -260,6 +262,10 @@ function StageLesson({
 
   if (stageId === 'derivative-3') {
     return <DerivativeLessonStage3 onBack={onBack} onStageComplete={handleComplete} />;
+  }
+
+  if (stageId === 'derivative-4') {
+    return <DerivativeLessonStage4 onBack={onBack} onStageComplete={handleComplete} />;
   }
 
   return null;
