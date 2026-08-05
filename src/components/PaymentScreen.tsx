@@ -83,7 +83,7 @@ export function PaymentScreen({ onCancel, reason = 'trial' }: PaymentScreenProps
         const res = await createCheckout();
         if (cancelled) return;
         const w = takePayWindow();
-        if (w) {
+        if (w && !w.closed) {
           try {
             w.opener = null;
           } catch {
@@ -91,8 +91,9 @@ export function PaymentScreen({ onCancel, reason = 'trial' }: PaymentScreenProps
           }
           w.location.href = res.checkoutUrl;
         } else {
-          // The pre-opened popup was lost (closed/blocked) — try a fresh one.
-          openCheckoutWindow(res.checkoutUrl);
+          // The popup was blocked/lost — take the whole page to Chargily. The
+          // gateway returns here via /?payment=success once payment completes.
+          window.location.href = res.checkoutUrl;
         }
         setPhase('waiting');
       } catch (err: any) {

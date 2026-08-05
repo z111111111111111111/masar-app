@@ -183,14 +183,10 @@ export function AccountStatus({
 }) {
   const [compareOpen, setCompareOpen] = useState(false);
 
-  // The main "اشترك الآن" action goes straight to the subscription paywall.
-  // The comparison dialog stays as a fallback when no subscribe handler exists.
+  // The main "اشترك الآن" action opens the paid-vs-free comparison first; the
+  // comparison's subscribe button then proceeds to the payment paywall.
   const subscribe = () => {
-    if (onSubscribe) {
-      onSubscribe();
-    } else {
-      setCompareOpen(true);
-    }
+    setCompareOpen(true);
   };
 
   if (compact) {
