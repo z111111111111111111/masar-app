@@ -4,11 +4,6 @@ type Listener = () => void;
 
 const listeners = new Set<Listener>();
 
-// Popup window opened synchronously inside a click handler (so browsers don't
-// block it). PaymentScreen grabs it and navigates it to the Chargily checkout
-// URL once the checkout is created server-side.
-let pendingPayWindow: Window | null = null;
-
 export function subscribePaywall(listener: Listener): () => void {
   listeners.add(listener);
   return () => {
@@ -17,29 +12,14 @@ export function subscribePaywall(listener: Listener): () => void {
 }
 
 export function openPaywall(): void {
-  if (typeof window !== 'undefined') {
-    pendingPayWindow = window.open('', '_blank');
-  }
   listeners.forEach((l) => l());
 }
 
-export function takePayWindow(): Window | null {
-  const w = pendingPayWindow;
-  pendingPayWindow = null;
-  return w;
-}
-
-export function openPayWindow(): void {
-  if (typeof window !== 'undefined') {
-    pendingPayWindow = window.open('', '_blank');
-  }
-}
-
+// Opens the Chargily checkout in a new tab. Called with the real URL (never a
+// blank popup) — opening the URL directly is the most reliable way to get past
+// popup blockers, and it can never leave a blank tab behind.
 export function openCheckoutWindow(url: string): Window | null {
   const safeUrl = url.replace(/^http:\/\//i, 'https://');
-  // Opening directly with the URL (instead of a blank popup + location.href) is
-  // the most reliable way to get a new tab past popup blockers, especially when
-  // called within the ~5s transient user activation window after a click.
   const w = typeof window !== 'undefined' ? window.open(safeUrl, '_blank') : null;
   if (w) {
     try {

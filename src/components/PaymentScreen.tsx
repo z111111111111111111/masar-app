@@ -11,7 +11,7 @@ import {
   CreditCardIcon,
 } from './icons';
 import { useSession } from '@/lib/auth-client';
-import { openPayWindow, takePayWindow, openCheckoutWindow } from '@/lib/paywall';
+import { openCheckoutWindow } from '@/lib/paywall';
 
 // ─── Plan details (تعدَّل من الإدارة) ─────────────────────────────
 export const SUBSCRIPTION_PRICE_DZD = 3500;
@@ -82,19 +82,10 @@ export function PaymentScreen({ onCancel, reason = 'trial' }: PaymentScreenProps
       try {
         const res = await createCheckout();
         if (cancelled) return;
-        const w = takePayWindow();
-        if (w && !w.closed) {
-          try {
-            w.opener = null;
-          } catch {
-            /* noop */
-          }
-          w.location.href = res.checkoutUrl;
-        } else if (!openCheckoutWindow(res.checkoutUrl)) {
-          // Both popup attempts failed (blocker) — stay on the activation
-          // screen; the "افتح صفحة الدفع" button below is a real click the
-          // browser will always allow.
-        }
+        // Open the real Chargily URL directly in a new tab. If the browser or
+        // an ad blocker blocks it, the "افتح صفحة الدفع" link below is a real
+        // anchor — a direct user click that can never be blocked.
+        openCheckoutWindow(res.checkoutUrl);
         setPhase('waiting');
       } catch (err: any) {
         if (cancelled) return;
@@ -116,7 +107,6 @@ export function PaymentScreen({ onCancel, reason = 'trial' }: PaymentScreenProps
   }, [checkoutStatus, phase, isActive]);
 
   const retry = () => {
-    openPayWindow();
     setAttempt((a) => a + 1);
   };
 
