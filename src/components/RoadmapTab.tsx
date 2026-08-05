@@ -7,6 +7,7 @@ import { DerivativeLesson } from './lessons/DerivativeLesson';
 import { DerivativeLessonStage2 } from './lessons/DerivativeLessonStage2';
 import { DerivativeLessonStage3 } from './lessons/DerivativeLessonStage3';
 import { DerivativeLessonStage4 } from './lessons/DerivativeLessonStage4';
+import { DerivativeLessonStage5 } from './lessons/DerivativeLessonStage5';
 
 // During the free trial only the first stage of each subject may be completed.
 // Completion is persisted server-side (profile.completedStages) so it can't be
@@ -51,6 +52,7 @@ const MATH_STAGES: Stage[] = [
   { id: 's2', name: 'مفهوم الاشتقاقية عند نقطة', lessonId: 'derivative-2', requiredStage: 's1' },
   { id: 's3', name: 'قواعد الاشتقاق', lessonId: 'derivative-3', requiredStage: 's2' },
   { id: 's4', name: 'تمارين مركبة', lessonId: 'derivative-4', requiredStage: 's3' },
+  { id: 's5', name: 'دراسة تغيرات دالة', lessonId: 'derivative-5', requiredStage: 's4' },
 ];
 
 function isStageUnlocked(stageId: string, completed: string[]): boolean {
@@ -245,6 +247,7 @@ function StageLesson({
     'derivative-2': 's2',
     'derivative-3': 's3',
     'derivative-4': 's4',
+    'derivative-5': 's5',
   };
   const handleComplete = (passed: boolean) => {
     const target = stageMap[stageId];
@@ -266,6 +269,10 @@ function StageLesson({
 
   if (stageId === 'derivative-4') {
     return <DerivativeLessonStage4 onBack={onBack} onStageComplete={handleComplete} />;
+  }
+
+  if (stageId === 'derivative-5') {
+    return <DerivativeLessonStage5 onBack={onBack} onStageComplete={handleComplete} />;
   }
 
   return null;
