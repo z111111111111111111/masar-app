@@ -8,7 +8,7 @@ export type AppScreen =
 
 const TAB_IDS: TabId[] = ['home', 'tracking', 'roadmap', 'board', 'profile'];
 const SUBJECT_IDS = new Set(['math', 'physics', 'nature', 'philo', 'social', 'random']);
-const STAGE_IDS = new Set(['derivative', 'derivative-2', 'derivative-3']);
+const STAGE_IDS = new Set(['derivative', 'derivative-2', 'derivative-3', 'derivative-4', 'derivative-5']);
 
 function isValidScreen(s: unknown): s is AppScreen {
   if (!s || typeof s !== 'object') return false;
