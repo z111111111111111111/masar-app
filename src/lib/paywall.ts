@@ -37,14 +37,16 @@ export function openPayWindow(): void {
 
 export function openCheckoutWindow(url: string): Window | null {
   const safeUrl = url.replace(/^http:\/\//i, 'https://');
-  const w = typeof window !== 'undefined' ? window.open('', '_blank') : null;
+  // Opening directly with the URL (instead of a blank popup + location.href) is
+  // the most reliable way to get a new tab past popup blockers, especially when
+  // called within the ~5s transient user activation window after a click.
+  const w = typeof window !== 'undefined' ? window.open(safeUrl, '_blank') : null;
   if (w) {
     try {
       w.opener = null;
     } catch {
       /* noop */
     }
-    w.location.href = safeUrl;
   }
   return w;
 }

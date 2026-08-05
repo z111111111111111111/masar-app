@@ -90,10 +90,10 @@ export function PaymentScreen({ onCancel, reason = 'trial' }: PaymentScreenProps
             /* noop */
           }
           w.location.href = res.checkoutUrl;
-        } else {
-          // The popup was blocked/lost — take the whole page to Chargily. The
-          // gateway returns here via /?payment=success once payment completes.
-          window.location.href = res.checkoutUrl;
+        } else if (!openCheckoutWindow(res.checkoutUrl)) {
+          // Both popup attempts failed (blocker) — stay on the activation
+          // screen; the "افتح صفحة الدفع" button below is a real click the
+          // browser will always allow.
         }
         setPhase('waiting');
       } catch (err: any) {
@@ -329,7 +329,7 @@ export function PaymentScreen({ onCancel, reason = 'trial' }: PaymentScreenProps
               <p className="text-xs text-muted-foreground leading-relaxed mb-6">
                 {urlOutcome === 'success'
                   ? 'سيُفعّل حسابك تلقائياً خلال ثوانٍ. إذا لم يُفعّل، حدّث الصفحة.'
-                  : 'أكمل الدفع في التبويب الجديد. سيُفعّل حسابك تلقائياً بمجرد تأكيد العملية — حتى لو أغلقت التبويب.'}
+                  : 'أكمل الدفع في التبويب الجديد. إذا لم يُفتح تلقائياً اضغط "افتح صفحة الدفع" أدناه. سيُفعّل حسابك بمجرد تأكيد العملية — حتى لو أغلقت التبويب.'}
               </p>
 
               {urlOutcome === 'success' ? null : (
