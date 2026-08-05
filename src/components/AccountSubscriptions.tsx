@@ -172,8 +172,26 @@ export function ReferralDialog({
 }
 
 /* ── Account status (paid/verified vs free → subscribe) ──────────── */
-export function AccountStatus({ isPaid, compact = false }: { isPaid: boolean; compact?: boolean }) {
+export function AccountStatus({
+  isPaid,
+  compact = false,
+  onSubscribe,
+}: {
+  isPaid: boolean;
+  compact?: boolean;
+  onSubscribe?: () => void;
+}) {
   const [compareOpen, setCompareOpen] = useState(false);
+
+  // The main "اشترك الآن" action goes straight to the subscription paywall.
+  // The comparison dialog stays as a fallback when no subscribe handler exists.
+  const subscribe = () => {
+    if (onSubscribe) {
+      onSubscribe();
+    } else {
+      setCompareOpen(true);
+    }
+  };
 
   if (compact) {
     return (
@@ -185,12 +203,12 @@ export function AccountStatus({ isPaid, compact = false }: { isPaid: boolean; co
             <span className="shrink-0 rounded-full bg-[hsl(var(--sprout))]/10 text-[hsl(var(--sprout))] text-[10px] font-bold px-2 py-0.5">موثق</span>
           </div>
         ) : (
-          <Button variant="sprout" onClick={() => setCompareOpen(true)} className="w-full h-10 rounded-xl">
+          <Button variant="sprout" onClick={subscribe} className="w-full h-10 rounded-xl">
             <SparklesIcon size={15} />
             اشترك الآن
           </Button>
         )}
-        <UpgradeCompareDialog open={compareOpen} onOpenChange={setCompareOpen} />
+        <UpgradeCompareDialog open={compareOpen} onOpenChange={setCompareOpen} onSubscribe={onSubscribe} />
       </>
     );
   }
@@ -220,12 +238,12 @@ export function AccountStatus({ isPaid, compact = false }: { isPaid: boolean; co
             <h3 className="text-sm font-bold text-[hsl(var(--ink))]">حسابك مجاني</h3>
             <p className="text-[11px] text-muted-foreground leading-snug">فعّل اشتراكك لفتح كل المميزات والاستخدام الكامل.</p>
           </div>
-          <Button variant="sprout" onClick={() => setCompareOpen(true)} className="shrink-0 h-9 px-4 rounded-full text-xs">
+          <Button variant="sprout" onClick={subscribe} className="shrink-0 h-9 px-4 rounded-full text-xs">
             اشترك الآن
           </Button>
         </div>
       )}
-      <UpgradeCompareDialog open={compareOpen} onOpenChange={setCompareOpen} />
+      <UpgradeCompareDialog open={compareOpen} onOpenChange={setCompareOpen} onSubscribe={onSubscribe} />
     </>
   );
 }
@@ -239,7 +257,15 @@ const COMPARE_ROWS = [
   { label: 'توثيق الحساب رسمياً', paid: 'موثق', free: 'غير موثق' },
 ];
 
-export function UpgradeCompareDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+export function UpgradeCompareDialog({
+  open,
+  onOpenChange,
+  onSubscribe,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  onSubscribe?: () => void;
+}) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[340px] p-0 rounded-2xl max-h-[85dvh] overflow-y-auto" dir="rtl">
@@ -274,7 +300,16 @@ export function UpgradeCompareDialog({ open, onOpenChange }: { open: boolean; on
             ))}
           </div>
 
-          <Button variant="sprout" className="w-full h-11 rounded-full" onClick={() => {}}>
+          <Button
+            variant="sprout"
+            className="w-full h-11 rounded-full"
+            onClick={() => {
+              if (onSubscribe) {
+                onOpenChange(false);
+                onSubscribe();
+              }
+            }}
+          >
             اشترك الآن
           </Button>
         </div>

@@ -15,6 +15,13 @@ export const RANDOM_LIMIT = 3;
 export const DAILY_LIMIT = 3;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+// Per-user AI rate limiting (applies to paid accounts too, since they bypass
+// the 24h quota): a short cooldown between calls plus a generous hourly cap so
+// a single account can't hammer OpenRouter and amplify the operator's bill.
+const AI_RATE_MIN_MS = 2000;
+const AI_RATE_HOUR_MAX = 90;
+const HOUR_MS = 60 * 60 * 1000;
+
 type DbCtx = { db: QueryCtx["db"] };
 
 async function loadState(ctx: DbCtx, userId: string) {
@@ -42,21 +49,25 @@ function trialDays(progress: { signedUpAt?: number } | null | undefined, fallbac
   return Math.floor(Math.max(0, now - signedUpAt) / DAY_MS);
 }
 
-// Rolling 24h window based purely on the server clock (Date.now()). The stored
-// windowStart keeps the phase of the window, so the quota refills ~24h after
-// the first use and the client cannot shift it by changing the phone clock.
-function windowInfo(windowStart: number | undefined, now: number): { windowStart: number; resetAt: number; rolled: boolean } {
+// Rolling window helper (server clock). The stored windowStart keeps the phase
+// of the window, so the quota refills ~windowMs after the first use and the
+// client cannot shift it by changing the phone clock.
+function windowInfo(
+  windowStart: number | undefined,
+  now: number,
+  windowMs: number = DAY_MS
+): { windowStart: number; resetAt: number; rolled: boolean } {
   if (!windowStart || windowStart > now) {
-    return { windowStart: now, resetAt: now + DAY_MS, rolled: true };
+    return { windowStart: now, resetAt: now + windowMs, rolled: true };
   }
   const elapsed = now - windowStart;
-  if (elapsed < DAY_MS) {
-    return { windowStart, resetAt: windowStart + DAY_MS, rolled: false };
+  if (elapsed < windowMs) {
+    return { windowStart, resetAt: windowStart + windowMs, rolled: false };
   }
-  const k = Math.floor(elapsed / DAY_MS);
+  const k = Math.floor(elapsed / windowMs);
   return {
-    windowStart: windowStart + k * DAY_MS,
-    resetAt: windowStart + (k + 1) * DAY_MS,
+    windowStart: windowStart + k * windowMs,
+    resetAt: windowStart + (k + 1) * windowMs,
     rolled: true,
   };
 }
@@ -140,8 +151,38 @@ export const consumeAi = internalMutation({
     const userId = args.userId;
     const { progress, sub, limits } = await loadState(ctx, userId);
     const now = Date.now();
+
+    // Per-user rate limit: cooldown between calls + hourly cap (paid or not).
+    if (limits?.aiLastAt && now - limits.aiLastAt < AI_RATE_MIN_MS) {
+      throw new Error("انتظر قليلاً قبل إرسال رسالة أخرى.");
+    }
+    const rateW = windowInfo(limits?.aiRateStart, now, HOUR_MS);
+    const rateCount = rateW.rolled ? 0 : (limits?.aiRateCount ?? 0);
+    if (rateCount >= AI_RATE_HOUR_MAX) {
+      throw new Error("استنفدت الرسائل لهذه الساعة. حاول مجدداً لاحقاً.");
+    }
+
     const paid = isPaid(sub, now);
-    if (paid) return { allowed: true, remaining: null, resetAt: null };
+    const rateFields = {
+      aiLastAt: now,
+      aiRateCount: rateCount + 1,
+      aiRateStart: rateW.windowStart,
+    };
+    if (paid) {
+      if (limits) {
+        await ctx.db.patch(limits._id, rateFields);
+      } else {
+        await ctx.db.insert("userLimits", {
+          userId,
+          aiUsed: 0,
+          randomUsed: 0,
+          dailyUsed: 0,
+          ...rateFields,
+        });
+      }
+      return { allowed: true, remaining: null, resetAt: null };
+    }
+
     const daysSince = trialDays(progress, progress?._creationTime, now);
     if (daysSince >= TRIAL_DAYS) {
       throw new Error("انتهت فترة التجربة المجانية. فعّل اشتراكك للمتابعة.");
@@ -153,7 +194,7 @@ export const consumeAi = internalMutation({
     }
     const next = used + 1;
     if (limits) {
-      await ctx.db.patch(limits._id, { aiUsed: next, aiWindowStart: w.windowStart });
+      await ctx.db.patch(limits._id, { aiUsed: next, aiWindowStart: w.windowStart, ...rateFields });
     } else {
       await ctx.db.insert("userLimits", {
         userId,
@@ -161,9 +202,30 @@ export const consumeAi = internalMutation({
         randomUsed: 0,
         dailyUsed: 0,
         aiWindowStart: w.windowStart,
+        ...rateFields,
       });
     }
     return { allowed: true, remaining: AI_LIMIT - next, resetAt: w.resetAt };
+  },
+});
+
+// ─── Refund one consumed AI slot when the model call itself failed ─────────
+// The quota is consumed BEFORE the (expensive) OpenRouter call so an unpayable
+// request never runs; if the call then fails, give the slot back instead of
+// charging the user for a message that never got answered.
+export const refundAi = internalMutation({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    const limits = await ctx.db
+      .query("userLimits")
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .unique();
+    if (!limits) return;
+    const w = windowInfo(limits.aiWindowStart, Date.now());
+    if (w.rolled) return; // window rolled over — nothing stored to refund
+    const used = limits.aiUsed ?? 0;
+    if (used <= 0) return;
+    await ctx.db.patch(limits._id, { aiUsed: used - 1 });
   },
 });
 

@@ -6,7 +6,7 @@ import { query } from "./_generated/server";
 import { betterAuth } from "better-auth/minimal";
 import authConfig from "./auth.config";
 
-const siteUrl = process.env.SITE_URL!;
+export const siteUrl = process.env.SITE_URL ?? "https://masarlearn.vercel.app";
 
 export const authComponent = createClient<DataModel>(components.betterAuth);
 
@@ -21,6 +21,23 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
     emailAndPassword: {
       enabled: true,
       requireEmailVerification: false,
+      minPasswordLength: 6,
+      maxPasswordLength: 128,
+    },
+    // Tighten better-auth's built-in rate limiting (it is on by default in
+    // production with per-IP windows). The sign-up rule caps mass account
+    // creation (trial farming) without an email-verification gate; the others
+    // blunt brute force on login and password-reset endpoints.
+    rateLimit: {
+      enabled: true,
+      window: 60,
+      max: 100,
+      customRules: {
+        "/sign-up/email": { window: 3600, max: 5 },
+        "/sign-in/email": { window: 300, max: 10 },
+        "/sign-in/social": { window: 300, max: 10 },
+        "/request-password-reset": { window: 3600, max: 3 },
+      },
     },
     socialProviders:
       googleClientId && googleClientSecret

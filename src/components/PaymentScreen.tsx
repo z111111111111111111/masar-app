@@ -1,17 +1,21 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { useMutation, useQuery, useQuery_experimental as useQuerySafe } from 'convex/react';
+import { useAction, useMutation, useQuery_experimental as useQuerySafe } from 'convex/react';
 import { api } from 'convex/_generated/api';
-import { ShieldIcon, ChevronIcon, CheckCircleIcon, WarningIcon } from './icons';
+import {
+  ShieldIcon,
+  ChevronIcon,
+  CheckCircleIcon,
+  WarningIcon,
+  XCircleIcon,
+  CreditCardIcon,
+} from './icons';
 import { useSession } from '@/lib/auth-client';
+import { openPayWindow, takePayWindow, openCheckoutWindow } from '@/lib/paywall';
 
-// ─── Transfer details (تعدَّل من الإدارة) ─────────────────────────
-export const SUBSCRIPTION_PRICE_DZD = 3000;
+// ─── Plan details (تعدَّل من الإدارة) ─────────────────────────────
+export const SUBSCRIPTION_PRICE_DZD = 3500;
 export const SUBSCRIPTION_DURATION = '3 أشهر';
-export const PAYMENT_CCP = 'CCP: 00000000 00 00';
-export const PAYMENT_EDAHABIA = 'EDAHABIA: 0000 0000 0000';
-export const PAYMENT_NAME = 'مؤسسة مسار للتعليم';
 
 interface PaymentScreenProps {
   onCancel?: () => void;
@@ -31,8 +35,10 @@ export function PaymentScreen({ onCancel, reason = 'trial' }: PaymentScreenProps
   const { data: session } = useSession();
   const user = session?.user;
 
-  const initiatePayment = useMutation(api.subscription.initiatePayment);
-  const verifySub = useQuery(api.subscription.verifySubscription);
+  const createCheckout = useAction(api.payments.createCheckout);
+  const status = useQuerySafe({ query: api.payments.getCheckoutStatus, args: {} });
+
+  // Admin panel (manual bank-transfer flow kept as a fallback)
   const pendingListResult = useQuerySafe({ query: api.subscription.adminListPending, args: {} });
   const activeListResult = useQuerySafe({ query: api.subscription.adminListActive, args: {} });
   const adminActivate = useMutation(api.subscription.adminActivate);
@@ -40,29 +46,81 @@ export function PaymentScreen({ onCancel, reason = 'trial' }: PaymentScreenProps
   const setVerified = useMutation(api.leaderboard.setVerified);
 
   const [isAdmin, setIsAdmin] = useState(() => window.location.hash === '#admin');
-  const [reference, setReference] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
 
-  const isPending = submitted || verifySub?.status === 'pending';
-  const isActive = verifySub?.status === 'active';
+  const [attempt, setAttempt] = useState(0);
+  const [phase, setPhase] = useState<'creating' | 'waiting' | 'error'>('creating');
+  const [errorMsg, setErrorMsg] = useState('');
+  const [urlOutcome] = useState<'success' | 'failure' | null>(() => {
+    const p = new URLSearchParams(window.location.search).get('payment');
+    if (p === 'success') return 'success';
+    if (p === 'failure') return 'failure';
+    return null;
+  });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    if (reference.trim().length < 4) {
-      setError('أدخل مرجع العملية (مثال: رقم إيصال التحويل).');
+  const subStatus = status.data?.subscriptionStatus ?? 'loading';
+  const checkoutStatus = status.data?.checkoutStatus ?? null;
+  const checkoutUrl = status.data?.checkoutUrl ?? null;
+  const isActive = subStatus === 'active';
+
+  // Create the checkout once on mount and on every retry, then navigate the
+  // (synchronously-opened) popup to the Chargily page.
+  useEffect(() => {
+    if (isActive) return;
+    if (urlOutcome === 'success') {
+      setPhase('waiting');
       return;
     }
-    setLoading(true);
-    try {
-      await initiatePayment({ reference: reference.trim() });
-      setSubmitted(true);
-    } catch (err: any) {
-      setError(err?.message ?? 'تعذّر إرسال الطلب. حاول مجدداً.');
-    } finally {
-      setLoading(false);
+    if (urlOutcome === 'failure') {
+      setPhase('error');
+      setErrorMsg('تعذّرت عملية الدفع. حاول مرة أخرى.');
+      return;
+    }
+    let cancelled = false;
+    setPhase('creating');
+    setErrorMsg('');
+    (async () => {
+      try {
+        const res = await createCheckout();
+        if (cancelled) return;
+        const w = takePayWindow();
+        if (w) {
+          try {
+            w.opener = null;
+          } catch {
+            /* noop */
+          }
+          w.location.href = res.checkoutUrl;
+        }
+        setPhase('waiting');
+      } catch (err: any) {
+        if (cancelled) return;
+        setErrorMsg(err?.message ?? 'تعذّر بدء عملية الدفع. حاول مجدداً.');
+        setPhase('error');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [createCheckout, attempt, urlOutcome, isActive]);
+
+  // Server-side webhook reports a failed/canceled checkout → show retry.
+  useEffect(() => {
+    if (phase === 'waiting' && !isActive && (checkoutStatus === 'failed' || checkoutStatus === 'canceled')) {
+      setErrorMsg('تعذّرت عملية الدفع. حاول مرة أخرى.');
+      setPhase('error');
+    }
+  }, [checkoutStatus, phase, isActive]);
+
+  const retry = () => {
+    openPayWindow();
+    setAttempt((a) => a + 1);
+  };
+
+  const reopen = () => {
+    if (checkoutUrl) {
+      openCheckoutWindow(checkoutUrl);
+    } else {
+      retry();
     }
   };
 
@@ -74,40 +132,6 @@ export function PaymentScreen({ onCancel, reason = 'trial' }: PaymentScreenProps
           <CheckCircleIcon size={40} className="text-[hsl(var(--sprout))] mx-auto mb-3" />
           <h2 className="text-lg font-bold text-[hsl(var(--ink))] mb-1">اشتراكك مفعّل</h2>
           <p className="text-sm text-muted-foreground">يمكنك الآن تصفح كل المحتوى.</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (isPending) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-6 bg-background">
-        {onCancel && (
-          <button
-            onClick={onCancel}
-            className="fixed top-5 right-5 z-50 w-10 h-10 rounded-full bg-card/80 backdrop-blur-sm border border-border shadow-sm flex items-center justify-center text-muted-foreground hover:text-[hsl(var(--ink))] hover:bg-muted/60 transition-all active:scale-95"
-            aria-label="الرجوع"
-          >
-            <ChevronIcon size={17} className="rotate-180" />
-          </button>
-        )}
-        <div className="w-full max-w-sm bg-card border border-border rounded-2xl p-8 text-center shadow-sm">
-          <div className="w-14 h-14 rounded-full bg-[hsl(var(--amber))]/15 text-[hsl(var(--amber))] flex items-center justify-center mx-auto mb-4">
-            <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          </div>
-          <h2 className="text-xl font-bold text-[hsl(var(--ink))] mb-2">طلبك قيد المراجعة</h2>
-          <p className="text-sm text-muted-foreground mb-2">
-            استلمنا طلب الاشتراك. سيقوم فريق الإدارة بتأكيد وصول التحويل وتفعيل حسابك (3 أشهر).
-          </p>
-          <p className="text-[11px] text-muted-foreground mb-6">
-            يظهر هذا عادةً خلال ساعات العمل. سيُفتح المحتوى تلقائياً بعد التفعيل.
-          </p>
-          {verifySub?.status === 'pending' && (
-            <div className="text-[10px] text-muted-foreground font-mono bg-muted/50 rounded-lg px-3 py-2 mb-4" dir="ltr">
-              {String(verifySub.userId).slice(0, 8)}…
-            </div>
-          )}
-          <div className="w-5 h-5 rounded-full border-2 border-[hsl(var(--ink))] border-t-transparent animate-spin mx-auto" />
         </div>
       </div>
     );
@@ -230,7 +254,7 @@ export function PaymentScreen({ onCancel, reason = 'trial' }: PaymentScreenProps
     );
   }
 
-  // ── User payment screen ─────────────────────────────────────────
+  // ── User payment flow (Chargily Pay) ────────────────────────────
   return (
     <div className="min-h-screen flex items-center justify-center px-6 py-10 bg-background">
       {onCancel && (
@@ -244,7 +268,6 @@ export function PaymentScreen({ onCancel, reason = 'trial' }: PaymentScreenProps
       )}
 
       <div className="w-full max-w-md">
-
         <div className="bg-card border border-border rounded-2xl p-6 shadow-sm mb-4">
           {/* Header */}
           <div className="flex justify-between items-start mb-5 mt-2">
@@ -279,64 +302,85 @@ export function PaymentScreen({ onCancel, reason = 'trial' }: PaymentScreenProps
             </div>
           )}
 
-          {/* Transfer instructions */}
-          <div className="bg-[hsl(var(--sprout))]/10 border border-[hsl(var(--sprout))]/25 rounded-xl p-4 mb-5">
-            <h3 className="text-sm font-bold text-[hsl(var(--ink))] mb-2 flex items-center gap-1.5">
-              <ShieldIcon size={15} className="text-[hsl(var(--sprout))]" />
-              تحويل يدوي عبر CCP أو EDAHABIA
-            </h3>
-            <div className="text-xs text-muted-foreground space-y-1.5 leading-relaxed">
-              <p><span className="font-semibold text-[hsl(var(--ink))]">1.</span> حوّل المبلغ <b>{SUBSCRIPTION_PRICE_DZD} دج</b> إلى حساب: </p>
-              <p className="font-mono text-[11px] bg-card border border-border rounded-lg px-3 py-2" dir="ltr">
-                {PAYMENT_NAME}
-                <br />{PAYMENT_CCP}
-                <br />{PAYMENT_EDAHABIA}
-              </p>
-              <p><span className="font-semibold text-[hsl(var(--ink))]">2.</span> أدخل مرجع/رقم العملية في الحقل أدناه.</p>
-              <p><span className="font-semibold text-[hsl(var(--ink))]">3.</span> سنفعّل حسابك بعد التأكد من وصول التحويل (عادة خلال ساعات).</p>
+          {/* Phase: creating */}
+          {phase === 'creating' && (
+            <div className="text-center py-6">
+              <div className="w-12 h-12 rounded-full border-2 border-[hsl(var(--ink))] border-t-transparent animate-spin mx-auto mb-4" />
+              <h2 className="text-base font-bold text-[hsl(var(--ink))] mb-1">جارٍ تجهيز صفحة الدفع...</h2>
+              <p className="text-xs text-muted-foreground">سيتم فتح صفحة الدفع في تبويب جديد.</p>
             </div>
-          </div>
+          )}
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">مرجع العملية (رقم التحويل)</label>
-              <Input
-                value={reference}
-                onChange={(e) => setReference(e.target.value)}
-                placeholder="مثال: 2024-00012345"
-                maxLength={100}
-                className="h-11 text-right"
-                dir="ltr"
-              />
-            </div>
-
-            {error && (
-              <div className="text-[11px] font-medium text-[hsl(var(--coral))] bg-[hsl(var(--coral))]/10 p-2.5 rounded-md flex items-start gap-2">
-                <WarningIcon size={14} className="shrink-0 mt-0.5" />
-                {error}
-              </div>
-            )}
-
-            <Button
-              type="submit"
-              className="w-full h-12 bg-[hsl(var(--ink-solid))] hover:bg-[hsl(var(--ink-solid))]/90 text-white font-bold mt-1 rounded-xl text-base"
-              disabled={loading}
-            >
-              {loading ? (
-                <span className="flex items-center gap-2">
-                  <span className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                  جاري الإرسال...
-                </span>
+          {/* Phase: waiting for payment */}
+          {phase === 'waiting' && (
+            <div className="text-center py-6">
+              {urlOutcome === 'success' ? (
+                <CheckCircleIcon size={40} className="text-[hsl(var(--sprout))] mx-auto mb-4" />
               ) : (
-                'أرسل طلب الاشتراك'
+                <div className="w-12 h-12 rounded-full border-2 border-[hsl(var(--ink))] border-t-transparent animate-spin mx-auto mb-4" />
               )}
-            </Button>
+              <h2 className="text-base font-bold text-[hsl(var(--ink))] mb-2">
+                {urlOutcome === 'success' ? 'تم استلام الدفع' : 'في انتظار المصادقة على الدفع...'}
+              </h2>
+              <p className="text-xs text-muted-foreground leading-relaxed mb-6">
+                {urlOutcome === 'success'
+                  ? 'سيُفعّل حسابك تلقائياً خلال ثوانٍ. إذا لم يُفعّل، حدّث الصفحة.'
+                  : 'أكمل الدفع في التبويب الجديد. سيُفعّل حسابك تلقائياً بمجرد تأكيد العملية — حتى لو أغلقت التبويب.'}
+              </p>
 
-            <p className="text-[10px] text-muted-foreground text-center flex items-center justify-center gap-1.5">
-              <ShieldIcon size={12} />
-              التفعيل يتم يدوياً بعد تأكيد التحويل.
+              {urlOutcome === 'success' ? null : (
+                <div className="flex flex-col gap-2.5">
+                  <Button
+                    onClick={reopen}
+                    variant="outline"
+                    className="h-11 rounded-xl text-sm font-bold"
+                  >
+                    <CreditCardIcon size={16} />
+                    افتح صفحة الدفع
+                  </Button>
+                  <button
+                    onClick={retry}
+                    className="text-xs text-muted-foreground underline"
+                  >
+                    إذا أغلقت صفحة الدفع دون إتمامها — إعادة المحاولة
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Phase: error */}
+          {phase === 'error' && (
+            <div className="text-center py-6">
+              <XCircleIcon size={40} className="text-[hsl(var(--coral))] mx-auto mb-4" />
+              <h2 className="text-base font-bold text-[hsl(var(--ink))] mb-2">تعذّرت عملية الدفع</h2>
+              <div className="text-[11px] font-medium text-[hsl(var(--coral))] bg-[hsl(var(--coral))]/10 p-2.5 rounded-md mb-4 flex items-start gap-2 text-right">
+                <WarningIcon size={14} className="shrink-0 mt-0.5" />
+                {errorMsg}
+              </div>
+              <div className="flex flex-col gap-2.5">
+                <Button
+                  onClick={retry}
+                  className="h-11 bg-[hsl(var(--ink-solid))] hover:bg-[hsl(var(--ink-solid))]/90 text-white font-bold rounded-xl text-sm"
+                >
+                  إعادة المحاولة
+                </Button>
+                {onCancel && (
+                  <button onClick={onCancel} className="text-xs text-muted-foreground underline">
+                    العودة
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Security note */}
+          <div className="flex items-center gap-1.5 justify-center mt-5 pt-4 border-t border-border">
+            <ShieldIcon size={12} className="text-[hsl(var(--sprout))]" />
+            <p className="text-[10px] text-muted-foreground">
+              دفع آمن عبر بوابة شاريلي. يُفعّل الحساب تلقائياً بعد تأكيد الدفع.
             </p>
-          </form>
+          </div>
         </div>
 
         {/* Admin access */}

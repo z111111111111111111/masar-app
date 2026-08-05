@@ -10,7 +10,7 @@ import { isOwner } from "./owners";
 // subscription from the admin panel. Payout of the 5000 DZD referral reward
 // happens manually (out of scope); activating a subscription marks the user's
 // referral attribution as "paid" so the referrer's counter advances.
-export const PLAN_DZD = 3000;
+export const PLAN_DZD = 3500;
 export const PLAN_DAYS = 90;
 
 // Strong subscription status used by the app gateway.
@@ -216,6 +216,16 @@ export const adminActivate = mutation({
 
     // The invitee is now paying → count toward the referrer's reward.
     await ctx.runMutation(internal.referrals.markPaid, { userId: sub.userId });
+
+    // Payment confirmed → the account becomes officially verified, unlocking the
+    // referral program (consistent with the automatic Chargily webhook flow).
+    const profile = await ctx.db
+      .query("userProgress")
+      .withIndex("by_userId", (q) => q.eq("userId", sub.userId))
+      .unique();
+    if (profile) {
+      await ctx.db.patch(profile._id, { isVerified: true });
+    }
   },
 });
 

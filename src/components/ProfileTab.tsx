@@ -3,6 +3,7 @@ import { useMutation } from 'convex/react';
 import { api } from 'convex/_generated/api';
 import { SUBJECTS, subjectColor } from '@/lib/subjects';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   currentLeague,
   dayAverageScore,
@@ -22,6 +23,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { ThemeSwitcher } from './ThemeSwitcher';
 import { AccountStatus, ReferralButton } from './AccountSubscriptions';
 import type { ThemeId, ThemeInfo } from '@/lib/useTheme';
+
+const NAME_MAX_LENGTH = 20;
+const NAME_PATTERN = /^[\p{L}\p{M}]+(?:\s+[\p{L}\p{M}]+)*$/u;
+
+function validateNameInput(value: string): string {
+  const t = value.trim();
+  if (!t) return 'يرجى إدخال اسمك';
+  if (t.length > NAME_MAX_LENGTH) return `الاسم يجب ألا يتجاوز ${NAME_MAX_LENGTH} حرفاً`;
+  if (!NAME_PATTERN.test(t)) return 'الاسم يجب أن يحتوي على حروف فقط (بدون أرقام أو رموز)';
+  return '';
+}
 
 export function ProfileTab({
   name,
@@ -51,8 +63,30 @@ export function ProfileTab({
   onSubscribe?: () => void;
 }) {
   const setAllowSharing = useMutation(api.progress.setAllowSharing);
+  const updateName = useMutation(api.progress.updateProfileName);
   const [shareOpen, setShareOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editName, setEditName] = useState(name);
+  const [editError, setEditError] = useState('');
+  const [savingName, setSavingName] = useState(false);
+
+  const saveName = async () => {
+    const msg = validateNameInput(editName);
+    if (msg) {
+      setEditError(msg);
+      return;
+    }
+    setSavingName(true);
+    try {
+      await updateName({ name: editName });
+      setEditOpen(false);
+    } catch (err: any) {
+      setEditError(err?.message || 'حدث خطأ أثناء حفظ الاسم');
+    } finally {
+      setSavingName(false);
+    }
+  };
 
   const { league } = currentLeague(xp);
   const { todayISO } = useDayInfo();
@@ -97,7 +131,22 @@ export function ProfileTab({
           {name.slice(0, 1)}
         </div>
         <div className="flex-1">
-          <h1 className="text-lg font-bold text-[hsl(var(--ink))]">{name}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-lg font-bold text-[hsl(var(--ink))]">{name}</h1>
+            <button
+              onClick={() => {
+                setEditName(name);
+                setEditError('');
+                setEditOpen(true);
+              }}
+              aria-label="تعديل الاسم"
+              className="w-7 h-7 rounded-full border border-border bg-card text-muted-foreground hover:text-[hsl(var(--sprout))] hover:border-[hsl(var(--sprout))] transition-colors flex items-center justify-center shrink-0"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+              </svg>
+            </button>
+          </div>
           <p className="text-xs text-muted-foreground">
             منذ {new Date(startDate).toLocaleDateString('ar-DZ')} · دوري {league.name}
           </p>
@@ -122,7 +171,7 @@ export function ProfileTab({
         <ReferralButton onSubscribe={onSubscribe} />
       </div>
 
-      <AccountStatus isPaid={isPaid} />
+      <AccountStatus isPaid={isPaid} onSubscribe={onSubscribe} />
 
       <div className="grid grid-cols-3 gap-3">
         <StatCard label="XP الإجمالية" value={String(xp)} />
@@ -154,6 +203,52 @@ export function ProfileTab({
           ))}
         </div>
       </div>
+
+      {/* Edit name dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-w-xs p-0 overflow-hidden">
+          <DialogHeader className="px-4 pt-4 pb-3 border-b border-border">
+            <DialogTitle className="text-right">تعديل الاسم</DialogTitle>
+          </DialogHeader>
+          <div className="px-4 py-4 space-y-3">
+            <Input
+              value={editName}
+              dir="rtl"
+              placeholder="الاسم الكامل"
+              autoFocus
+              onChange={(e) => {
+                setEditName(e.target.value);
+                setEditError('');
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') saveName();
+              }}
+            />
+            {editError && (
+              <p className="text-xs text-[hsl(var(--coral))]">{editError}</p>
+            )}
+            <p className="text-[11px] text-muted-foreground">
+              حروف فقط (عربية أو لاتينية)، بحد أقصى {NAME_MAX_LENGTH} حرفاً.
+            </p>
+          </div>
+          <DialogFooter className="px-4 pb-4 flex-row gap-3 !justify-center">
+            <Button
+              variant="sprout"
+              className="flex-1 h-10 rounded-full"
+              disabled={savingName}
+              onClick={saveName}
+            >
+              {savingName ? 'جارٍ الحفظ…' : 'حفظ'}
+            </Button>
+            <button
+              onClick={() => setEditOpen(false)}
+              className="flex-1 h-10 rounded-full border border-border bg-card text-sm font-semibold text-[hsl(var(--ink))] hover:bg-muted/40 transition-colors"
+            >
+              إلغاء
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Share confirmation dialog */}
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>

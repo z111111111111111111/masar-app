@@ -299,6 +299,32 @@ export const setAllowSharing = mutation({
   },
 });
 
+// --- Edit display name ---
+// Same server-side sanitization as `create`: strip anything that isn't a
+// letter or space, collapse runs of spaces and cap at 20 chars, so a tampered
+// client can never reach the leaderboard/profile with junk. Falls back to the
+// generic label if nothing survives.
+export const updateProfileName = mutation({
+  args: { name: v.string() },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const name =
+      args.name
+        .trim()
+        .replace(/[^\p{L}\p{M}\s]/gu, "")
+        .replace(/\s+/g, " ")
+        .slice(0, 20) || "طالب";
+    const progress = await ctx.db
+      .query("userProgress")
+      .withIndex("by_userId", (q) => q.eq("userId", identity.subject))
+      .unique();
+    if (!progress) throw new Error("Profile not found");
+    await ctx.db.patch(progress._id, { name, lastMutationAt: Date.now() });
+    return { name };
+  },
+});
+
 // --- Create profile (first login after payment) ---
 export const create = mutation({
   args: { name: v.string(), referralCode: v.optional(v.string()) },

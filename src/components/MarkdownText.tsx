@@ -1,5 +1,15 @@
 import type { ReactNode } from 'react';
 
+// Only allow safe link schemes (http/https or same-site relative). Anything
+// else (javascript:, data:, vbscript:, etc.) is rendered as plain text so a
+// prompt-injected link can never execute script in the page origin.
+function safeHref(url: string): string | undefined {
+  const trimmed = url.trim();
+  if (trimmed.startsWith('/')) return trimmed;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return undefined;
+}
+
 function parseInline(text: string): ReactNode[] {
   const parts: ReactNode[] = [];
   const regex = /(\*\*\*(.+?)\*\*\*|\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`|\[(.+?)\]\((.+?)\))/g;
@@ -19,7 +29,12 @@ function parseInline(text: string): ReactNode[] {
     } else if (match[5]) {
       parts.push(<code key={parts.length} className="bg-muted/60 px-1 rounded text-[13px]">{match[5]}</code>);
     } else if (match[6]) {
-      parts.push(<a key={parts.length} href={match[7]} target="_blank" rel="noopener noreferrer" className="underline text-[hsl(var(--sprout))]">{match[6]}</a>);
+      const href = safeHref(match[7]);
+      parts.push(
+        href
+          ? <a key={parts.length} href={href} target="_blank" rel="noopener noreferrer" className="underline text-[hsl(var(--sprout))]">{match[6]}</a>
+          : <span key={parts.length}>{match[6]}</span>
+      );
     }
     last = regex.lastIndex;
   }

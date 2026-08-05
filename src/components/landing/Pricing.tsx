@@ -24,8 +24,8 @@ export function Pricing({ onGetStarted }: { onGetStarted: () => void }) {
             </div>
             <div className="px-6 py-8 text-center space-y-6">
               <div>
-                <span className="text-4xl font-black text-[hsl(var(--ink))]">$15</span>
-                <span className="text-sm text-muted-foreground mr-1">/ 3 أشهر كاملة</span>
+                <span className="text-4xl font-black text-[hsl(var(--ink))]">3500</span>
+                <span className="text-sm text-muted-foreground mr-1">دج / 3 أشهر كاملة</span>
               </div>
               <p className="text-xs text-muted-foreground">اشتراك واحد — كل ما تحتاجه في مسار</p>
 

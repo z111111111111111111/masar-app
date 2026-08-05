@@ -4,6 +4,11 @@ type Listener = () => void;
 
 const listeners = new Set<Listener>();
 
+// Popup window opened synchronously inside a click handler (so browsers don't
+// block it). PaymentScreen grabs it and navigates it to the Chargily checkout
+// URL once the checkout is created server-side.
+let pendingPayWindow: Window | null = null;
+
 export function subscribePaywall(listener: Listener): () => void {
   listeners.add(listener);
   return () => {
@@ -12,7 +17,35 @@ export function subscribePaywall(listener: Listener): () => void {
 }
 
 export function openPaywall(): void {
+  if (typeof window !== 'undefined') {
+    pendingPayWindow = window.open('', '_blank');
+  }
   listeners.forEach((l) => l());
+}
+
+export function takePayWindow(): Window | null {
+  const w = pendingPayWindow;
+  pendingPayWindow = null;
+  return w;
+}
+
+export function openPayWindow(): void {
+  if (typeof window !== 'undefined') {
+    pendingPayWindow = window.open('', '_blank');
+  }
+}
+
+export function openCheckoutWindow(url: string): Window | null {
+  const w = typeof window !== 'undefined' ? window.open('', '_blank') : null;
+  if (w) {
+    try {
+      w.opener = null;
+    } catch {
+      /* noop */
+    }
+    w.location.href = url;
+  }
+  return w;
 }
 
 // Server-side trial/limit errors all mention "اشتراكك" — when a call fails

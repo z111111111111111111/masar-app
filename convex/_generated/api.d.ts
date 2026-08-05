@@ -9,6 +9,7 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as chargilyWebhook from "../chargilyWebhook.js";
 import type * as corrector from "../corrector.js";
 import type * as dayBoundary from "../dayBoundary.js";
 import type * as entitlements from "../entitlements.js";
@@ -17,6 +18,7 @@ import type * as http from "../http.js";
 import type * as leaderboard from "../leaderboard.js";
 import type * as mistakes from "../mistakes.js";
 import type * as owners from "../owners.js";
+import type * as payments from "../payments.js";
 import type * as progress from "../progress.js";
 import type * as prompts from "../prompts.js";
 import type * as referrals from "../referrals.js";
@@ -30,6 +32,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  chargilyWebhook: typeof chargilyWebhook;
   corrector: typeof corrector;
   dayBoundary: typeof dayBoundary;
   entitlements: typeof entitlements;
@@ -38,6 +41,7 @@ declare const fullApi: ApiFromModules<{
   leaderboard: typeof leaderboard;
   mistakes: typeof mistakes;
   owners: typeof owners;
+  payments: typeof payments;
   progress: typeof progress;
   prompts: typeof prompts;
   referrals: typeof referrals;

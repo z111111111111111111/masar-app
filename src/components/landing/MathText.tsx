@@ -71,7 +71,7 @@ function renderKatex(tex: string, displayMode: boolean): string {
     return window.katex.renderToString(tex, {
       displayMode,
       throwOnError: false,
-      trust: true,
+      trust: false,
     });
   } catch {
     return escapeHtml(tex);

@@ -5,8 +5,14 @@ import { SMART_TEACHER_SYSTEM_PROMPT } from "./prompts";
 
 const API_URL = "https://openrouter.ai/api/v1/chat/completions";
 const MODEL = "deepseek/deepseek-v4-flash";
-const SITE_URL = "https://masar-app.vercel.app";
+const SITE_URL = process.env.SITE_URL ?? "https://masarlearn.vercel.app";
 const SITE_NAME = "Masar";
+
+// Cost-control bounds: cap how much text a single call can send to the model so
+// a malicious/large request can't amplify the OpenRouter bill.
+const MAX_MESSAGE_CHARS = 4000;
+const MAX_HISTORY_MESSAGES = 50; // reject new messages past this conversation size
+const MODEL_HISTORY_WINDOW = 20; // only send the last N messages to the model
 
 // --- Conversations ---
 
@@ -133,6 +139,13 @@ export const chat = action({
     if (!identity) throw new Error("Not authenticated");
     const userId = identity.subject;
 
+    // Cap the incoming message before anything is stored or billed.
+    const content = args.content.trim();
+    if (!content) throw new Error("الرسالة فارغة");
+    if (content.length > MAX_MESSAGE_CHARS) {
+      throw new Error(`الرسالة طويلة جداً (الحد الأقصى ${MAX_MESSAGE_CHARS} حرف).`);
+    }
+
     // The conversation must belong to the caller — never operate on another
     // user's conversation even if its id is known or guessed.
     const conversation = await ctx.runQuery(internal.corrector.getConversation, {
@@ -145,7 +158,21 @@ export const chat = action({
     const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) throw new Error("OPENROUTER_API_KEY not configured");
 
-    // Enforce the free-trial AI limit (5 messages shared with explanations).
+    // Get conversation history (before anything is stored or billed).
+    const history = await ctx.runQuery(api.corrector.getMessages, {
+      conversationId: args.conversationId,
+    });
+    const nonEmptyMessages = history.filter((m: { role: string; content: string }) => m.content !== "");
+
+    // Bound conversation growth: beyond this size ask the student to start a
+    // new conversation instead of letting the context (and bill) grow forever.
+    // Checked before consuming quota / saving so a rejected message never costs.
+    if (nonEmptyMessages.length >= MAX_HISTORY_MESSAGES) {
+      throw new Error("المحادثة طويلة جداً. ابدأ محادثة جديدة للمتابعة.");
+    }
+
+    // Enforce the free-trial AI limit (5 messages shared with explanations) and
+    // the per-user rate limits (cooldown + hourly cap) for every account.
     await ctx.runMutation(internal.entitlements.consumeAi, { userId });
 
     // Save user message
@@ -153,24 +180,26 @@ export const chat = action({
       userId,
       conversationId: args.conversationId,
       role: "user",
-      content: args.content,
-    });
-
-    // Get conversation history
-    const history = await ctx.runQuery(api.corrector.getMessages, {
-      conversationId: args.conversationId,
+      content,
     });
 
     // If first message, generate title immediately (before streaming)
-    if (history.length <= 1) {
+    if (history.length === 0) {
       if (conversation.title === "محادثة جديدة") {
-        const title = await generateTitle(args.content, apiKey);
+        const title = await generateTitle(content, apiKey);
         await ctx.runMutation(internal.corrector.updateTitle, {
           conversationId: args.conversationId,
           title,
         });
       }
     }
+
+    // Only the most recent messages are sent to the model — older turns are
+    // still stored for display but can't inflate the token count per request.
+    const modelHistory = [
+      ...nonEmptyMessages.slice(-(MODEL_HISTORY_WINDOW - 1)),
+      { role: "user" as const, content },
+    ];
 
     // Create empty assistant message for streaming
     const msgId = await ctx.runMutation(internal.corrector.createEmptyMessage, {
@@ -190,11 +219,9 @@ export const chat = action({
         "دورك في هذه المحادثة: مراجعة حلول الطالب وتصحيحها خطوة بخطوة، ومساعدة المتعلم في المواد الخمس ضمن محتوى الدرس الجاري — لا حاجة لتوليد تمارين هنا.",
     };
 
-    const nonEmptyMessages = history.filter((m: { role: string; content: string }) => m.content !== "");
-
     const body = {
       model: MODEL,
-      messages: [systemPrompt, taskContext, ...nonEmptyMessages.map((m: { role: string; content: string }) => ({ role: m.role as "user" | "assistant", content: m.content }))],
+      messages: [systemPrompt, taskContext, ...modelHistory.map((m: { role: string; content: string }) => ({ role: m.role as "user" | "assistant", content: m.content }))],
       max_tokens: 4096,
       temperature: 0.7,
       // DeepSeek V4 Flash enables "thinking" by default; reasoning tokens are
@@ -218,6 +245,7 @@ export const chat = action({
 
     if (!response.ok) {
       await ctx.runMutation(internal.corrector.removeMessage, { messageId: msgId });
+      await ctx.runMutation(internal.entitlements.refundAi, { userId });
       const err = await response.text();
       throw new Error(`OpenRouter API error: ${response.status} ${err}`);
     }
@@ -264,11 +292,13 @@ export const chat = action({
 
     if (streamError) {
       await ctx.runMutation(internal.corrector.removeMessage, { messageId: msgId });
+      await ctx.runMutation(internal.entitlements.refundAi, { userId });
       throw new Error(`OpenRouter stream error: ${streamError}`);
     }
 
     if (!fullReply) {
       await ctx.runMutation(internal.corrector.removeMessage, { messageId: msgId });
+      await ctx.runMutation(internal.entitlements.refundAi, { userId });
       if (reasoningTokens > 0) {
         throw new Error("استجاب النموذج بتفكير فقط دون رد فعلي — حاول مجدداً.");
       }
@@ -357,23 +387,31 @@ export const explainExercise = action({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
-    // Enforce the free-trial AI limit (shared with the corrector chat).
+    // Cap untrusted inputs so a huge exercise payload can't inflate the model bill.
+    const kindLabel = EXPLAIN_KIND_LABELS[args.kind] ?? args.kind.slice(0, 50);
+    const info = (args.info ?? "").trim().slice(0, 4000);
+    const options = (args.options ?? [])
+      .map((o) => o.trim().slice(0, 500))
+      .filter((o) => o.length > 0)
+      .slice(0, 10);
+
+    // Enforce the free-trial AI limit (shared with the corrector chat) and the
+    // per-user rate limits (cooldown + hourly cap) for every account.
     await ctx.runMutation(internal.entitlements.consumeAi, { userId: identity.subject });
 
     const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) throw new Error("OPENROUTER_API_KEY not configured");
 
-    const kindLabel = EXPLAIN_KIND_LABELS[args.kind] ?? args.kind;
     const optionsText =
-      args.options && args.options.length > 0
-        ? `\nالخيارات المعروضة على الطالب: ${args.options.join(" | ")}`
+      options.length > 0
+        ? `\nالخيارات المعروضة على الطالب: ${options.join(" | ")}`
         : "";
 
     const systemPrompt = {
       role: "system" as const,
       content: SMART_TEACHER_SYSTEM_PROMPT,
     };
-    const userPrompt = `نوع التمرين: ${kindLabel}.${optionsText}\n\nمعلومة إضافية عن التمرين: ${args.info}\n\nساعد المتعلم على فهم الفكرة دون كشف الإجابة مباشرة.`;
+    const userPrompt = `نوع التمرين: ${kindLabel}.${optionsText}\n\nمعلومة إضافية عن التمرين: ${info}\n\nساعد المتعلم على فهم الفكرة دون كشف الإجابة مباشرة.`;
 
     const body = {
       model: MODEL,
@@ -400,6 +438,7 @@ export const explainExercise = action({
     });
 
     if (!response.ok) {
+      await ctx.runMutation(internal.entitlements.refundAi, { userId: identity.subject });
       const err = await response.text();
       throw new Error(`OpenRouter API error: ${response.status} ${err}`);
     }

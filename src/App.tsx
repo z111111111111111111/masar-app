@@ -11,6 +11,7 @@ import {
 import { Toaster } from '@/components/ui/toaster';
 import { AuthScreen } from '@/components/AuthScreen';
 import { PaymentScreen } from '@/components/PaymentScreen';
+import { PaymentRedirectNotice } from '@/components/PaymentRedirectNotice';
 import { Landing } from '@/components/landing/Landing';
 import { AppShell } from '@/components/AppShell';
 import { DashboardTab } from '@/components/DashboardTab';
@@ -142,6 +143,12 @@ function App() {
     }
   }, [isAuthed, isPaid, enforceExpiry]);
 
+  // The moment the (webhook-activated) subscription becomes paid, leave the
+  // paywall — even if the user is still on the "awaiting" screen.
+  useEffect(() => {
+    if (isPaid && paywallOpen) setPaywallOpen(false);
+  }, [isPaid, paywallOpen]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">
@@ -181,20 +188,26 @@ function App() {
   // Trial over without payment → hard gate.
   if (trialBlocked) {
     return (
-      <PaymentScreen
-        onCancel={handlePaymentCancel}
-        reason="expired"
-      />
+      <>
+        <PaymentRedirectNotice />
+        <PaymentScreen
+          onCancel={handlePaymentCancel}
+          reason="expired"
+        />
+      </>
     );
   }
 
   // Feature paywall opened from a locked part of the app → soft gate.
   if (paywallOpen) {
     return (
-      <PaymentScreen
-        onCancel={() => setPaywallOpen(false)}
-        reason="trial"
-      />
+      <>
+        <PaymentRedirectNotice />
+        <PaymentScreen
+          onCancel={() => setPaywallOpen(false)}
+          reason="trial"
+        />
+      </>
     );
   }
 
@@ -205,6 +218,7 @@ function App() {
 
   return (
     <HeartsProvider>
+      <PaymentRedirectNotice />
       <AppShell
         active={active}
         onChange={(t) => navigateApp({ kind: 'tab', tab: t })}
