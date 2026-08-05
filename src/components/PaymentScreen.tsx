@@ -120,14 +120,6 @@ export function PaymentScreen({ onCancel, reason = 'trial' }: PaymentScreenProps
     setAttempt((a) => a + 1);
   };
 
-  const reopen = () => {
-    if (checkoutUrl) {
-      openCheckoutWindow(checkoutUrl);
-    } else {
-      retry();
-    }
-  };
-
   // ── Success / waiting screen ────────────────────────────────────
   if (isActive) {
     return (
@@ -334,14 +326,26 @@ export function PaymentScreen({ onCancel, reason = 'trial' }: PaymentScreenProps
 
               {urlOutcome === 'success' ? null : (
                 <div className="flex flex-col gap-2.5">
-                  <Button
-                    onClick={reopen}
-                    variant="outline"
-                    className="h-11 rounded-xl text-sm font-bold"
-                  >
-                    <CreditCardIcon size={16} />
-                    افتح صفحة الدفع
-                  </Button>
+                  {checkoutUrl ? (
+                    <a
+                      href={checkoutUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center gap-2 whitespace-nowrap border border-input bg-background text-sm font-semibold h-11 rounded-xl px-4 shadow-sm transition-all duration-75 ease-out hover:bg-accent hover:text-accent-foreground active:translate-y-[3px]"
+                    >
+                      <CreditCardIcon size={16} />
+                      افتح صفحة الدفع
+                    </a>
+                  ) : (
+                    <Button
+                      onClick={retry}
+                      variant="outline"
+                      className="h-11 rounded-xl text-sm font-bold"
+                    >
+                      <CreditCardIcon size={16} />
+                      إعادة المحاولة
+                    </Button>
+                  )}
                   <button
                     onClick={retry}
                     className="text-xs text-muted-foreground underline"
