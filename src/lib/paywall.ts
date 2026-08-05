@@ -36,6 +36,7 @@ export function openPayWindow(): void {
 }
 
 export function openCheckoutWindow(url: string): Window | null {
+  const safeUrl = url.replace(/^http:\/\//i, 'https://');
   const w = typeof window !== 'undefined' ? window.open('', '_blank') : null;
   if (w) {
     try {
@@ -43,7 +44,7 @@ export function openCheckoutWindow(url: string): Window | null {
     } catch {
       /* noop */
     }
-    w.location.href = url;
+    w.location.href = safeUrl;
   }
   return w;
 }

@@ -90,6 +90,9 @@ export function PaymentScreen({ onCancel, reason = 'trial' }: PaymentScreenProps
             /* noop */
           }
           w.location.href = res.checkoutUrl;
+        } else {
+          // The pre-opened popup was lost (closed/blocked) — try a fresh one.
+          openCheckoutWindow(res.checkoutUrl);
         }
         setPhase('waiting');
       } catch (err: any) {

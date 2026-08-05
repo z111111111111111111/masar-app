@@ -22,6 +22,13 @@ const CHARGILY_TEST_BASE = "https://pay.chargily.net/test/api/v2";
 const CHARGILY_LIVE_BASE = "https://pay.chargily.net/api/v2";
 const CHECKOUT_REUSE_MS = 30 * 60 * 1000; // reuse a pending checkout for 30 min
 
+// Chargily's test API returns http://pay.chargily.dz/... — a popup opened from
+// our HTTPS site won't navigate to an http:// URL (HTTPS-First/mixed content),
+// so normalize every checkout URL to https:// before it reaches the client.
+function toHttps(url: string): string {
+  return url.replace(/^http:\/\//i, "https://");
+}
+
 function chargilyBaseUrl(): string {
   return process.env.CHARGILY_MODE === "live" ? CHARGILY_LIVE_BASE : CHARGILY_TEST_BASE;
 }
@@ -117,7 +124,11 @@ export const createCheckout = action({
       { userId: identity.subject }
     );
     if (latest && latest.status === "pending" && now - latest.createdAt < CHECKOUT_REUSE_MS) {
-      return { checkoutId: latest.checkoutId, checkoutUrl: latest.checkoutUrl, reused: true };
+      return {
+        checkoutId: latest.checkoutId,
+        checkoutUrl: toHttps(latest.checkoutUrl),
+        reused: true,
+      };
     }
 
     const siteUrl = process.env.SITE_URL ?? "https://masarlearn.vercel.app";
@@ -155,7 +166,8 @@ export const createCheckout = action({
 
     const data: unknown = await res.json();
     const checkoutId = (data as { id?: unknown }).id;
-    const checkoutUrl = (data as { checkout_url?: unknown }).checkout_url;
+    const rawUrl = (data as { checkout_url?: unknown }).checkout_url;
+    const checkoutUrl = typeof rawUrl === "string" ? toHttps(rawUrl) : undefined;
     if (typeof checkoutId !== "string" || typeof checkoutUrl !== "string") {
       console.error("Chargily unexpected response", JSON.stringify(data).slice(0, 500));
       throw new Error("استجابة غير متوقعة من بوابة الدفع.");
@@ -207,7 +219,7 @@ export const getCheckoutStatus = query({
       subscriptionStatus,
       checkoutStatus: latest ? latest.status : null,
       checkoutId: latest ? latest.checkoutId : null,
-      checkoutUrl: latest && latest.status === "pending" ? latest.checkoutUrl : null,
+      checkoutUrl: latest && latest.status === "pending" ? toHttps(latest.checkoutUrl) : null,
     };
   },
 });
