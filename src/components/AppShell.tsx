@@ -38,7 +38,7 @@ export function AppShell({
   children: React.ReactNode;
 }) {
   const { league } = currentLeague(xp);
-  const { hearts, maxHearts } = useHearts();
+  const { hearts, maxHearts, jewels } = useHearts();
 
   return (
     <div className="h-screen md:h-auto overflow-hidden md:overflow-visible bg-background md:flex">
@@ -102,7 +102,7 @@ export function AppShell({
                 {dark ? <SunIcon size={16} /> : <MoonIcon size={16} />}
               </button>
               <StatPill icon={<FlameIcon className="text-[hsl(var(--ember))]" />} value={String(streak)} tone="ember" />
-              <StatPill icon={<GemIcon className="text-[hsl(var(--sprout))]" />} value={`${xp}`} tone="sprout" />
+              <StatPill icon={<GemIcon className="text-[hsl(var(--sprout))]" />} value={`${jewels}`} tone="sprout" />
               <StatPill icon={<HeartIcon className="text-[hsl(var(--coral))]" />} value={`${hearts}/${maxHearts}`} tone="coral" />
             </div>
           </div>
@@ -118,7 +118,7 @@ export function AppShell({
             {dark ? <SunIcon size={17} /> : <MoonIcon size={17} />}
           </button>
           <StatPill icon={<FlameIcon className="text-[hsl(var(--ember))]" />} value={`${streak} يوم`} tone="ember" />
-          <StatPill icon={<GemIcon className="text-[hsl(var(--sprout))]" />} value={`${xp} XP`} tone="sprout" />
+          <StatPill icon={<GemIcon className="text-[hsl(var(--sprout))]" />} value={`${jewels} جوهرة`} tone="sprout" />
           <StatPill icon={<HeartIcon className="text-[hsl(var(--coral))]" />} value={`${hearts}/${maxHearts}`} tone="coral" />
         </header>
 

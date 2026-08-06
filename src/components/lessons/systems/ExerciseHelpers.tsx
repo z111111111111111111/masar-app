@@ -78,8 +78,8 @@ export function ExerciseHelpersProvider({
   const aiInFlightRef = useRef(false);
 
   useEffect(() => {
-    if (profile && balance === null) setBalance(profile.jewels ?? INITIAL_JEWELS);
-  }, [profile, balance]);
+    if (profile) setBalance(profile.jewels ?? INITIAL_JEWELS);
+  }, [profile]);
 
   const jewels = balance ?? (profile?.jewels ?? INITIAL_JEWELS);
   const info = exercise.data.info ?? KIND_FALLBACK_INFO[exercise.kind];

@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import katex from 'katex';
 
 /**
  * Renders text containing LaTeX math delimiters:
@@ -64,11 +65,8 @@ function renderInline(text: string): string {
 }
 
 function renderKatex(tex: string, displayMode: boolean): string {
-  if (typeof window === 'undefined' || !window.katex) {
-    return escapeHtml(tex);
-  }
   try {
-    return window.katex.renderToString(tex, {
+    return katex.renderToString(tex, {
       displayMode,
       throwOnError: false,
       trust: false,
