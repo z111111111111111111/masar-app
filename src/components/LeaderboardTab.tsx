@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useQuery } from 'convex/react';
+import { useEffect, useState } from 'react';
+import { useQuery, useMutation } from 'convex/react';
 import { api } from 'convex/_generated/api';
 import { currentLeague } from '@/lib/dates';
 import { PublicProfileDialog } from './PublicProfileDialog';
@@ -7,14 +7,21 @@ import { VerifiedBadge } from './icons';
 
 export function LeaderboardTab({ userId, name, xp }: { userId: string; name: string; xp: number }) {
   const data = useQuery(api.leaderboard.list);
+  const ensureRoom = useMutation(api.leaderboard.ensureRoom);
   const { league } = currentLeague(xp);
-  const entries = data?.entries;
+  const entries = Array.isArray(data?.entries) ? data.entries : undefined;
   const roomNumber = data?.roomNumber;
   const totalRooms = data?.totalRooms;
-  const myRankInLeague = data?.myRankInLeague;
-  const totalInLeague = data?.totalInLeague;
+  const myRankInRoom = data?.myRankInRoom;
+  const roomSize = data?.roomSize;
 
   const [selected, setSelected] = useState<{ userId: string; name: string; xp: number; rank: number; verified: boolean } | null>(null);
+
+  // Place the caller in a room of their current league (creates/fills rooms);
+  // re-runs when they move up or down a league.
+  useEffect(() => {
+    ensureRoom().catch(() => {});
+  }, [ensureRoom, league.name]);
 
   return (
     <div className="space-y-5 pt-6">
@@ -63,9 +70,9 @@ export function LeaderboardTab({ userId, name, xp }: { userId: string; name: str
         })}
       </div>
 
-      {entries && myRankInLeague !== undefined && totalInLeague !== undefined && (
+      {entries && myRankInRoom !== undefined && roomSize !== undefined && (
         <p className="text-center text-xs text-muted-foreground">
-          رتبتك في الدوري: {myRankInLeague} من {totalInLeague} — واصل التسجيل اليومي لتتقدم في الترتيب
+          رتبتك في الغرفة: {myRankInRoom} من {roomSize} — واصل التسجيل اليومي لتتقدم في الترتيب
         </p>
       )}
 

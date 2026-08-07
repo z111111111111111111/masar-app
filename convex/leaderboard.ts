@@ -1,11 +1,95 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
 import { OWNER_SUBJECT } from "./owners";
 
 // League XP thresholds (ascending), mirroring LEAGUES in src/lib/dates.ts.
 const LEAGUE_MINS = [0, 300, 900, 2000, 4000];
 const ROOM_SIZE = 20;
 
+function leagueIndexForXp(xp: number): number {
+  let idx = 0;
+  for (let i = 0; i < LEAGUE_MINS.length; i++) {
+    if (xp >= LEAGUE_MINS[i]) idx = i;
+  }
+  return idx;
+}
+
+// Assigns the caller to a room in their current league. Rooms fill up to
+// ROOM_SIZE; once full a new room is created for the next members. Moving up
+// (or down) a league reassigns the user to a room of the new league.
+export const ensureRoom = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const caller = await ctx.auth.getUserIdentity();
+    if (!caller) return null;
+
+    const myProgress = await ctx.db
+      .query("userProgress")
+      .withIndex("by_userId", (q) => q.eq("userId", caller.subject))
+      .unique();
+    if (!myProgress) return null;
+
+    const leagueIdx = leagueIndexForXp(myProgress.totalXP ?? 0);
+    const existingRoomId = myProgress.leaderboardRoomId;
+
+    // Already placed in a room of the current league → nothing to do.
+    if (existingRoomId && myProgress.leaderboardLeague === leagueIdx) {
+      const room = await ctx.db.get(existingRoomId);
+      if (room && room.members.includes(caller.subject)) {
+        return { roomId: existingRoomId, leagueIdx };
+      }
+    }
+
+    // Leave any previous room (e.g. another league) before re-assigning.
+    if (existingRoomId) {
+      const old = await ctx.db.get(existingRoomId);
+      if (old) {
+        const updated = old.members.filter((u) => u !== caller.subject);
+        if (updated.length === 0) await ctx.db.delete(existingRoomId);
+        else await ctx.db.patch(existingRoomId, { members: updated });
+      }
+    }
+
+    // Prefer the fullest room that still has space so rooms fill up in order.
+    const rooms = await ctx.db
+      .query("leaderboardRooms")
+      .withIndex("by_leagueIdx", (q) => q.eq("leagueIdx", leagueIdx))
+      .collect();
+    let target: Id<"leaderboardRooms"> | null = null;
+    let targetSize = -1;
+    for (const r of rooms) {
+      if (r.members.length < ROOM_SIZE && r.members.length > targetSize) {
+        target = r._id;
+        targetSize = r.members.length;
+      }
+    }
+
+    let roomId: Id<"leaderboardRooms">;
+    if (target) {
+      roomId = target;
+      const room = await ctx.db.get(target);
+      if (room && !room.members.includes(caller.subject)) {
+        await ctx.db.patch(target, { members: [...room.members, caller.subject] });
+      }
+    } else {
+      roomId = await ctx.db.insert("leaderboardRooms", {
+        leagueIdx,
+        members: [caller.subject],
+      });
+    }
+
+    await ctx.db.patch(myProgress._id, {
+      leaderboardRoomId: roomId,
+      leaderboardLeague: leagueIdx,
+    });
+
+    return { roomId, leagueIdx };
+  },
+});
+
+// The caller's own room only: ~20 people, never anyone from another room or
+// league. Returns null until ensureRoom has placed the caller.
 export const list = query({
   args: {},
   handler: async (ctx) => {
@@ -16,58 +100,44 @@ export const list = query({
       .query("userProgress")
       .withIndex("by_userId", (q) => q.eq("userId", caller.subject))
       .unique();
-    const myXp = myProgress?.totalXP ?? 0;
+    if (!myProgress?.leaderboardRoomId) return null;
 
-    // Which league the caller currently sits in (by XP).
-    let leagueIdx = 0;
-    for (let i = 0; i < LEAGUE_MINS.length; i++) {
-      if (myXp >= LEAGUE_MINS[i]) leagueIdx = i;
-    }
-    const leagueMin = LEAGUE_MINS[leagueIdx];
-    const leagueMax =
-      leagueIdx + 1 < LEAGUE_MINS.length ? LEAGUE_MINS[leagueIdx + 1] : Number.MAX_SAFE_INTEGER;
+    const room = await ctx.db.get(myProgress.leaderboardRoomId);
+    if (!room) return null;
 
-    // Only the caller's own league is ever shown; leagues never mix.
-    const leagueEntries = await ctx.db
-      .query("userProgress")
-      .withIndex("by_xp")
-      .order("desc")
-      .filter((q) =>
-        q.and(q.gte(q.field("totalXP"), leagueMin), q.lt(q.field("totalXP"), leagueMax))
-      )
+    const members = await Promise.all(
+      room.members.map(async (uid) => {
+        const p = await ctx.db
+          .query("userProgress")
+          .withIndex("by_userId", (q) => q.eq("userId", uid))
+          .unique();
+        return p
+          ? { userId: p.userId, name: p.name, xp: p.totalXP, verified: !!p.isVerified }
+          : null;
+      })
+    );
+    const filtered = members.filter(
+      (m): m is { userId: string; name: string; xp: number; verified: boolean } => m !== null
+    );
+    filtered.sort((a, b) => b.xp - a.xp);
+
+    const leagueIdx = myProgress.leaderboardLeague ?? 0;
+    const rooms = await ctx.db
+      .query("leaderboardRooms")
+      .withIndex("by_leagueIdx", (q) => q.eq("leagueIdx", leagueIdx))
       .collect();
+    const sortedRooms = [...rooms].sort((a, b) => a._creationTime - b._creationTime);
+    const roomNumber = sortedRooms.findIndex((r) => r._id === room._id) + 1;
 
-    const mapped = leagueEntries.map((e) => ({
-      userId: e.userId,
-      name: e.name,
-      xp: e.totalXP,
-      verified: !!e.isVerified,
-    }));
-
-    let myIndex = mapped.findIndex((e) => e.userId === caller.subject);
-    if (myIndex === -1) {
-      // No progress record yet: rank the caller at the bottom of their league.
-      mapped.push({
-        userId: caller.subject,
-        name: caller.name ?? caller.email?.split("@")[0] ?? "أنت",
-        xp: myXp,
-        verified: false,
-      });
-      myIndex = mapped.length - 1;
-    }
-
-    // Chunk the league into fixed rooms of ROOM_SIZE, positioned by XP rank.
-    const roomIndex = Math.floor(myIndex / ROOM_SIZE);
-    const start = roomIndex * ROOM_SIZE;
-    const room = mapped.slice(start, start + ROOM_SIZE);
+    const myIndex = filtered.findIndex((e) => e.userId === caller.subject);
 
     return {
-      leagueIndex: leagueIdx,
-      roomNumber: roomIndex + 1,
-      totalRooms: Math.max(1, Math.ceil(mapped.length / ROOM_SIZE)),
-      myRankInLeague: myIndex + 1,
-      totalInLeague: mapped.length,
-      entries: room.map((e, i) => ({ ...e, rank: start + i + 1 })),
+      leagueIdx,
+      roomNumber,
+      totalRooms: sortedRooms.length,
+      myRankInRoom: myIndex === -1 ? filtered.length + 1 : myIndex + 1,
+      roomSize: filtered.length,
+      entries: filtered.map((e, i) => ({ ...e, rank: i + 1 })),
     };
   },
 });

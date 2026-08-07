@@ -68,8 +68,18 @@ export default defineSchema({
     lastMutationAt: v.optional(v.number()),
     signedUpAt: v.optional(v.number()),
     completedStages: v.optional(v.array(v.string())),
+    leaderboardRoomId: v.optional(v.id("leaderboardRooms")),
+    leaderboardLeague: v.optional(v.number()),
   }).index("by_userId", ["userId"])
     .index("by_xp", ["totalXP"]),
+
+  // --- Leaderboard rooms: fixed groups of 20 within one league ---
+  // A room fills up to 20 members, then a new room is created for the next
+  // users. Each user only ever sees their own room's 20 people.
+  leaderboardRooms: defineTable({
+    leagueIdx: v.number(),
+    members: v.array(v.string()),
+  }).index("by_leagueIdx", ["leagueIdx"]),
 
   // --- Free-trial usage counters (high-churn, kept separate from progress) ---
   // aiUsed/randomUsed/dailyUsed are per rolling 24h window whose start is stored
