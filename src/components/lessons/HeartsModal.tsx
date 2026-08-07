@@ -54,7 +54,7 @@ export function HeartsModal({ onBack }: { onBack: () => void }) {
 
         {!canAfford && (
           <p className="text-[11px] text-muted-foreground mb-3">
-            تحتاج {Math.max(0, refillCost - jewels)} جوهرة إضافية — اجتياز مرحلة يمنحك 100 جوهرة.
+            تحتاج {Math.max(0, refillCost - jewels)} جوهرة إضافية — اجتياز مرحلة يمنحك 15 جوهرة.
           </p>
         )}
 

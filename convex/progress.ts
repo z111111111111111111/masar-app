@@ -10,7 +10,7 @@ export const MAX_HEARTS = 15;
 // every heart is back — no per-heart ticking).
 export const HEART_FULL_REFILL_MS = 13 * 60 * 60 * 1000;
 export const FULL_REFILL_COST = 50; // refilling all 15 hearts costs 50 jewels
-export const STAGE_REWARD = 100; // jewels earned for passing a stage
+export const STAGE_REWARD = 15; // jewels earned for passing a stage
 const STAGES = new Set(["derivative", "derivative-2", "derivative-3", "derivative-4", "derivative-5"]);
 
 // Roadmap stage progress ids (server-side, tamper-proof). During the free
@@ -156,7 +156,7 @@ export const refillHearts = mutation({
   },
 });
 
-// --- Award 100 jewels once per passed stage (deduplicated server-side) ---
+// --- Award 15 jewels once per passed stage (deduplicated server-side) ---
 export const awardStageCompletion = mutation({
   args: { stageId: v.string() },
   handler: async (ctx, args) => {
