@@ -72,7 +72,7 @@ export function LeaderboardTab({ userId, name, xp }: { userId: string; name: str
 
       {entries && myRankInRoom !== undefined && roomSize !== undefined && (
         <p className="text-center text-xs text-muted-foreground">
-          رتبتك في الغرفة: {myRankInRoom} من {roomSize} — واصل التسجيل اليومي لتتقدم في الترتيب
+          رتبتك: {myRankInRoom} من {roomSize} — واصل التسجيل اليومي لتتقدم في الترتيب
         </p>
       )}
 
