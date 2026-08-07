@@ -6,9 +6,13 @@ import { PublicProfileDialog } from './PublicProfileDialog';
 import { VerifiedBadge } from './icons';
 
 export function LeaderboardTab({ userId, name, xp }: { userId: string; name: string; xp: number }) {
-  const entries = useQuery(api.leaderboard.list);
+  const data = useQuery(api.leaderboard.list);
   const { league } = currentLeague(xp);
-  const myRank = entries?.findIndex((e) => e.userId === userId) ?? -1;
+  const entries = data?.entries;
+  const roomNumber = data?.roomNumber;
+  const totalRooms = data?.totalRooms;
+  const myRankInLeague = data?.myRankInLeague;
+  const totalInLeague = data?.totalInLeague;
 
   const [selected, setSelected] = useState<{ userId: string; name: string; xp: number; rank: number; verified: boolean } | null>(null);
 
@@ -16,34 +20,34 @@ export function LeaderboardTab({ userId, name, xp }: { userId: string; name: str
     <div className="space-y-5 pt-6">
       <div>
         <h1 className="text-xl font-bold text-[hsl(var(--ink))]">قائمة المتصدرين</h1>
-        <p className="text-sm text-muted-foreground">الدوري {league.name}</p>
+        <p className="text-sm text-muted-foreground">
+          الدوري {league.name}
+          {roomNumber !== undefined && totalRooms !== undefined && (
+            <> — الغرفة {roomNumber} من {totalRooms}</>
+          )}
+        </p>
       </div>
-
-      <p className="text-xs text-muted-foreground bg-muted/60 rounded-lg px-3 py-2 leading-relaxed">
-        هذه قائمة تجريبية لعرض فكرة المنتج: بياناتك تُشارك مع مستخدمي هذا التطبيق التجريبي، إضافة إلى بضعة حسابات توضيحية للمقارنة.
-      </p>
 
       <div className="rounded-2xl border border-border bg-card divide-y divide-border overflow-hidden">
         {!entries && (
           <div className="p-6 text-center text-sm text-muted-foreground">جارٍ تحميل الترتيب...</div>
         )}
-        {entries?.map((e, i) => {
+        {entries?.map((e) => {
           const isMe = e.userId === userId;
-          const rank = i + 1;
           return (
             <button
               key={e.userId}
-              onClick={() => setSelected({ userId: e.userId, name: e.name, xp: e.xp, rank, verified: e.verified })}
+              onClick={() => setSelected({ userId: e.userId, name: e.name, xp: e.xp, rank: e.rank, verified: e.verified })}
               className={`w-full flex items-center gap-3 px-4 py-3 text-start transition-colors hover:bg-muted/40 ${isMe ? 'bg-[hsl(var(--sprout-soft))]' : ''}`}
             >
               <span
                 className={`w-6 h-6 shrink-0 rounded-full flex items-center justify-center text-[11px] font-bold ${
-                  rank === 1
+                  e.rank === 1
                     ? 'bg-[hsl(var(--sprout))] text-white'
                     : 'bg-muted text-muted-foreground'
                 }`}
               >
-                {rank}
+                {e.rank}
               </span>
               <div className="w-9 h-9 rounded-full bg-[hsl(var(--ink-solid))] text-white flex items-center justify-center text-xs font-semibold shrink-0">
                 {e.name.slice(0, 1)}
@@ -59,9 +63,9 @@ export function LeaderboardTab({ userId, name, xp }: { userId: string; name: str
         })}
       </div>
 
-      {entries && myRank >= 3 && (
+      {entries && myRankInLeague !== undefined && totalInLeague !== undefined && (
         <p className="text-center text-xs text-muted-foreground">
-          رتبتك الحالية: {myRank + 1} — واصل التسجيل اليومي لتتقدم في الترتيب
+          رتبتك في الدوري: {myRankInLeague} من {totalInLeague} — واصل التسجيل اليومي لتتقدم في الترتيب
         </p>
       )}
 
