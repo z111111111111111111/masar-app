@@ -23,6 +23,59 @@ function renderKatex(tex: string, displayMode: boolean): string {
   }
 }
 
+// Normalize the extra LaTeX delimiters some models use into the ones the app
+// renders: \[ ... \] → $$ ... $$ and \( ... \) → $ ... $.
+function normalizeMathDelimiters(content: string): string {
+  return content
+    .replace(/\\\[([\s\S]*?)\\\]/g, (_, m: string) => `$$${m.trim()}$$`)
+    .replace(/\\\(([\s\S]*?)\\\)/g, (_, m: string) => `$${m.trim()}$`);
+}
+
+const JSON_LABELS: Record<string, string> = {
+  question: 'السؤال',
+  options: 'الخيارات',
+  correct_index: 'الإجابة الصحيحة',
+  explanation: 'الشرح',
+  shuffled_pieces: 'القطع',
+  correct_order: 'الترتيب الصحيح',
+  rule_template: 'القاعدة',
+  sentence_template: 'الجملة',
+  blank_answer: 'الإجابة',
+  input_mode: 'طريقة الإدخال',
+  suggested_choices: 'الخيارات المقترحة',
+  statement: 'العبارة',
+  is_true: 'الصحة',
+  shuffled_cards: 'البطاقات',
+  relation_type: 'النوع',
+};
+
+function jsonLabel(key: string): string {
+  return JSON_LABELS[key] ?? key;
+}
+
+function jsonValue(value: unknown): string {
+  if (Array.isArray(value)) return value.map((v) => String(v)).join(' | ');
+  if (typeof value === 'boolean') return value ? 'صحيح' : 'خطأ';
+  if (value === null) return '—';
+  if (typeof value === 'object') return JSON.stringify(value);
+  return String(value);
+}
+
+// Render a raw JSON object the model once dumped (e.g. a fill template) as a
+// readable list instead of a wall of code.
+function JsonBlock({ value }: { value: Record<string, unknown> }) {
+  return (
+    <div className="rounded-xl bg-muted/50 border border-border px-3 py-2 my-1 space-y-1 text-xs" dir="rtl">
+      {Object.entries(value).map(([k, v]) => (
+        <div key={k} className="flex flex-wrap gap-x-2 gap-y-0.5">
+          <span className="font-bold text-[hsl(var(--ink))]">{jsonLabel(k)}:</span>
+          <span className="text-[hsl(var(--ink))]">{jsonValue(v)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** Inline or display LaTeX rendered through KaTeX. */
 function MathSpan({ tex, displayMode = false }: { tex: string; displayMode?: boolean }) {
   return <span dangerouslySetInnerHTML={{ __html: renderKatex(tex, displayMode) }} />;
@@ -90,7 +143,8 @@ function parseLine(line: string, key: number): ReactNode {
 }
 
 export function MarkdownText({ content }: { content: string }) {
-  const blocks = content.split('\n\n');
+  const normalized = normalizeMathDelimiters(content);
+  const blocks = normalized.split('\n\n');
   const elements: ReactNode[] = [];
 
   for (let bi = 0; bi < blocks.length; bi++) {
@@ -115,6 +169,18 @@ export function MarkdownText({ content }: { content: string }) {
         </div>
       );
       continue;
+    }
+
+    // Raw JSON the model dumped: render it as a readable list.
+    const jsonBlock = block.match(/^\s*\{[\s\S]*\}\s*$/);
+    if (jsonBlock) {
+      try {
+        const parsed: unknown = JSON.parse(block);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          elements.push(<JsonBlock key={bi} value={parsed as Record<string, unknown>} />);
+          continue;
+        }
+      } catch { /* not valid JSON → fall through to normal text */ }
     }
 
     const lines = block.split('\n').filter((l) => l.trim());
