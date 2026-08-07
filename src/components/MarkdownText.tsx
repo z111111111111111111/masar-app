@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import katex from 'katex';
 
 // Only allow safe link schemes (http/https or same-site relative). Anything
 // else (javascript:, data:, vbscript:, etc.) is rendered as plain text so a
@@ -10,9 +11,28 @@ function safeHref(url: string): string | undefined {
   return undefined;
 }
 
+function renderKatex(tex: string, displayMode: boolean): string {
+  try {
+    return katex.renderToString(tex, {
+      displayMode,
+      throwOnError: false,
+      trust: false,
+    });
+  } catch {
+    return tex.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+}
+
+/** Inline or display LaTeX rendered through KaTeX. */
+function MathSpan({ tex, displayMode = false }: { tex: string; displayMode?: boolean }) {
+  return <span dangerouslySetInnerHTML={{ __html: renderKatex(tex, displayMode) }} />;
+}
+
 function parseInline(text: string): ReactNode[] {
   const parts: ReactNode[] = [];
-  const regex = /(\*\*\*(.+?)\*\*\*|\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`|\[(.+?)\]\((.+?)\))/g;
+  // $...$ math is matched first so LaTeX like $x^*$ is never split by the
+  // *italic* rule; then bold / italic / code / links.
+  const regex = /(\$[^$\n]+?\$|\*\*\*(.+?)\*\*\*|\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`|\[(.+?)\]\((.+?)\))/g;
   let last = 0;
   let match: RegExpExecArray | null;
 
@@ -20,7 +40,9 @@ function parseInline(text: string): ReactNode[] {
     if (match.index > last) {
       parts.push(text.slice(last, match.index));
     }
-    if (match[2]) {
+    if (match[1] && match[1].startsWith('$')) {
+      parts.push(<MathSpan key={parts.length} tex={match[1].slice(1, -1)} />);
+    } else if (match[2]) {
       parts.push(<strong key={parts.length}><em>{match[2]}</em></strong>);
     } else if (match[3]) {
       parts.push(<strong key={parts.length}>{match[3]}</strong>);
@@ -80,6 +102,17 @@ export function MarkdownText({ content }: { content: string }) {
         <pre key={bi} className="bg-muted/60 rounded-xl px-3 py-2 text-[13px] overflow-x-auto leading-relaxed my-2 direction-ltr text-left">
           <code>{codeMatch[2]}</code>
         </pre>
+      );
+      continue;
+    }
+
+    // Display math: $$ ... $$
+    const displayMath = block.match(/^\s*\$\$([\s\S]*?)\$\$\s*$/);
+    if (displayMath) {
+      elements.push(
+        <div key={bi} className="my-1">
+          <MathSpan tex={displayMath[1].trim()} displayMode />
+        </div>
       );
       continue;
     }

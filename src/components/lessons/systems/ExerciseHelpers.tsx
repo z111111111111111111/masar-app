@@ -3,6 +3,7 @@ import { useQuery, useMutation, useAction } from 'convex/react';
 import { api } from 'convex/_generated/api';
 import { toast } from '@/hooks/use-toast';
 import { MathText } from '@/components/landing/MathText';
+import { MarkdownText } from '@/components/MarkdownText';
 import { InfoIcon, LightbulbIcon, SparklesIcon, GemIcon } from '../../icons';
 import { isLimitWaitError, isPaywallError, openPaywall } from '@/lib/paywall';
 import type { ExerciseData } from './types';
@@ -272,7 +273,9 @@ export function ExerciseHelpersBar() {
           ) : ai.error ? (
             <p className="text-xs text-muted-foreground">تعذّر الحصول على الشرح، حاول مرة أخرى.</p>
           ) : ai.content ? (
-            <p className="text-xs leading-relaxed text-[hsl(var(--ink))] whitespace-pre-line">{ai.content}</p>
+            <div className="text-xs leading-relaxed text-[hsl(var(--ink))]">
+              <MarkdownText content={ai.content} />
+            </div>
           ) : (
             <p className="text-xs text-muted-foreground">
               اضغط على «اسأل الذكاء» للحصول على شرح مبسط للفكرة — لن يعطيك الجواب مباشرة.
